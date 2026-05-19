@@ -1,213 +1,85 @@
-/* ===== RESET ===== */
+<!DOCTYPE html>
 
-*, *::before, *::after {
+<html lang="en">
 
-  box-sizing: border-box;
+<head>
 
-  margin: 0;
+  <meta charset="UTF-8" />
 
-  padding: 0;
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  -webkit-tap-highlight-color: transparent;
+  <title>Moe's App</title>
 
-}
+  <!-- Fonts -->
 
-body {
+  <link rel="preconnect" href="https://fonts.googleapis.com">
 
-  background: #000;
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  color: #eeeef2;
+  <!-- Your CSS -->
 
-  font-family: 'DM Sans', sans-serif;
+  <link rel="stylesheet" href="styles.css">
 
-}
+</head>
 
-/* ===== ROOT THEME ===== */
+<body>
 
-:root {
+<div id="app">
 
-  --bg-base:#0d0f18;
+  <!-- HEADER -->
 
-  --bg-card:#13151f;
+  <header id="header">
 
-  --bg-raised:#1a1d2a;
+    <div class="logo">Moe's App</div>
 
-  --border-hi:rgba(255,255,255,0.12);
+  </header>
 
-  --txt-primary:#eeeef2;
+  <!-- NAV -->
 
-  --txt-secondary:#8a8fa8;
+  <nav class="nav-inner">
 
-  --txt-muted:#484d65;
+    <button class="nav-btn active" onclick="switchTab('feed')">Feed</button>
 
-  --ig-blue:#4f9cf9;
+    <button class="nav-btn" onclick="switchTab('sports')">Sports</button>
 
-  --purple:#a78bfa;
+    <button class="nav-btn" onclick="switchTab('health')">Health</button>
 
-  --cyan:#22d3ee;
+  </nav>
 
-  --f1-red:#e8002d;
+  <!-- FILTERS -->
 
-  --epl-green:#38d36a;
+  <div class="filter-row">
 
-  --r-lg:16px;
+    <span class="fpill active" onclick="setFeedFilter('ALL',this)">All</span>
 
-}
+    <span class="fpill" onclick="setFeedFilter('F1',this)">F1</span>
 
-/* ===== APP LAYOUT ===== */
+    <span class="fpill" onclick="setFeedFilter('FOOTBALL',this)">Football</span>
 
-#app {
+    <span class="fpill" onclick="setFeedFilter('KSA',this)">KSA</span>
 
-  width: 100%;
+  </div>
 
-  max-width: 430px;
+  <!-- CONTENT -->
 
-  height: 100vh;
+  <div id="feed-container">
 
-  margin: 0 auto;
+    <div class="wire-item">
 
-  background: var(--bg-base);
+      <div class="wire-headline">Loading news...</div>
 
-  display: flex;
+      <div class="wire-meta">please wait</div>
 
-  flex-direction: column;
+    </div>
 
-}
+  </div>
 
-/* ===== HEADER ===== */
+</div>
 
-#header {
+<!-- JS -->
 
-  padding: 12px;
+<script src="app.js"></script>
 
-  border-bottom: 1px solid var(--border-hi);
+</body>
 
-  background: rgba(13,15,24,0.97);
-
-}
-
-.logo {
-
-  font-weight: 700;
-
-  font-size: 20px;
-
-}
-
-/* ===== NAV ===== */
-
-.nav-inner {
-
-  display: flex;
-
-}
-
-.nav-btn {
-
-  flex: 1;
-
-  padding: 10px;
-
-  background: none;
-
-  border: none;
-
-  color: var(--txt-muted);
-
-}
-
-.nav-btn.active {
-
-  color: var(--ig-blue);
-
-}
-
-/* ===== FILTER PILLS ===== */
-
-.filter-row {
-
-  display: flex;
-
-  gap: 6px;
-
-  padding: 10px;
-
-  overflow-x: auto;
-
-}
-
-.fpill {
-
-  padding: 6px 12px;
-
-  border-radius: 20px;
-
-  border: 1px solid var(--border-hi);
-
-  background: var(--bg-card);
-
-  color: var(--txt-secondary);
-
-  font-size: 10px;
-
-  cursor: pointer;
-
-}
-
-.fpill.active {
-
-  background: var(--ig-blue);
-
-  color: white;
-
-}
-
-/* ===== FEED ITEMS ===== */
-
-.wire-item {
-
-  padding: 12px;
-
-  border-bottom: 1px solid var(--border-hi);
-
-}
-
-.wire-headline {
-
-  font-size: 14px;
-
-  font-weight: 600;
-
-}
-
-.wire-meta {
-
-  font-size: 10px;
-
-  color: var(--txt-muted);
-
-}
-
-/* ===== LOADER ===== */
-
-.f1-spinner {
-
-  width: 20px;
-
-  height: 20px;
-
-  border: 2px solid var(--bg-card);
-
-  border-top-color: var(--f1-red);
-
-  border-radius: 50%;
-
-  animation: spin 0.7s linear infinite;
-
-}
-
-@keyframes spin {
-
-  to { transform: rotate(360deg); }
-
-}
+</html>
