@@ -25,17 +25,16 @@ CHANNELS = [
   {'url':'https://www.argaam.com/en/rss',                               'src':'Argaam',           'cat':'KSA'},
 ]
 
-F1_KEEP       = re.compile(r'\bwin(s|ner)?\b|pole|penalt|crash|dnf|retir|disqualif|contract|sign(ed|ing)|swap|transfer|fia ruling|champion|ban(ned)?|incident|investigat|fastest lap|grid penalty|power unit|collision', re.I)
-F1_JUNK       = re.compile(r'i love|reflects on|preview.*friday|practice debrief|talking points|five things|how to watch|watch.*live|quiz|ranked|ranking|gallery|photo', re.I)
-FOOTBALL_KEEP = re.compile(r'sack(ed)?|fired|resign|transfer|sign(ed|ing)|injur|suspend|ban(ned)?|red card|\btitle\b|champion|relegat|derb|match report|\bwin\b|\bloss\b|defeat|final|semifinal|playoff|sacking', re.I)
-FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked', re.I)
-BAYERN_KEEP   = re.compile(r'transfer|sign(ed|ing)|injur|absent|miss(es|ing)|squad|contract|sack(ed)?|manag|coach|champion|ban|suspend|ruling|announce|confirm', re.I)
-SPL_KEEP      = re.compile(r'transfer|sign(ed|ing)|sack(ed)?|manag|title|champion|relegat|derb|disciplin|ban|suspend|ruling|contract|\bwin\b|ronaldo|neymar|benzema|mane|al hilal|al nassr|al ittihad|al ahli', re.I)
+F1_KEEP       = re.compile(r'\bwin(s|ner)?\b|pole|penalt|crash|dnf|retir|disqualif|contract|sign(ed|ing)?|swap|transfer|fia|champion|ban(ned)?|incident|investigat|fastest lap|grid penalty|power unit|collision|demand', re.I)
+F1_JUNK       = re.compile(r'i love|reflects on|preview.*friday|practice debrief|talking points|five things|how to watch|watch.*live|quiz|ranked|ranking|gallery|photo|relief', re.I)
+FOOTBALL_KEEP = re.compile(r'sack(ed)?|fired|resign|transfer|sign(ed|ing)?|injur|suspend|ban(ned)?|red card|\btitle\b|champion|relegat|derb|match report|\bwin(s)?\b|\bloss\b|defeat|final|semifinal|playoff|expel', re.I)
+FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|relief|beats.*pdc|darts|cricket|rugby|tennis|golf|boxing', re.I)
+BAYERN_KEEP   = re.compile(r'transfer|sign(ed|ing)?|injur|absent|miss(es|ing)?|squad|contract|sack(ed)?|manag|coach|champion|ban|suspend|ruling|announce|confirm', re.I)
+SPL_KEEP      = re.compile(r'transfer|sign(ed|ing)?|sack(ed)?|manag|title|champion|relegat|derb|disciplin|ban|suspend|ruling|contract|\bwin(s)?\b|ronaldo|neymar|benzema|mane|al hilal|al nassr|al ittihad|al ahli', re.I)
 KSA_KEEP      = re.compile(r'decree|royal|minister|giga|neom|vision 2030|pif|\binvest|\bregulat|reform|\bgdp\b|economic|infrastructure|launch|announce|billion|sovereign|market|\bipo\b|fund|policy', re.I)
 KSA_JUNK      = re.compile(r'ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend', re.I)
 
-# Max age: 48 hours
-MAX_AGE = timedelta(hours=48)
+MAX_AGE = timedelta(days=7)
 NOW = datetime.now(timezone.utc)
 
 def is_high_impact(title, cat, filt=None):
@@ -49,7 +48,10 @@ def is_high_impact(title, cat, filt=None):
 
 def parse_date(pub):
     try:
-        return parsedate_to_datetime(pub)
+        dt = parsedate_to_datetime(pub)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
     except:
         return None
 
@@ -61,73 +63,31 @@ for ch in CHANNELS:
         req = urllib.request.Request(ch['url'], headers={'User-Agent':'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=10) as r:
             root = ET.fromstring(r.read())
-        channel = root.find('channel') or root
+        node = root.find('channel')
+        if node is None:
+            node = root
         count = 0
-        for item in channel.findall('item'):
+        for item in node.findall('item'):
             if count >= 8: break
             title = item.findtext('title','').strip()
             link  = item.findtext('link','').strip()
             pub   = item.findtext('pubDate','').strip()
             if not title or not link: continue
-
-            # Deduplicate
             title_key = re.sub(r'\W+','',title.lower())
             if title_key in seen_titles: continue
-
-            # Date filter — skip anything older than 48h
             dt = parse_date(pub)
-            if dt and (NOW - dt) > MAX_AGE:
-                continue
-
+            if dt and (NOW - dt) > MAX_AGE: continue
             if not is_high_impact(title, ch['cat'], ch.get('filter')): continue
-
             date_str = dt.strftime('%b %-d') if dt else NOW.strftime('%b %-d')
-            clean_title = title.replace("'", "-").replace('"', '-')
-            clean_link  = link.replace("'", "%27")
-
             items.append({
-                'title': clean_title,
+                'title': title.replace("'","-").replace('"','-'),
                 'src':   ch['src'],
                 'cat':   ch['cat'],
-                'link':  clean_link,
+                'link':  link.replace("'","%27"),
                 'date':  date_str
             })
             seen_titles.add(title_key)
             count += 1
         print(f"OK {ch['src']}: {count}")
     except Exception as e:
-        print(f"SKIP {ch['src']}: {e}")
-
-if not items:
-    print("No items fetched — skipping")
-    sys.exit(0)
-
-# Sort by date descending
-items.sort(key=lambda x: x['date'], reverse=True)
-
-lines = []
-for item in items:
-    lines.append(
-        "  {{title:'{title}',src:'{src}',cat:'{cat}',link:'{link}',date:'{date}'}}".format(**item)
-    )
-
-new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
-
-with open('js/feed.js', 'r') as f:
-    content = f.read()
-
-updated = re.sub(
-    r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
-    '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
-    content,
-    flags=re.DOTALL
-)
-
-if updated == content:
-    print("Marker not found in feed.js — skipping")
-    sys.exit(0)
-
-with open('js/feed.js', 'w') as f:
-    f.write(updated)
-
-print(f"Done: {len(items)} stories written to js/feed.js")
+        print(f"SKIP​​​​​​​​​​​​​​​​
