@@ -1,3 +1,4 @@
+alert("JS is running");
 function switchTab(tab){
 
   document.querySelectorAll(".tab-panel")
