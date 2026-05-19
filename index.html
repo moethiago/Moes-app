@@ -1,89 +1,213 @@
-<!DOCTYPE html>
+/* ===== RESET ===== */
 
-<html lang="en">
+*, *::before, *::after {
 
-<head>
+  box-sizing: border-box;
 
-<meta charset="UTF-8">
+  margin: 0;
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  padding: 0;
 
-<title>Moe's App</title>
+  -webkit-tap-highlight-color: transparent;
 
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+}
 
-<link rel="stylesheet" href="styles.css">
+body {
 
-</head>
+  background: #000;
 
-<body>
+  color: #eeeef2;
 
-<div id="app">
+  font-family: 'DM Sans', sans-serif;
 
-  <!-- HEADER -->
+}
 
-  <header id="header">
+/* ===== ROOT THEME ===== */
 
-    <div id="header-inner">
+:root {
 
-      <span class="logo">Moe<span>'</span>s App</span>
+  --bg-base:#0d0f18;
 
-      <div class="hdr-right">
+  --bg-card:#13151f;
 
-        <span class="live-pill"><span class="pulse"></span>LIVE</span>
+  --bg-raised:#1a1d2a;
 
-        <span class="hdr-time" id="clock"></span>
+  --border-hi:rgba(255,255,255,0.12);
 
-      </div>
+  --txt-primary:#eeeef2;
 
-    </div>
+  --txt-secondary:#8a8fa8;
 
-  </header>
+  --txt-muted:#484d65;
 
-  <!-- NAV -->
+  --ig-blue:#4f9cf9;
 
-  <nav id="top-nav">
+  --purple:#a78bfa;
 
-    <div class="nav-inner">
+  --cyan:#22d3ee;
 
-      <button id="nav-feed" class="nav-btn active" onclick="switchTab('feed')">Feed</button>
+  --f1-red:#e8002d;
 
-      <button id="nav-sports" class="nav-btn" onclick="switchTab('sports')">Sports</button>
+  --epl-green:#38d36a;
 
-      <button id="nav-health" class="nav-btn" onclick="switchTab('health')">Health</button>
+  --r-lg:16px;
 
-    </div>
+}
 
-  </nav>
+/* ===== APP LAYOUT ===== */
 
-  <!-- CONTENT -->
+#app {
 
-  <div id="scroll-wrap">
+  width: 100%;
 
-    <div id="panel-feed" class="tab-panel active"></div>
+  max-width: 430px;
 
-    <div id="panel-sports" class="tab-panel"></div>
+  height: 100vh;
 
-    <div id="panel-health" class="tab-panel"></div>
+  margin: 0 auto;
 
-  </div>
+  background: var(--bg-base);
 
-</div>
+  display: flex;
 
-<script src="config.js"></script>
+  flex-direction: column;
 
-<script src="utils.js"></script>
+}
 
-<script src="storage.js"></script>
+/* ===== HEADER ===== */
 
-<script src="feed.js"></script>
+#header {
 
-<script src="sports.js"></script>
+  padding: 12px;
 
-<script src="health.js"></script>
+  border-bottom: 1px solid var(--border-hi);
 
-<script src="app.js"></script>
+  background: rgba(13,15,24,0.97);
 
-</body>
+}
 
-</html>
+.logo {
+
+  font-weight: 700;
+
+  font-size: 20px;
+
+}
+
+/* ===== NAV ===== */
+
+.nav-inner {
+
+  display: flex;
+
+}
+
+.nav-btn {
+
+  flex: 1;
+
+  padding: 10px;
+
+  background: none;
+
+  border: none;
+
+  color: var(--txt-muted);
+
+}
+
+.nav-btn.active {
+
+  color: var(--ig-blue);
+
+}
+
+/* ===== FILTER PILLS ===== */
+
+.filter-row {
+
+  display: flex;
+
+  gap: 6px;
+
+  padding: 10px;
+
+  overflow-x: auto;
+
+}
+
+.fpill {
+
+  padding: 6px 12px;
+
+  border-radius: 20px;
+
+  border: 1px solid var(--border-hi);
+
+  background: var(--bg-card);
+
+  color: var(--txt-secondary);
+
+  font-size: 10px;
+
+  cursor: pointer;
+
+}
+
+.fpill.active {
+
+  background: var(--ig-blue);
+
+  color: white;
+
+}
+
+/* ===== FEED ITEMS ===== */
+
+.wire-item {
+
+  padding: 12px;
+
+  border-bottom: 1px solid var(--border-hi);
+
+}
+
+.wire-headline {
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+}
+
+.wire-meta {
+
+  font-size: 10px;
+
+  color: var(--txt-muted);
+
+}
+
+/* ===== LOADER ===== */
+
+.f1-spinner {
+
+  width: 20px;
+
+  height: 20px;
+
+  border: 2px solid var(--bg-card);
+
+  border-top-color: var(--f1-red);
+
+  border-radius: 50%;
+
+  animation: spin 0.7s linear infinite;
+
+}
+
+@keyframes spin {
+
+  to { transform: rotate(360deg); }
+
+}
