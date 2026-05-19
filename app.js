@@ -1,37 +1,32 @@
-// app.js
+// ── CORE APP ───────────────────────────────────────────
 
-import { $, time } from "./utils.js";
-
-import { renderFeed } from "./feed.js";
-
-import { renderSports } from "./sports.js";
-
-import { renderHealth } from "./health.js";
-
-function switchTab(tab){
-
-  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
-
-  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
-
-  $("#panel-"+tab).classList.add("active");
-
-  event.target.classList.add("active");
-
+function switchTab(tab) {
+  ['feed','sports','health'].forEach(function(t) {
+    var panel = document.getElementById('panel-' + t);
+    var btn   = document.getElementById('nav-' + t);
+    if (panel) panel.classList.toggle('active', t === tab);
+    if (btn) btn.classList.toggle('active',   t === tab);
+  });
+  document.getElementById('scroll-wrap').scrollTop = 0;
 }
 
-window.switchTab = switchTab;
-
-function init(){
-
-  setInterval(()=>$("#clock").textContent=time(),1000);
-
-  renderFeed($("#feed-container"));
-
-  renderSports($("#sports-container"));
-
-  renderHealth($("#health-container"));
-
+function startClock() {
+  var el = document.getElementById('clock');
+  function tick() {
+    var d = new Date();
+    if (el) el.textContent =
+      String(d.getHours()).padStart(2,'0') + ':' +
+      String(d.getMinutes()).padStart(2,'0');
+  }
+  tick();
+  setInterval(tick, 10000);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener('DOMContentLoaded', function() {
+  startClock();
+  loadNewsFeed();
+  loadFootballScores();
+  loadF1Data();
+  renderFood();
+  renderSets();
+});
