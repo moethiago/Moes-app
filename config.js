@@ -1,17 +1,11 @@
-const NEXT_RACE = {
+// config.js
 
-  title: "Canadian Grand Prix",
+export const CONFIG = {
 
-  location: "Circuit Gilles Villeneuve, Montreal",
+  F1_API: "",
 
-  date: "2026-05-24T20:00:00Z"
+  FOOTBALL_API: "",
+
+  NEWS_REFRESH: 60000
 
 };
-
-const TARGETS = { kcal:2500, prot:180, carb:280, fat:70 };
-
-const F1_DATA = [/* your full driver list */];
-
-const TEAM_COLORS = { /* unchanged */ };
-
-const FALLBACK_NEWS = [/* your news array */];
