@@ -1,12 +1,16 @@
-/* ===== RESET ===== */
+/* ======================
 
-*, *::before, *::after {
+RESET
 
-  box-sizing: border-box;
+====================== */
+
+* {
 
   margin: 0;
 
   padding: 0;
+
+  box-sizing: border-box;
 
   -webkit-tap-highlight-color: transparent;
 
@@ -14,75 +18,47 @@
 
 body {
 
-  background: #000;
+  font-family: 'DM Sans', sans-serif;
+
+  background: #0d0f18;
 
   color: #eeeef2;
 
-  font-family: 'DM Sans', sans-serif;
-
 }
 
-/* ===== ROOT THEME ===== */
+/* ======================
 
-:root {
+APP WRAPPER
 
-  --bg-base:#0d0f18;
-
-  --bg-card:#13151f;
-
-  --bg-raised:#1a1d2a;
-
-  --border-hi:rgba(255,255,255,0.12);
-
-  --txt-primary:#eeeef2;
-
-  --txt-secondary:#8a8fa8;
-
-  --txt-muted:#484d65;
-
-  --ig-blue:#4f9cf9;
-
-  --purple:#a78bfa;
-
-  --cyan:#22d3ee;
-
-  --f1-red:#e8002d;
-
-  --epl-green:#38d36a;
-
-  --r-lg:16px;
-
-}
-
-/* ===== APP LAYOUT ===== */
+====================== */
 
 #app {
 
-  width: 100%;
-
   max-width: 430px;
-
-  height: 100vh;
 
   margin: 0 auto;
 
-  background: var(--bg-base);
+  height: 100vh;
 
   display: flex;
 
   flex-direction: column;
 
+  background: #0d0f18;
+
 }
 
-/* ===== HEADER ===== */
+/* ======================
+
+HEADER
+
+====================== */
 
 #header {
 
-  padding: 12px;
+  padding: 14px;
 
-  border-bottom: 1px solid var(--border-hi);
-
-  background: rgba(13,15,24,0.97);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 
 }
 
@@ -90,15 +66,21 @@ body {
 
   font-weight: 700;
 
-  font-size: 20px;
+  font-size: 18px;
 
 }
 
-/* ===== NAV ===== */
+/* ======================
 
-.nav-inner {
+NAV
+
+====================== */
+
+.nav {
 
   display: flex;
+
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 
 }
 
@@ -106,108 +88,108 @@ body {
 
   flex: 1;
 
-  padding: 10px;
+  padding: 12px;
 
   background: none;
 
   border: none;
 
-  color: var(--txt-muted);
+  color: #8a8fa8;
 
-}
-
-.nav-btn.active {
-
-  color: var(--ig-blue);
-
-}
-
-/* ===== FILTER PILLS ===== */
-
-.filter-row {
-
-  display: flex;
-
-  gap: 6px;
-
-  padding: 10px;
-
-  overflow-x: auto;
-
-}
-
-.fpill {
-
-  padding: 6px 12px;
-
-  border-radius: 20px;
-
-  border: 1px solid var(--border-hi);
-
-  background: var(--bg-card);
-
-  color: var(--txt-secondary);
-
-  font-size: 10px;
+  font-weight: 600;
 
   cursor: pointer;
 
 }
 
-.fpill.active {
+.nav-btn.active {
 
-  background: var(--ig-blue);
-
-  color: white;
+  color: #4f9cf9;
 
 }
 
-/* ===== FEED ITEMS ===== */
+/* ======================
 
-.wire-item {
+FILTERS
+
+====================== */
+
+.filters {
+
+  display: flex;
+
+  gap: 8px;
+
+  padding: 10px;
+
+  overflow-x: auto;
+
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+
+}
+
+.filter {
+
+  padding: 6px 12px;
+
+  border-radius: 20px;
+
+  border: 1px solid rgba(255,255,255,0.12);
+
+  background: #13151f;
+
+  color: #8a8fa8;
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+
+}
+
+.filter.active {
+
+  background: #4f9cf9;
+
+  color: #fff;
+
+  border-color: transparent;
+
+}
+
+/* ======================
+
+FEED
+
+====================== */
+
+#feed-container {
+
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 10px;
+
+}
+
+/* NEWS ITEM */
+
+.item {
 
   padding: 12px;
 
-  border-bottom: 1px solid var(--border-hi);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+
+  cursor: pointer;
 
 }
 
-.wire-headline {
+.item-title {
 
   font-size: 14px;
 
   font-weight: 600;
 
-}
-
-.wire-meta {
-
-  font-size: 10px;
-
-  color: var(--txt-muted);
-
-}
-
-/* ===== LOADER ===== */
-
-.f1-spinner {
-
-  width: 20px;
-
-  height: 20px;
-
-  border: 2px solid var(--bg-card);
-
-  border-top-color: var(--f1-red);
-
-  border-radius: 50%;
-
-  animation: spin 0.7s linear infinite;
-
-}
-
-@keyframes spin {
-
-  to { transform: rotate(360deg); }
-
-}
+  margin-bottom: 4px;
