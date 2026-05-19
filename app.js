@@ -47,7 +47,7 @@ let parsedStoriesCache = [];
 let currentFilter = ‘ALL’;
 
 // ── INIT ───────────────────────────────────────────────
-document.addEventListener(‘DOMContentLoaded’, function() {
+function _init() {
 try { foodLog = JSON.parse(localStorage.getItem(‘m_food’) || ‘[]’); } catch(e) { foodLog = []; }
 try { setLog  = JSON.parse(localStorage.getItem(‘m_sets’) || ‘[]’); } catch(e) { setLog  = []; }
 renderFood();
@@ -57,7 +57,8 @@ startCountdown();
 loadNewsFeed();
 loadFootballScores();
 loadF1Data();
-});
+}
+_init();;
 
 // ── CLOCK ──────────────────────────────────────────────
 function startClock() {
