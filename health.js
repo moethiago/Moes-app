@@ -1,16 +1,14 @@
-function renderHealth(){
+// health.js
 
-  const panel = document.getElementById("panel-health");
+import { Storage } from "./storage.js";
 
-  const kcal = foodLog.reduce((a,b)=>a+b.kcal,0);
+export function renderHealth(container){
 
-  panel.innerHTML = `
+  const food = Storage.get("food");
 
-    <div class="wire-item">
+  container.innerHTML = `
 
-      <div class="wire-headline">Calories: ${kcal}</div>
-
-    </div>
+    <div class="card">Food entries: ${food.length}</div>
 
   `;
 
