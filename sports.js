@@ -1,17 +1,13 @@
-function loadF1(){
+// sports.js
 
-  const panel = document.getElementById("panel-sports");
+export function renderSports(container){
 
-  panel.innerHTML = F1_DATA.map(d=>`
+  container.innerHTML = `
 
-    <div class="wire-item">
+    <div class="card">F1 Standings Loading...</div>
 
-      <div class="wire-headline">${d.name}</div>
+    <div class="card">Football Scores Loading...</div>
 
-      <div class="wire-meta">${d.pts} pts</div>
-
-    </div>
-
-  `).join("");
+  `;
 
 }
