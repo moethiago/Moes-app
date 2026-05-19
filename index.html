@@ -27,15 +27,15 @@
   <nav id="top-nav">
     <div class="nav-inner">
       <button class="nav-btn active" id="nav-feed" onclick="switchTab('feed')">
-        <span class="nav-icon"></span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
         <span class="nav-label">Feed</span>
       </button>
       <button class="nav-btn" id="nav-sports" onclick="switchTab('sports')">
-        <span class="nav-icon"></span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8l4 4-4 4-4-4 4-4z"/></svg></span>
         <span class="nav-label">Sports</span>
       </button>
       <button class="nav-btn" id="nav-health" onclick="switchTab('health')">
-        <span class="nav-icon"></span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
         <span class="nav-label">Health</span>
       </button>
     </div>
@@ -43,34 +43,129 @@
 
   <div id="scroll-wrap">
 
-    <!-- FEED -->
-    <div class="tab-panel active" id="panel-feed">
-      <div id="critical-posts"></div>
+<div class="tab-panel active" id="panel-feed">
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="ticker">
+      <span class="ticker-item">Loading latest headlines...</span>
+    </div>
+  </div>
+
+  <div class="headline-control-row">
+    <p class="section-label" style="margin:0;">BREAKING NEWS</p>
+    <button class="btn-refresh-styled" onclick="loadNewsFeed()">REFRESH</button>
+  </div>
+
+  <div class="filter-scroll-container" id="feed-filter-bar">
+    <span class="filter-pill active" onclick="setFeedFilter('ALL',this)">ALL</span>
+    <span class="filter-pill" onclick="setFeedFilter('F1',this)">FORMULA 1</span>
+    <span class="filter-pill" onclick="setFeedFilter('FOOTBALL',this)">FOOTBALL</span>
+    <span class="filter-pill" onclick="setFeedFilter('KSA',this)">KSA</span>
+  </div>
+
+  <div class="card" id="critical-posts"></div>
+</div>
+
+<div class="tab-panel" id="panel-sports">
+
+  <div class="card f1-countdown-card">
+    <div>
+      <div class="f1-cd-label"><span class="pulse-dot"></span>NEXT GRAND PRIX</div>
+      <div class="f1-cd-title" id="f1-next-track"></div>
+      <div class="f1-cd-meta" id="f1-next-session"></div>
     </div>
 
-    <!-- SPORTS -->
-    <div class="tab-panel" id="panel-sports">
-      <div id="football-scores-container"></div>
-      <div id="f1-standings-body"></div>
+    <div class="f1-cd-grid-timer">
+      <div class="f1-cd-segment"><span class="f1-cd-num" id="cd-days">--</span><span class="f1-cd-lbl">Days</span></div>
+      <div class="f1-cd-segment"><span class="f1-cd-num" id="cd-hours">--</span><span class="f1-cd-lbl">Hrs</span></div>
+      <div class="f1-cd-segment"><span class="f1-cd-num" id="cd-mins">--</span><span class="f1-cd-lbl">Min</span></div>
+      <div class="f1-cd-segment"><span class="f1-cd-num" id="cd-secs">--</span><span class="f1-cd-lbl">Sec</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <p class="section-label">LIVE FOOTBALL</p>
+    <button class="btn-refresh-styled" onclick="loadFootballScores()">REFRESH</button>
+  </div>
+
+  <div class="card" id="football-scores-container"></div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
+    <p class="section-label">F1 STANDINGS</p>
+    <button class="btn-refresh-styled" onclick="loadF1Data()">REFRESH</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Driver Championship</span>
+      <span id="f1-standings-round"></span>
+    </div>
+    <div id="f1-standings-body"></div>
+  </div>
+
+</div>
+
+<div class="tab-panel" id="panel-health">
+
+  <p class="section-label">NUTRITION LOG</p>
+  <div class="card">
+    <div class="macro-ring-wrap">
+      <div class="ring-outer">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-track" cx="60" cy="60" r="50"></circle>
+          <circle class="ring-prog" id="cal-ring" cx="60" cy="60" r="50"></circle>
+        </svg>
+        <div class="ring-center">
+          <span class="ring-val" id="cal-display">0</span>
+          <span class="ring-sub">/ 2500 kcal</span>
+        </div>
+      </div>
+
+      <div class="macros-row">
+        <div class="macro-pill"><span class="macro-name">Protein</span><span id="prot-val">0g</span></div>
+        <div class="macro-pill"><span class="macro-name">Carbs</span><span id="carb-val">0g</span></div>
+        <div class="macro-pill"><span class="macro-name">Fat</span><span id="fat-val">0g</span></div>
+      </div>
     </div>
 
-    <!-- HEALTH -->
-    <div class="tab-panel" id="panel-health">
-      <div id="food-list"></div>
-      <div id="set-list"></div>
+    <div id="food-list"></div>
+
+    <div class="log-form">
+      <input id="food-name" placeholder="Food item">
+      <input id="food-kcal" placeholder="kcal">
+      <input id="food-prot" placeholder="protein">
+      <input id="food-carb" placeholder="carbs">
+      <input id="food-fat" placeholder="fat">
+      <button onclick="addFood()">+ Log</button>
+    </div>
+  </div>
+
+  <p class="section-label">WORKOUT LOG</p>
+  <div class="card">
+
+    <div class="workout-stats-row">
+      <div id="wk-sets">0</div>
+      <div id="wk-vol">0</div>
+      <div id="wk-exs">0</div>
+    </div>
+
+    <div id="set-list"></div>
+
+    <div class="log-form">
+      <input id="set-exercise" placeholder="Exercise">
+      <input id="set-weight" placeholder="Weight">
+      <input id="set-reps" placeholder="Reps">
+      <button onclick="addSet()">+ Set</button>
     </div>
 
   </div>
 
 </div>
 
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="app.js"></script>
-<script src="modules/news.js"></script>
-<script src="modules/f1.js"></script>
-<script src="modules/football.js"></script>
-<script src="modules/nutrition.js"></script>
-
 </body>
 </html>
