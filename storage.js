@@ -1,23 +1,9 @@
-let foodLog = [];
+// storage.js
 
-let setLog = [];
+export const Storage = {
 
-function loadStorage(){
+  get(key){return JSON.parse(localStorage.getItem(key)||"[]");},
 
-  foodLog = JSON.parse(localStorage.getItem("m_food") || "[]");
+  set(key,val){localStorage.setItem(key,JSON.stringify(val));}
 
-  setLog  = JSON.parse(localStorage.getItem("m_sets") || "[]");
-
-}
-
-function saveFood(){
-
-  localStorage.setItem("m_food", JSON.stringify(foodLog));
-
-}
-
-function saveSets(){
-
-  localStorage.setItem("m_sets", JSON.stringify(setLog));
-
-}
+};
