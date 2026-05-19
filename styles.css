@@ -1,1 +1,36 @@
-/* PASTE YOUR ENTIRE <style> BLOCK HERE EXACTLY AS-IS */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg-void:#07080d;
+--bg-base:#0d0f18;
+--bg-card:#13151f;
+--txt-primary:#eeeef2;
+--txt-secondary:#8a8fa8;
+--ig-blue:#4f9cf9;
+--purple:#a78bfa;
+--f1-red:#e8002d;
+--epl-green:#38d36a;
+}
+
+html,body{height:100%;background:#000;color:var(--txt-primary);font-family:DM Sans}
+
+#app{max-width:430px;margin:0 auto;height:100%;background:var(--bg-base)}
+
+#header{padding:10px;background:var(--bg-card)}
+.logo{font-weight:700}
+
+.nav-inner{display:flex}
+.nav-btn{flex:1;padding:10px;color:var(--txt-secondary)}
+.nav-btn.active{color:var(--txt-primary)}
+
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.card{background:var(--bg-card);margin:10px;padding:10px;border-radius:10px}
+
+.f1-cd-num{font-size:20px}
+
+.workout-stats-row{display:flex;justify-content:space-between;padding:10px}
+
+.log-form input{display:block;width:100%;margin:5px 0;padding:8px}
+
+button{padding:8px;background:var(--ig-blue);color:#fff;border:0}
