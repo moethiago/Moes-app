@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<title>Moe's App</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+
+  <header id="header">
+
+    <div id="header-inner">
+
+      <span class="logo">Moe<span>'</span>s App</span>
+
+      <div class="hdr-right">
+
+        <span class="live-pill"><span class="pulse"></span>LIVE</span>
+
+        <span class="hdr-time" id="clock"></span>
+
+      </div>
+
+    </div>
+
+  </header>
+
+  <!-- NAV -->
+
+  <nav id="top-nav">
+
+    <div class="nav-inner">
+
+      <button id="nav-feed" class="nav-btn active" onclick="switchTab('feed')">Feed</button>
+
+      <button id="nav-sports" class="nav-btn" onclick="switchTab('sports')">Sports</button>
+
+      <button id="nav-health" class="nav-btn" onclick="switchTab('health')">Health</button>
+
+    </div>
+
+  </nav>
+
+  <!-- CONTENT -->
+
+  <div id="scroll-wrap">
+
+    <div id="panel-feed" class="tab-panel active"></div>
+
+    <div id="panel-sports" class="tab-panel"></div>
+
+    <div id="panel-health" class="tab-panel"></div>
+
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+
+<script src="utils.js"></script>
+
+<script src="storage.js"></script>
+
+<script src="feed.js"></script>
+
+<script src="sports.js"></script>
+
+<script src="health.js"></script>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
