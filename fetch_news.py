@@ -1,8 +1,4 @@
-import urllib.request
-import xml.etree.ElementTree as ET
-import re
-import sys
-import os
+import urllib.request, xml.etree.ElementTree as ET, re, sys, os
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
@@ -29,19 +25,20 @@ CHANNELS = [
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'src':'Arab News Sport',  'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/feed',                            'src':'Saudi Gazette',    'cat':'SPL'},
   # Saudi Major News
-  {'url':'https://www.spa.gov.sa/rss/rss.php?l=en',                     'src':'Saudi Press',      'cat':'KSA'},
+  {'url':'https://www.spa.gov.sa/rss/rss.php?l=en',                    'src':'Saudi Press',      'cat':'KSA'},
   {'url':'https://www.arabnews.com/rss.xml',                            'src':'Arab News',        'cat':'KSA'},
   {'url':'https://www.argaam.com/en/rss',                               'src':'Argaam',           'cat':'KSA'},
 ]
 
-# We use \b to ensure exact word matches. "ban" will no longer match "urban".
-F1_KEEP       = re.compile(r'\b(win|winner|pole|penalty|penalties|crash|dnf|retire|disqualified|contract|sign|swap|transfer|ruling|fia|champion|ban|incident|investigation|fastest lap)\b', re.I)
-FOOTBALL_KEEP = re.compile(r'\b(sack|sacked|fired|resign|transfer|sign|signing|injury|injured|suspend|suspended|ban|red card|title|champion|relegate|relegation|derby|result|win|loss|defeat|final|semifinal|playoff)\b', re.I)
-FOOTBALL_JUNK = re.compile(r'\b(fantasy|predicted|lineup|five things|player ratings|watch live|how to watch|betting|odds|quiz|power ranking|gossip|rumours|stream)\b', re.I)
-BAYERN_KEEP   = re.compile(r'\b(transfer|sign|signing|injury|injured|absent|lineup|squad|contract|sack|sacked|manager|coach|champion|ban|suspend|ruling|official|announce)\b', re.I)
-SPL_KEEP      = re.compile(r'\b(transfer|sign|signing|sack|sacked|manager|title|champion|relegate|relegation|derby|discipline|ban|suspend|ruling|contract|result|win|ronaldo|neymar|benzema|mane)\b', re.I)
-KSA_KEEP      = re.compile(r'\b(decree|royal|minister|giga|neom|vision 2030|pif|invest|investment|regulate|regulation|reform|gdp|economic|economy|infrastructure|launch|announce|billion|sovereign|market|ipo)\b', re.I)
-KSA_JUNK      = re.compile(r'\b(ceremony|ribbon|visit|tour|festival|fashion|celebrate|inaugurate|honorary)\b', re.I)
+# Word boundaries (\b) added. "win" won't match "winter". "sign" won't match "design".
+# This is the "middle ground" - it keeps your exact rules but stops the fluff leakage.
+F1_KEEP       = re.compile(r'\b(win|winner|pole|penalty|crash|dnf|retire|disqualif|contract|sign|swap|transfer|ruling|fia|champion|ban|incident|investigat|fastest lap)\b', re.I)
+FOOTBALL_KEEP = re.compile(r'\b(sack|fired|resign|transfer|sign|injur|suspend|ban|red card|title|champion|relegat|derb|result|win|loss|defeat|final|semifinal|playoff)\b', re.I)
+FOOTBALL_JUNK = re.compile(r'\b(fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting odds|quiz|power ranking)\b', re.I)
+BAYERN_KEEP   = re.compile(r'\b(transfer|sign|injur|absent|lineup|squad|contract|sack|manag|coach|champion|ban|suspend|ruling|official|announce)\b', re.I)
+SPL_KEEP      = re.compile(r'\b(transfer|sign|sack|manag|title|champion|relegat|derb|disciplin|ban|suspend|ruling|contract|result|win|ronaldo|neymar|benzema|mane)\b', re.I)
+KSA_KEEP      = re.compile(r'\b(decree|royal|minister|giga|neom|vision 2030|pif|invest|regulat|reform|gdp|economic|infrastructure|launch|announce|billion|sovereign|market|ipo)\b', re.I)
+KSA_JUNK      = re.compile(r'\b(ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary)\b', re.I)
 
 def is_high_impact(title, cat, filt=None):
     if filt and filt.lower() not in title.lower(): return False
@@ -72,26 +69,22 @@ for ch in CHANNELS:
             try:    date_str = parsedate_to_datetime(pub).strftime('%b %-d')
             except: date_str = datetime.now(timezone.utc).strftime('%b %-d')
             
-            # Clean up apostrophes to prevent breaking JavaScript syntax
-            title_clean = title.replace("'", "\\'")
-            
             items.append({
-                'title': title_clean,
+                'title': title.replace("'", "-"),
                 'src':   ch['src'],
                 'cat':   ch['cat'],
                 'link':  link.replace("'", "%27"),
                 'date':  date_str
             })
             count += 1
-        print(f"OK {ch['src']}: {count} items")
+        print(f"OK {ch['src']}: {count}")
     except Exception as e:
         print(f"SKIP {ch['src']}: {e}")
 
 if not items:
-    print("No valid news items fetched across all channels — skipping update to preserve existing feed.")
+    print("No items fetched — skipping update to preserve existing news")
     sys.exit(0)
 
-# Format the data exactly as your frontend JS file expects
 lines = []
 for item in items:
     lines.append(
@@ -100,37 +93,29 @@ for item in items:
 
 new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
 
+# --- BULLETPROOF FILE UPDATE LOGIC ---
 file_path = 'js/feed.js'
-os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-# Read existing content if it exists
-content = ""
-if os.path.exists(file_path):
+try:
     with open(file_path, 'r') as f:
         content = f.read()
 
-# Replace the specific block if markers exist
-if '// DO NOT EDIT BELOW THIS LINE' in content and '// DO NOT EDIT ABOVE THIS LINE' in content:
-    updated = re.sub(
-        r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
-        '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
-        content,
-        flags=re.DOTALL
-    )
+    start_marker = '// DO NOT EDIT BELOW THIS LINE'
+    end_marker = '// DO NOT EDIT ABOVE THIS LINE'
     
-    # Fallback if the strict regex above failed due to spacing/formatting issues
-    if updated == content:
-        updated = re.sub(
-            r'// DO NOT EDIT BELOW THIS LINE.*?// DO NOT EDIT ABOVE THIS LINE',
-            '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
-            content,
-            flags=re.DOTALL
-        )
-else:
-    # If file doesn't exist or lost its markers, reconstruct it safely
-    updated = f"// DO NOT EDIT BELOW THIS LINE\n{new_block}\n// DO NOT EDIT ABOVE THIS LINE\n"
+    start_idx = content.find(start_marker)
+    end_idx = content.find(end_marker)
 
-with open(file_path, 'w') as f:
-    f.write(updated)
-
-print(f"Done: {len(items)} high-impact stories successfully written to {file_path}")
+    if start_idx != -1 and end_idx != -1 and start_idx < end_idx:
+        # Slices the string cleanly. Ignores ANY formatting errors inside the block.
+        prefix = content[:start_idx + len(start_marker)]
+        suffix = content[end_idx:]
+        
+        updated_content = prefix + '\n' + new_block + '\n' + suffix
+        
+        with open(file_path, 'w') as f:
+            f.write(updated_content)
+        print(f"Done: {len(items)} stories safely written to js/feed.js")
+    else:
+        print(f"Error: Markers not found in {file_path}. Cannot update safely.")
+except FileNotFoundError:
+    print(f"Error: {file_path} does not exist.")
