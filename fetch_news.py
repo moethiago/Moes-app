@@ -4,15 +4,29 @@ import json
 import sys
 from datetime import datetime, timezone
 
-# Configuration: Weighted scoring system
-# Higher positive = more "important"
-# Lower negative = "junk" or "filler"
-WEIGHTS = {
-    'F1': {'transfer': 3, 'official': 4, 'win': 2, 'pole': 2, 'fantasy': -5, 'quiz': -6, 'rating': -4},
-    'FOOTBALL': {'transfer': 3, 'sack': 4, 'official': 4, 'title': 3, 'injury': 2, 'fantasy': -6, 'rating': -5, 'how to watch': -6},
-    'BAYERN': {'official': 4, 'transfer': 3, 'squad': 2, 'injury': 2, 'rumor': -2},
-    'SPL': {'ronaldo': 3, 'neymar': 3, 'transfer': 3, 'official': 4, 'result': 1, 'rumor': -3},
-    'KSA': {'royal': 4, 'vision 2030': 4, 'launch': 3, 'ipo': 3, 'festival': -4, 'fashion': -4}
+# 1. Configuration: Strict rulesets
+# Use 'must_contain' to allow the item, and 'must_not_contain' to kill it instantly.
+RULES = {
+    'F1': {
+        'must_contain': ['win', 'pole', 'penalty', 'crash', 'dnf', 'retire', 'contract', 'sign', 'fia', 'champion', 'ban', 'incident', 'investigation'],
+        'must_not_contain': ['fantasy', 'quiz', 'preview', 'betting', 'ranking', 'how to watch']
+    },
+    'FOOTBALL': {
+        'must_contain': ['sack', 'fired', 'resign', 'transfer', 'sign', 'injury', 'red card', 'title', 'champion', 'result', 'defeat'],
+        'must_not_contain': ['fantasy', 'lineup', 'ratings', 'watch live', 'betting', 'quiz', 'power ranking', 'preview']
+    },
+    'BAYERN': {
+        'must_contain': ['transfer', 'sign', 'injury', 'absent', 'lineup', 'contract', 'sack', 'manager', 'coach', 'official'],
+        'must_not_contain': ['rumor', 'speculation', 'quiz', 'fan']
+    },
+    'SPL': {
+        'must_contain': ['transfer', 'sign', 'sack', 'manager', 'title', 'champion', 'ban', 'result', 'win', 'ronaldo', 'neymar', 'benzema'],
+        'must_not_contain': ['fan', 'blog', 'advertorial']
+    },
+    'KSA': {
+        'must_contain': ['decree', 'royal', 'minister', 'giga', 'neom', 'vision 2030', 'pif', 'invest', 'reform', 'gdp', 'economic', 'ipo'],
+        'must_not_contain': ['ceremony', 'ribbon', 'festival', 'fashion', 'tour', 'visit']
+    }
 }
 
 def is_high_impact(title, cat, filt=None):
@@ -20,26 +34,25 @@ def is_high_impact(title, cat, filt=None):
         return False
     
     title_lower = title.lower()
-    score = 0
-    category_weights = WEIGHTS.get(cat, {})
+    rules = RULES.get(cat, {})
     
-    # Calculate score
-    for keyword, weight in category_weights.items():
-        if keyword in title_lower:
-            # If it's a negative keyword, multiply to ensure it kills the score
-            if weight < 0:
-                score += (weight * 2) 
-            else:
-                score += weight
-    
-    # "Middle Ground" Threshold:
-    # We require a score of at least 3 to pass, or it's considered "noise"
-    return score >= 3
+    # 1. Kill if it contains any "must_not_contain" word
+    for junk in rules.get('must_not_contain', []):
+        if junk in title_lower:
+            return False
+            
+    # 2. Keep ONLY if it contains at least one "must_contain" word
+    # (If the category is not defined in RULES, default to True)
+    if 'must_contain' in rules:
+        return any(word in title_lower for word in rules['must_contain'])
+        
+    return True
 
 def run_update():
     final_data = []
-    # ... (Keep your CHANNELS list here) ...
-    
+    # ... (Your CHANNELS list remains exactly the same as provided in your original code) ...
+    # Ensure all your URLs and categories are mapped in CHANNELS above this function.
+
     for ch in CHANNELS:
         try:
             req = urllib.request.Request(ch['url'], headers={'User-Agent': 'Mozilla/5.0'})
@@ -51,7 +64,6 @@ def run_update():
             for item in channel.findall('item'):
                 if count >= 6: break
                 title = item.findtext('title', '').strip()
-                
                 if title and is_high_impact(title, ch['cat'], ch.get('filter')):
                     final_data.append({
                         'title': title,
@@ -62,11 +74,15 @@ def run_update():
                     })
                     count += 1
         except Exception as e:
-            print(f"Skipped {ch['src']}: {e}")
+            print(f"Skipping {ch['src']}: {e}")
 
-    with open('js/feed_data.json', 'w') as f:
-        json.dump(final_data, f, indent=2)
-    print(f"Update complete. {len(final_data)} items stored.")
+    # Final Guard: Only overwrite if we found something useful
+    if final_data:
+        with open('js/feed_data.json', 'w') as f:
+            json.dump(final_data, f, indent=2)
+        print(f"Success: {len(final_data)} high-quality items written.")
+    else:
+        print("Filter too strict: No items passed. Skipping update.")
 
 if __name__ == "__main__":
     run_update()
