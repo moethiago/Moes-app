@@ -37,6 +37,43 @@ KSA_JUNK      = re.compile(r'ceremony|ribbon|visit|tour|festival|fashion|celebra
 MAX_AGE = timedelta(days=7)
 NOW = datetime.now(timezone.utc)
 
+# ── SEMANTIC FINGERPRINT ────────────────────────────────
+# Key entities to extract from titles
+ENTITIES = [
+  'arsenal','man city','manchester city','liverpool','chelsea','tottenham','spurs',
+  'man united','manchester united','newcastle','aston villa','west ham',
+  'real madrid','barcelona','atletico','atletico madrid','sevilla','villarreal',
+  'psg','paris','lyon','marseille',
+  'bayern','dortmund','bayer leverkusen','leverkusen','rb leipzig',
+  'juventus','inter','milan','napoli','roma','lazio','fiorentina',
+  'al hilal','al nassr','al ittihad','al ahli',
+  'antonelli','russell','leclerc','norris','hamilton','verstappen','piastri','alonso','sainz','perez',
+  'ronaldo','neymar','benzema','mane','salah','haaland','mbappe','bellingham','kane',
+  'guardiola','klopp','ancelotti','mourinho','tuchel','conte','arteta',
+]
+
+TOPICS = [
+  'title','champion','win','wins','winner','relegated','relegation','sacked','fired',
+  'transfer','signed','signs','signing','injured','injury','banned','ban','suspended',
+  'penalty','penalised','crash','dnf','pole','contract','announced','confirmed',
+  'premier league','la liga','serie a','bundesliga','ligue 1','champions league',
+  'saudi pro league','grand prix',
+]
+
+def fingerprint(title):
+    t = title.lower()
+    found_entities = set()
+    found_topics   = set()
+    for e in ENTITIES:
+        if e in t:
+            found_entities.add(e)
+    for tp in TOPICS:
+        if tp in t:
+            found_topics.add(tp)
+    # Fingerprint = sorted entities + sorted topics
+    # Two stories with same entities + same topic = same story
+    return frozenset(found_entities) | frozenset(found_topics)
+
 def is_high_impact(title, cat, filt=None):
     if filt and filt.lower() not in title.lower(): return False
     if cat == 'F1':       return bool(F1_KEEP.search(title)) and not bool(F1_JUNK.search(title))
@@ -56,7 +93,24 @@ def parse_date(pub):
         return None
 
 items = []
-seen_titles = set()
+seen_exact   = set()  # exact title dedupe
+seen_stories = []     # semantic dedupe — list of fingerprints
+
+def is_duplicate(title):
+    # 1. Exact dedupe
+    key = re.sub(r'\W+','',title.lower())
+    if key in seen_exact:
+        return True
+    # 2. Semantic dedupe
+    fp = fingerprint(title)
+    # Need at least 2 matches to call it a duplicate
+    # (prevents over-blocking on generic topics)
+    if len(fp) >= 2:
+        for seen_fp in seen_stories:
+            overlap = fp & seen_fp
+            if len(overlap) >= 2:
+                return True
+    return False
 
 for ch in CHANNELS:
     try:
@@ -73,20 +127,22 @@ for ch in CHANNELS:
             link  = item.findtext('link','').strip()
             pub   = item.findtext('pubDate','').strip()
             if not title or not link: continue
-            title_key = re.sub(r'\W+','',title.lower())
-            if title_key in seen_titles: continue
             dt = parse_date(pub)
             if dt and (NOW - dt) > MAX_AGE: continue
             if not is_high_impact(title, ch['cat'], ch.get('filter')): continue
+            if is_duplicate(title): continue
             date_str = dt.strftime('%b %-d') if dt else NOW.strftime('%b %-d')
+            clean_title = title.replace("'","-").replace('"','-')
+            clean_link  = link.replace("'","%27")
             items.append({
-                'title': title.replace("'","-").replace('"','-'),
+                'title': clean_title,
                 'src':   ch['src'],
                 'cat':   ch['cat'],
-                'link':  link.replace("'","%27"),
+                'link':  clean_link,
                 'date':  date_str
             })
-            seen_titles.add(title_key)
+            seen_exact.add(re.sub(r'\W+','',title.lower()))
+            seen_stories.append(fingerprint(title))
             count += 1
         print("OK " + ch['src'] + ": " + str(count))
     except Exception as e:
