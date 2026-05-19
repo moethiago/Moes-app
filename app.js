@@ -1,22 +1,36 @@
+// app.js
+
+import { $, time } from "./utils.js";
+
+import { renderFeed } from "./feed.js";
+
+import { renderSports } from "./sports.js";
+
+import { renderHealth } from "./health.js";
+
 function switchTab(tab){
 
-  document.querySelectorAll(".tab-panel")
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
 
-    .forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
 
-  document.getElementById("panel-"+tab).classList.add("active");
+  $("#panel-"+tab).classList.add("active");
+
+  event.target.classList.add("active");
 
 }
 
+window.switchTab = switchTab;
+
 function init(){
 
-  loadStorage();
+  setInterval(()=>$("#clock").textContent=time(),1000);
 
-  loadNewsFeed();
+  renderFeed($("#feed-container"));
 
-  loadF1();
+  renderSports($("#sports-container"));
 
-  renderHealth();
+  renderHealth($("#health-container"));
 
 }
 
