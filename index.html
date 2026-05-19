@@ -1,16 +1,18 @@
+<!-- index.html -->
+
 <!DOCTYPE html>
 
 <html lang="en">
 
 <head>
 
-  <meta charset="UTF-8" />
+<meta charset="UTF-8">
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <title>Moe App</title>
+<title>Moe's App</title>
 
-  <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css">
 
 </head>
 
@@ -18,17 +20,27 @@
 
 <div id="app">
 
-  <!-- HEADER -->
+<header id="header">
 
-  <header id="header">
+  <div id="header-inner">
 
-    <div class="logo">Moe App</div>
+    <span class="logo">Moe's App</span>
 
-  </header>
+    <div class="hdr-right">
 
-  <!-- NAV -->
+      <span class="live-pill"><span class="pulse"></span>LIVE</span>
 
-  <nav class="nav">
+      <span class="hdr-time" id="clock">--:--</span>
+
+    </div>
+
+  </div>
+
+</header>
+
+<nav id="top-nav">
+
+  <div class="nav-inner">
 
     <button class="nav-btn active" onclick="switchTab('feed')">Feed</button>
 
@@ -36,29 +48,35 @@
 
     <button class="nav-btn" onclick="switchTab('health')">Health</button>
 
-  </nav>
-
-  <!-- FILTERS -->
-
-  <div class="filters">
-
-    <button class="filter active" onclick="setFilter('ALL')">All</button>
-
-    <button class="filter" onclick="setFilter('F1')">F1</button>
-
-    <button class="filter" onclick="setFilter('FOOTBALL')">Football</button>
-
-    <button class="filter" onclick="setFilter('KSA')">KSA</button>
-
   </div>
 
-  <!-- MAIN FEED -->
+</nav>
 
-  <main id="feed-container"></main>
+<div id="scroll-wrap">
+
+<div class="tab-panel active" id="panel-feed">
+
+  <div id="feed-container"></div>
 
 </div>
 
-<script src="app.js"></script>
+<div class="tab-panel" id="panel-sports">
+
+  <div id="sports-container"></div>
+
+</div>
+
+<div class="tab-panel" id="panel-health">
+
+  <div id="health-container"></div>
+
+</div>
+
+</div>
+
+</div>
+
+<script type="module" src="app.js"></script>
 
 </body>
 
