@@ -1,44 +1,45 @@
 import urllib.request
 import xml.etree.ElementTree as ET
-import re
 import json
 import sys
 from datetime import datetime, timezone
 
-# 1. Configuration: Weighted scoring system
-# Keywords with positive values increase the chance of showing
-# Keywords with negative values decrease the chance (noise reduction)
+# Configuration: Weighted scoring system
+# Higher positive = more "important"
+# Lower negative = "junk" or "filler"
 WEIGHTS = {
-    'F1': {'transfer': 2, 'win': 2, 'pole': 2, 'crash': 1, 'official': 3, 'fantasy': -3, 'quiz': -3},
-    'FOOTBALL': {'transfer': 2, 'sack': 3, 'official': 3, 'win': 1, 'loss': 1, 'fantasy': -3, 'rating': -2, 'how to watch': -3},
-    'BAYERN': {'official': 3, 'transfer': 2, 'injury': 1, 'lineup': 1, 'rumor': -1},
-    'SPL': {'ronaldo': 2, 'neymar': 2, 'transfer': 2, 'official': 3, 'result': 1},
-    'KSA': {'royal': 3, 'vision 2030': 3, 'launch': 2, 'ipo': 2, 'festival': -2, 'fashion': -2}
+    'F1': {'transfer': 3, 'official': 4, 'win': 2, 'pole': 2, 'fantasy': -5, 'quiz': -6, 'rating': -4},
+    'FOOTBALL': {'transfer': 3, 'sack': 4, 'official': 4, 'title': 3, 'injury': 2, 'fantasy': -6, 'rating': -5, 'how to watch': -6},
+    'BAYERN': {'official': 4, 'transfer': 3, 'squad': 2, 'injury': 2, 'rumor': -2},
+    'SPL': {'ronaldo': 3, 'neymar': 3, 'transfer': 3, 'official': 4, 'result': 1, 'rumor': -3},
+    'KSA': {'royal': 4, 'vision 2030': 4, 'launch': 3, 'ipo': 3, 'festival': -4, 'fashion': -4}
 }
 
-def get_score(title, cat):
-    title_lower = title.lower()
-    score = 0
-    # Calculate score based on keyword presence
-    for keyword, weight in WEIGHTS.get(cat, {}).items():
-        if keyword in title_lower:
-            score += weight
-    return score
-
 def is_high_impact(title, cat, filt=None):
-    if filt and filt.lower() not in title.lower(): 
+    if filt and filt.lower() not in title.lower():
         return False
     
-    # "Middle Ground" Logic:
-    # 1. If it has a negative score, it's likely junk.
-    # 2. If it has a score of 0, it's neutral (we'll ignore it to stay clean).
-    # 3. If it has a score > 0, it's relevant enough.
-    return get_score(title, cat) > 0
-
-# ... (Keep your CHANNELS list the same as before) ...
+    title_lower = title.lower()
+    score = 0
+    category_weights = WEIGHTS.get(cat, {})
+    
+    # Calculate score
+    for keyword, weight in category_weights.items():
+        if keyword in title_lower:
+            # If it's a negative keyword, multiply to ensure it kills the score
+            if weight < 0:
+                score += (weight * 2) 
+            else:
+                score += weight
+    
+    # "Middle Ground" Threshold:
+    # We require a score of at least 3 to pass, or it's considered "noise"
+    return score >= 3
 
 def run_update():
     final_data = []
+    # ... (Keep your CHANNELS list here) ...
+    
     for ch in CHANNELS:
         try:
             req = urllib.request.Request(ch['url'], headers={'User-Agent': 'Mozilla/5.0'})
@@ -51,7 +52,6 @@ def run_update():
                 if count >= 6: break
                 title = item.findtext('title', '').strip()
                 
-                # Apply the new scoring filter
                 if title and is_high_impact(title, ch['cat'], ch.get('filter')):
                     final_data.append({
                         'title': title,
@@ -66,7 +66,7 @@ def run_update():
 
     with open('js/feed_data.json', 'w') as f:
         json.dump(final_data, f, indent=2)
-    print(f"Update complete. {len(final_data)} items processed.")
+    print(f"Update complete. {len(final_data)} items stored.")
 
 if __name__ == "__main__":
     run_update()
