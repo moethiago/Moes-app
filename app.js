@@ -1,4 +1,3 @@
-alert("app.js is connected");
 function switchTab(tab){
 
   document.querySelectorAll(".tab-panel")
