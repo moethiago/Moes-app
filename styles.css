@@ -1,36 +1,76 @@
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
 :root{
---bg-void:#07080d;
---bg-base:#0d0f18;
---bg-card:#13151f;
---txt-primary:#eeeef2;
---txt-secondary:#8a8fa8;
---ig-blue:#4f9cf9;
---purple:#a78bfa;
---f1-red:#e8002d;
---epl-green:#38d36a;
+  --bg-void:#07080d;
+  --bg-base:#0d0f18;
+  --bg-card:#13151f;
+  --bg-raised:#1a1d2a;
+
+  --txt-primary:#eeeef2;
+  --txt-secondary:#8a8fa8;
+  --txt-muted:#484d65;
+
+  --f1-red:#e8002d;
+  --ig-blue:#4f9cf9;
+  --purple:#a78bfa;
+  --epl-green:#38d36a;
+
+  --border:rgba(255,255,255,0.06);
 }
 
-html,body{height:100%;background:#000;color:var(--txt-primary);font-family:DM Sans}
+html,body{
+  height:100%;
+  background:#000;
+  color:var(--txt-primary);
+  font-family:'DM Sans',sans-serif;
+}
 
-#app{max-width:430px;margin:0 auto;height:100%;background:var(--bg-base)}
+#app{
+  max-width:430px;
+  margin:0 auto;
+  height:100%;
+  background:var(--bg-base);
+}
 
-#header{padding:10px;background:var(--bg-card)}
-.logo{font-weight:700}
+#header{
+  padding:10px;
+  background:var(--bg-card);
+}
 
 .nav-inner{display:flex}
-.nav-btn{flex:1;padding:10px;color:var(--txt-secondary)}
+
+.nav-btn{
+  flex:1;
+  padding:10px;
+  color:var(--txt-muted);
+}
+
 .nav-btn.active{color:var(--txt-primary)}
 
 .tab-panel{display:none}
 .tab-panel.active{display:block}
 
-.card{background:var(--bg-card);margin:10px;padding:10px;border-radius:10px}
+.card{
+  background:var(--bg-card);
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
 
-.f1-cd-num{font-size:20px}
+.section-label{
+  font-weight:600;
+  margin:10px 0;
+}
 
-.workout-stats-row{display:flex;justify-content:space-between;padding:10px}
+button{
+  padding:8px;
+  background:var(--ig-blue);
+  color:#fff;
+  border:0;
+}
 
-.log-form input{display:block;width:100%;margin:5px 0;padding:8px}
-
-button{padding:8px;background:var(--ig-blue);color:#fff;border:0}
+.log-form input{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+}
