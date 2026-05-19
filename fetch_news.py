@@ -27,6 +27,7 @@ CHANNELS = [
 
 F1_KEEP       = re.compile(r'\bwin(s|ner)?\b|pole|penalt|crash|dnf|retir|disqualif|contract|sign(ed|ing)?|swap|transfer|fia|champion|ban(ned)?|incident|investigat|fastest lap|grid penalty|power unit|collision|demand', re.I)
 F1_JUNK       = re.compile(r'i love|reflects on|friday practice|practice debrief|talking points|five things|how to watch|watch live|quiz|ranked|ranking|gallery|photo|relief', re.I)
+F1_VALIDATOR  = re.compile(r'f1|formula|grand prix|\bgp\b|race|driver|constructor|fia|verstappen|hamilton|norris|leclerc|russell|antonelli|piastri|alonso|sainz|perez|mclaren|ferrari|mercedes|red bull|alpine|williams|aston martin|motor', re.I)
 FOOTBALL_KEEP = re.compile(r'sack(ed)?|fired|resign|transfer|sign(ed|ing)?|injur|suspend|ban(ned)?|red card|\btitle\b|champion|relegat|derb|match report|\bwin(s)?\b|\bloss\b|defeat|final|semifinal|playoff|expel', re.I)
 FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|relief|darts|cricket|rugby|tennis|golf|boxing', re.I)
 BAYERN_KEEP   = re.compile(r'transfer|sign(ed|ing)?|injur|absent|miss(es|ing)?|squad|contract|sack(ed)?|manag|coach|champion|ban|suspend|ruling|announce|confirm', re.I)
@@ -37,8 +38,6 @@ KSA_JUNK      = re.compile(r'ceremony|ribbon|visit|tour|festival|fashion|celebra
 MAX_AGE = timedelta(days=7)
 NOW = datetime.now(timezone.utc)
 
-# ── SEMANTIC FINGERPRINT ────────────────────────────────
-# Key entities to extract from titles
 ENTITIES = [
   'arsenal','man city','manchester city','liverpool','chelsea','tottenham','spurs',
   'man united','manchester united','newcastle','aston villa','west ham',
@@ -62,17 +61,14 @@ TOPICS = [
 
 def fingerprint(title):
     t = title.lower()
-    found_entities = set()
-    found_topics   = set()
+    found = set()
     for e in ENTITIES:
         if e in t:
-            found_entities.add(e)
+            found.add(e)
     for tp in TOPICS:
         if tp in t:
-            found_topics.add(tp)
-    # Fingerprint = sorted entities + sorted topics
-    # Two stories with same entities + same topic = same story
-    return frozenset(found_entities) | frozenset(found_topics)
+            found.add(tp)
+    return frozenset(found)
 
 def is_high_impact(title, cat, filt=None):
     if filt and filt.lower() not in title.lower(): return False
@@ -81,6 +77,11 @@ def is_high_impact(title, cat, filt=None):
     if cat == 'BAYERN':   return bool(BAYERN_KEEP.search(title))
     if cat == 'SPL':      return bool(SPL_KEEP.search(title))
     if cat == 'KSA':      return bool(KSA_KEEP.search(title)) and not bool(KSA_JUNK.search(title))
+    return True
+
+def is_correct_category(title, cat):
+    if cat == 'F1':
+        return bool(F1_VALIDATOR.search(title))
     return True
 
 def parse_date(pub):
@@ -93,23 +94,21 @@ def parse_date(pub):
         return None
 
 items = []
-seen_exact   = set()  # exact title dedupe
-seen_stories = []     # semantic dedupe — list of fingerprints
+seen_exact   = set()
+seen_stories = []
 
 def is_duplicate(title):
-    # 1. Exact dedupe
-    key = re.sub(r'\W+','',title.lower())
+    key = re.sub(r'\W+', '', title.lower())
     if key in seen_exact:
         return True
-    # 2. Semantic dedupe
     fp = fingerprint(title)
-    # Need at least 2 matches to call it a duplicate
-    # (prevents over-blocking on generic topics)
-    if len(fp) >= 2:
-        for seen_fp in seen_stories:
-            overlap = fp & seen_fp
-            if len(overlap) >= 2:
-                return True
+    fp_entities = fp & set(ENTITIES)
+    fp_topics   = fp & set(TOPICS)
+    for seen_fp in seen_stories:
+        seen_entities = seen_fp & set(ENTITIES)
+        seen_topics   = seen_fp & set(TOPICS)
+        if fp_entities & seen_entities and fp_topics & seen_topics:
+            return True
     return False
 
 for ch in CHANNELS:
@@ -130,6 +129,7 @@ for ch in CHANNELS:
             dt = parse_date(pub)
             if dt and (NOW - dt) > MAX_AGE: continue
             if not is_high_impact(title, ch['cat'], ch.get('filter')): continue
+            if not is_correct_category(title, ch['cat']): continue
             if is_duplicate(title): continue
             date_str = dt.strftime('%b %-d') if dt else NOW.strftime('%b %-d')
             clean_title = title.replace("'","-").replace('"','-')
