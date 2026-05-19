@@ -26,9 +26,9 @@ CHANNELS = [
 ]
 
 F1_KEEP       = re.compile(r'\bwin(s|ner)?\b|pole|penalt|crash|dnf|retir|disqualif|contract|sign(ed|ing)?|swap|transfer|fia|champion|ban(ned)?|incident|investigat|fastest lap|grid penalty|power unit|collision|demand', re.I)
-F1_JUNK       = re.compile(r'i love|reflects on|preview.*friday|practice debrief|talking points|five things|how to watch|watch.*live|quiz|ranked|ranking|gallery|photo|relief', re.I)
+F1_JUNK       = re.compile(r'i love|reflects on|friday practice|practice debrief|talking points|five things|how to watch|watch live|quiz|ranked|ranking|gallery|photo|relief', re.I)
 FOOTBALL_KEEP = re.compile(r'sack(ed)?|fired|resign|transfer|sign(ed|ing)?|injur|suspend|ban(ned)?|red card|\btitle\b|champion|relegat|derb|match report|\bwin(s)?\b|\bloss\b|defeat|final|semifinal|playoff|expel', re.I)
-FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|relief|beats.*pdc|darts|cricket|rugby|tennis|golf|boxing', re.I)
+FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|relief|darts|cricket|rugby|tennis|golf|boxing', re.I)
 BAYERN_KEEP   = re.compile(r'transfer|sign(ed|ing)?|injur|absent|miss(es|ing)?|squad|contract|sack(ed)?|manag|coach|champion|ban|suspend|ruling|announce|confirm', re.I)
 SPL_KEEP      = re.compile(r'transfer|sign(ed|ing)?|sack(ed)?|manag|title|champion|relegat|derb|disciplin|ban|suspend|ruling|contract|\bwin(s)?\b|ronaldo|neymar|benzema|mane|al hilal|al nassr|al ittihad|al ahli', re.I)
 KSA_KEEP      = re.compile(r'decree|royal|minister|giga|neom|vision 2030|pif|\binvest|\bregulat|reform|\bgdp\b|economic|infrastructure|launch|announce|billion|sovereign|market|\bipo\b|fund|policy', re.I)
@@ -52,7 +52,7 @@ def parse_date(pub):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt
-    except:
+    except Exception:
         return None
 
 items = []
@@ -88,6 +88,37 @@ for ch in CHANNELS:
             })
             seen_titles.add(title_key)
             count += 1
-        print(f"OK {ch['src']}: {count}")
+        print("OK " + ch['src'] + ": " + str(count))
     except Exception as e:
-        print(f"SKIP​​​​​​​​​​​​​​​​
+        print("SKIP " + ch['src'] + ": " + str(e))
+
+if not items:
+    print("No items fetched - skipping")
+    sys.exit(0)
+
+items.sort(key=lambda x: x.get('date',''), reverse=True)
+
+lines = []
+for i in items:
+    lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
+        i['title'], i['src'], i['cat'], i['link'], i['date']))
+
+new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
+
+with open('js/feed.js','r') as f:
+    content = f.read()
+
+updated = re.sub(
+    r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
+    '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
+    content, flags=re.DOTALL
+)
+
+if updated == content:
+    print("Marker not found - skipping")
+    sys.exit(0)
+
+with open('js/feed.js','w') as f:
+    f.write(updated)
+
+print("Done: " + str(len(items)) + " stories written to js/feed.js")
