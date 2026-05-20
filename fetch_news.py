@@ -7,15 +7,18 @@ MIN_SCORE = 2
 NOW       = datetime.now(timezone.utc)
 
 def sanitize(text):
-    # Replace all non-ASCII characters with dash
     result = ''
     for c in text:
         if ord(c) > 127:
             result += '-'
+        elif c == "'":
+            result += '-'
+        elif c == '"':
+            result += '-'
+        elif c == '\\':
+            result += '-'
         else:
             result += c
-    # Replace quotes that break JS
-    result = result.replace("'", '-').replace('"', '-').replace('\', '-')
     return result
 
 all_items = []
@@ -29,28 +32,21 @@ if not all_items:
     print("No items - skipping")
     sys.exit(0)
 
-all_items.sort(key=lambda x: x["dt"], reverse=True)
+all_items.sort(key=lambda x: x['dt'], reverse=True)
 
 lines = []
 for i in all_items:
     lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
-        sanitize(i["title"]), sanitize(i["src"]), i["cat"], sanitize(i["link"]), i["date"]))
+        sanitize(i['title']), sanitize(i['src']), i['cat'], sanitize(i['link']), i['date']))
 
-new_block = "var FALLBACK_NEWS = [
-" + ",
-".join(lines) + "
-];"
+new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
 
-with open("js/feed.js","r") as f:
+with open('js/feed.js', 'r') as f:
     content = f.read()
 
 updated = re.sub(
-    r"// DO NOT EDIT BELOW THIS LINE
-var FALLBACK_NEWS = \[.*?\];
-// DO NOT EDIT ABOVE THIS LINE",
-    "// DO NOT EDIT BELOW THIS LINE
-" + new_block + "
-// DO NOT EDIT ABOVE THIS LINE",
+    r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
+    '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
     content, flags=re.DOTALL
 )
 
@@ -58,7 +54,7 @@ if updated == content:
     print("Marker not found - skipping")
     sys.exit(0)
 
-with open("js/feed.js","w") as f:
+with open('js/feed.js', 'w') as f:
     f.write(updated)
 
 print("Done: " + str(len(all_items)) + " stories written to js/feed.js")
