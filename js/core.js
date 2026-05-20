@@ -1,7 +1,5 @@
 // ── CORE.JS ─────────────────────────────────────────────
 // Handles: init, clock, tab switching
-// Depends on: nothing
-// Safe to edit without affecting feed/sports/health
 
 document.addEventListener('DOMContentLoaded', function() {
   try { window.foodLog = JSON.parse(localStorage.getItem('m_food') || '[]'); } catch(e) { window.foodLog = []; }
