@@ -10,15 +10,15 @@ SOURCES = [
   {'url':'https://racer.com/category/formula-1/feed/',       'src':'Racer'},
 ]
 
-MUST = re.compile('f1|formula|grand prix|gp|race|driver|grid|lap|qualifying|verstappen|hamilton|norris|leclerc|russell|antonelli|piastri|alonso|sainz|perez|mclaren|ferrari|mercedes|red bull|alpine|williams|aston martin|haas|fia|circuit|championship|constructor|season|podium|sprint', re.I)
-HIGH = re.compile('win|winner|pole|penalt|crash|dnf|disqualif|retire|champion|ban|contract|transfer|sign|incident|investigat|collision|grid penalty|power unit', re.I)
-MED  = re.compile('fastest lap|overtake|strategy|upgrade|announce|confirm|title|standings|preview|reaction|analysis', re.I)
-JUNK = re.compile('motogp|indycar|nascar|wrc|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|cadillac entry|how gm', re.I)
+# BBC F1 feed only contains F1 stories so no MUST filter needed for it
+# For all feeds — if it comes from a dedicated F1 feed, it's F1
+JUNK = re.compile('motogp|indycar|nascar|wrc|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|cadillac entry|how gm|premier league|bundesliga|serie a', re.I)
+HIGH = re.compile('win|winner|pole|penalt|crash|dnf|disqualif|retire|champion|ban|contract|transfer|sign|incident|investigat|collision|grid penalty|power unit|sack|resign', re.I)
+MED  = re.compile('fastest lap|overtake|strategy|upgrade|announce|confirm|title|standings|preview|reaction|analysis|race|qualify|sprint|driver|team|season', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
-    if not MUST.search(title): return 0
-    s = 1
+    s = 1  # base score — trust the dedicated feed
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
     return s
