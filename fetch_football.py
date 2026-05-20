@@ -9,10 +9,7 @@ SOURCES = [
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bund'},
   {'url':'https://www.theguardian.com/football/ligue1football/rss',     'src':'Guardian L1'},
   {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Sports'},
-  {'url':'https://www.90min.com/feed',                                  'src':'90min'},
   {'url':'https://www.caughtoffside.com/feed/',                         'src':'CaughtOffside'},
-  {'url':'https://sportslens.com/feed/',                                'src':'Sportslens'},
-  {'url':'https://www.foottheball.com/feed/',                           'src':'FootTheBall'},
 ]
 
 MUST = re.compile('arsenal|man city|liverpool|chelsea|tottenham|united|newcastle|real madrid|barcelona|atletico|juventus|inter|napoli|psg|dortmund|leverkusen|bayern|premier league|la liga|serie a|bundesliga|ligue 1|champions league|europa league|transfer|sack|injur|ban|title|champion|relegat|manager|coach|sign', re.I)
