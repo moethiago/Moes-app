@@ -5,11 +5,12 @@ from email.utils import parsedate_to_datetime
 SOURCES = [
   {'url':'https://www.arabnews.com/rss.xml',       'src':'Arab News'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',  'src':'Saudi Gazette'},
+  {'url':'https://en.majalla.com/rss.xml',          'src':'Al Majalla'},
 ]
 
-HIGH = re.compile('decree|royal order|minister|giga|neom|pif|vision 2030|billion|sovereign fund|ipo|economic reform|gdp|policy|infrastructure|investment', re.I)
-MED  = re.compile('announce|launch|confirm|regulat|fund|market|energy|oil|aramco|tourism|initiative', re.I)
-JUNK = re.compile('ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf|weather|traffic', re.I)
+HIGH = re.compile('decree|royal order|minister|giga|neom|pif|vision 2030|billion|sovereign fund|ipo|economic reform|gdp|policy|infrastructure|investment|aramco|megaproject|budget|reform|regulation', re.I)
+MED  = re.compile('announce|launch|confirm|fund|market|energy|oil|tourism|initiative|agreement|partnership|project|plan|strategy', re.I)
+JUNK = re.compile('ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf|weather|traffic|recipe|lifestyle|entertainment', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
