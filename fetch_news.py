@@ -1,4 +1,4 @@
-import re, sys
+import re, sys, time
 from datetime import datetime, timezone, timedelta
 import fetch_f1, fetch_football, fetch_bayern, fetch_spl, fetch_ksa
 
@@ -42,4 +42,19 @@ if updated == content:
 with open('js/feed.js','w') as f:
     f.write(updated)
 
+# Cache bust — update version in index.html so browser always fetches fresh feed.js
+version = str(int(time.time()))
+with open('index.html','r') as f:
+    html = f.read()
+
+html_updated = re.sub(
+    r'<script src="js/feed\.js(\?v=[0-9]+)?">',
+    '<script src="js/feed.js?v=' + version + '">',
+    html
+)
+
+with open('index.html','w') as f:
+    f.write(html_updated)
+
 print("Done: " + str(len(all_items)) + " stories written to js/feed.js")
+print("Cache bust: feed.js?v=" + version)
