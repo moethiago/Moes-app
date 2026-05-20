@@ -5,20 +5,17 @@ from email.utils import parsedate_to_datetime
 SOURCES = [
   {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml', 'src':'BBC F1'},
   {'url':'https://www.autosport.com/rss/f1/news/',           'src':'Autosport'},
-  {'url':'https://www.theguardian.com/sport/formulaone/rss', 'src':'Guardian F1'},
   {'url':'https://www.gptoday.net/rss/news/rss.xml',         'src':'GPToday'},
   {'url':'https://racer.com/category/formula-1/feed/',       'src':'Racer'},
 ]
 
-# BBC F1 feed only contains F1 stories so no MUST filter needed for it
-# For all feeds — if it comes from a dedicated F1 feed, it's F1
-JUNK = re.compile('motogp|indycar|nascar|wrc|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|cadillac entry|how gm|premier league|bundesliga|serie a', re.I)
+JUNK = re.compile('motogp|indycar|nascar|wrc|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|premier league|bundesliga|serie a', re.I)
 HIGH = re.compile('win|winner|pole|penalt|crash|dnf|disqualif|retire|champion|ban|contract|transfer|sign|incident|investigat|collision|grid penalty|power unit|sack|resign', re.I)
 MED  = re.compile('fastest lap|overtake|strategy|upgrade|announce|confirm|title|standings|preview|reaction|analysis|race|qualify|sprint|driver|team|season', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
-    s = 1  # base score — trust the dedicated feed
+    s = 1
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
     return s
