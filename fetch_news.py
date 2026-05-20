@@ -1,4 +1,4 @@
-import re, sys
+import re, sys, time
 from datetime import datetime, timezone, timedelta
 import fetch_f1, fetch_football, fetch_bayern, fetch_spl, fetch_ksa
 
@@ -11,11 +11,7 @@ def sanitize(text):
     for c in text:
         if ord(c) > 127:
             result += '-'
-        elif c == "'":
-            result += '-'
-        elif c == '"':
-            result += '-'
-        elif c == '\\':
+        elif c in ("'", '"', '\\', '\n', '\r'):
             result += '-'
         else:
             result += c
@@ -57,12 +53,11 @@ if updated == content:
 with open('js/feed.js', 'w') as f:
     f.write(updated)
 
-# Auto cache bust — update version in index.html every run
-import time
+# Auto cache bust
 version = str(int(time.time()))
 with open('index.html', 'r') as f:
     html = f.read()
-html = re.sub(r'js/feed\.js\?v=[0-9]+', 'js/feed.js?v=' + version, html)
+html = re.sub(r'js/feed\.js(\?v=[0-9]+)?', 'js/feed.js?v=' + version, html)
 with open('index.html', 'w') as f:
     f.write(html)
 
