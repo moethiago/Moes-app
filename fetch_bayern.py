@@ -3,14 +3,18 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bund'},
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Sport'},
-  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Sports'},
+  {'url':'https://fcbayern.com/en/api/rss/contentlists/news',           'src':'Bayern Official'},
+  {'url':'https://www.bavarianfootballworks.com/rss/current.xml',       'src':'Bavarian FW'},
+  {'url':'https://www.dailymail.co.uk/sport/football/index.rss',        'src':'Daily Mail Bayern'},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Bayern'},
+  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Bayern'},
+  {'url':'https://www.football-insider247.com/feed/',                   'src':'Football Insider'},
+  {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'src':'Sports Mole Bayern'},
 ]
 
-MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller', re.I)
-HIGH = re.compile('transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title', re.I)
-MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|deal', re.I)
+MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller', re.I)
+HIGH = re.compile('transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title|deal|agree', re.I)
+MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|bid', re.I)
 JUNK = re.compile('women|youth|reserve|u17|u19|u21|amateur', re.I)
 
 def score(title):
@@ -60,4 +64,3 @@ def fetch(max_age, now, min_score):
         except Exception as e:
             print("SKIP " + src['src'] + ": " + str(e))
     return list(items.values())
-
