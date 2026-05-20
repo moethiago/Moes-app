@@ -3,24 +3,22 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',          'src':'BBC F1'},
-  {'url':'https://www.autosport.com/rss/f1/news/',                    'src':'Autosport'},
-  {'url':'https://www.theguardian.com/sport/formulaone/rss',          'src':'Guardian F1'},
-  {'url':'https://www.gptoday.net/rss/news/rss.xml',                  'src':'GPToday'},
-  {'url':'https://grandprix247.com/feed/',                            'src':'GrandPrix247'},
-  {'url':'https://www.f1chronicle.com/feed/',                         'src':'F1 Chronicle'},
-  {'url':'https://racer.com/category/formula-1/feed/',                'src':'Racer'},
+  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml', 'src':'BBC F1'},
+  {'url':'https://www.autosport.com/rss/f1/news/',           'src':'Autosport'},
+  {'url':'https://www.theguardian.com/sport/formulaone/rss', 'src':'Guardian F1'},
+  {'url':'https://www.gptoday.net/rss/news/rss.xml',         'src':'GPToday'},
+  {'url':'https://racer.com/category/formula-1/feed/',       'src':'Racer'},
 ]
 
-MUST = re.compile('f1|formula 1|formula one|grand prix|verstappen|hamilton|norris|leclerc|russell|antonelli|piastri|alonso|sainz|perez|mclaren|ferrari|mercedes|red bull|alpine|williams|aston martin|haas', re.I)
-HIGH = re.compile('win|winner|pole|penalt|crash|dnf|disqualif|retire|fia|champion|ban|contract|transfer|sign|incident|investigat|collision|grid penalty|power unit', re.I)
-MED  = re.compile('fastest lap|overtake|strategy|upgrade|announce|confirm|title fight|standings', re.I)
-JUNK = re.compile('motogp|indycar|nascar|wrc|rally|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|practice preview|q&a|cadillac entry|how gm', re.I)
+MUST = re.compile('f1|formula|grand prix|gp|race|driver|grid|lap|qualifying|verstappen|hamilton|norris|leclerc|russell|antonelli|piastri|alonso|sainz|perez|mclaren|ferrari|mercedes|red bull|alpine|williams|aston martin|haas|fia|circuit|championship|constructor|season|podium|sprint', re.I)
+HIGH = re.compile('win|winner|pole|penalt|crash|dnf|disqualif|retire|champion|ban|contract|transfer|sign|incident|investigat|collision|grid penalty|power unit', re.I)
+MED  = re.compile('fastest lap|overtake|strategy|upgrade|announce|confirm|title|standings|preview|reaction|analysis', re.I)
+JUNK = re.compile('motogp|indycar|nascar|wrc|superbike|isle of man|rugby|cricket|tennis|golf|boxing|petition|cadillac entry|how gm', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
     if not MUST.search(title): return 0
-    s = 2
+    s = 1
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
     return s
