@@ -59,42 +59,7 @@ var TOPICS_LOWER = [
 
 // ── FALLBACK_NEWS — updated automatically by GitHub Action every hour ──
 // DO NOT EDIT BELOW THIS LINE
-var FALLBACK_NEWS = [
-  {title:'-So much on the line- - Spurs struggles sets up final day relegation decider',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/videos/c2k24l214z8o?at_medium=RSS&at_campaign=rss',date:'May 20'},
-  {title:'Why don-t drivers enter other series like Verstappen? F1 Q&A',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/c9d367vg7wdo?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'How GM tech accelerated Cadillac-s F1 entry',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/how-gm-tech-accelerated-cadillacs-f1-entry/10822240/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 19'},
-  {title:'Boats, fire and a TikTok song - inside Arsenal-s title win',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c9v3jx1jmrwo?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Title despair & Guardiola going - 24 hours of pain for Man City',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c78q300ejz4o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'The key moments that decided the Premier League title race',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cx21j2nj8z1o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Southampton expelled from play-offs for spying',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cwy2pnpqjl7o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Tottenham lose at Chelsea to take relegation fight to final day',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/videos/cze2r13e0jjo?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Bournemouth in Europe for first time -  but Champions League still on',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn0p96pxy34o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Women-s coach given lifetime ban for secret filming',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cm2p1pl13j0o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Chelsea 2-1 Tottenham: Premier League survival fight goes to final day – as it happened',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/chelsea-v-tottenham-premier-league-live-west-ham',date:'May 19'},
-  {title:'Arsenal crowned Premier League champions for first time in 22 years – as it happened',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
-  {title:'Fernández and Chelsea sink Spurs as survival battle goes to the final day',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/chelsea-tottenham-premier-league-match-report',date:'May 19'},
-  {title:'How to follow Canadian Grand Prix on the BBC',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/cgmpwzp8pmno?at_medium=RSS&at_campaign=rss',date:'May 18'},
-  {title:'What is the format for F1 sprint races in 2026?',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/c4g236r9npyo?at_medium=RSS&at_campaign=rss',date:'May 18'},
-  {title:'Will Mercedes or McLaren land the next punch at F1-s Canadian GP?',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/will-mercedes-or-mclaren-land-the-next-blow-at-f1s-canadian-gp/10821907/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 18'},
-  {title:'Why Ford -loves the V8 idea- in F1 amid changing road car strategy',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/why-ford-loves-the-v8-idea-in-f1-amid-changing-road-car-strategy/10821863/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 18'},
-  {title:'Manchester City win FA Cup and Hearts heartbreak at Celtic | Football Weekly video',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/video/2026/may/18/manchester-city-win-fa-cup-and-hearts-heartbreak-at-celtic-football-weekly-video',date:'May 18'},
-  {title:'Cult hero Mancini delivers derby win for Roma after Serie A scheduling nightmare | Nicky Bandini',src:'Guardian Serie A',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/18/roma-lazio-rome-derby-serie-a',date:'May 18'},
-  {title:'St Pauli’s Bundesliga dream dies as Eriksen inspires Wolfsburg in relegation thriller | Andy Brassell',src:'Guardian Bund',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/18/bundesliga-st-pauli-wolfsburg-relegation-thriller-christian-eriksen',date:'May 18'},
-  {title:'Nice fans direct fury at owners as club falls into Ligue 1 relegation playoff',src:'Guardian L1',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/18/nice-fans-direct-fury-owners-club-falls-ligue-1-relegation-playoff-champions-league-inoes',date:'May 18'},
-  {title:'Verstappen 24hr hopes ended by driveshaft after leading',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/motorsport/articles/czx2kpy5kw8o?at_medium=RSS&at_campaign=rss',date:'May 17'},
-  {title:'Can Russell take inspiration from Norris in bid for F1 title?',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/can-george-russell-take-inspiration-from-lando-norris-in-quest-for-f1-title/10821504/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 17'},
-  {title:'Inter poised as Curtis Jones enters final year of Liverpool contract',src:'Guardian Serie A',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/17/inter-poised-as-curtis-jones-enters-final-year-of-liverpool-contract',date:'May 17'},
-  {title:'European football: Roma close to Champions League return after beating Lazio',src:'Guardian Serie A',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/17/european-football-roma-lazio-milan-juventus-napoli',date:'May 17'},
-  {title:'After Honda-s first annual loss in 70 years, what does it mean for its F1 project?',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/honda-reports-first-annual-loss-in-70-years-what-does-it-mean-for-its-f1-project/10821214/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 16'},
-  {title:'European football: Kane uncorks title party with hat-trick; Lewandowski to leave Barça',src:'Guardian Bund',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/16/robert-lewandowski-barcelona-real-madrid-bundesliga-european-roundup',date:'May 16'},
-  {title:'Andrew Benson Q&A: Send us your questions',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/ckg3y15zje8o?at_medium=RSS&at_campaign=rss',date:'May 15'},
-  {title:'Former FIA aero chief officially joins Alpine in senior F1 role',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/former-fia-aero-chief-officially-joins-alpine-in-senior-f1-role/10820964/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 15'},
-  {title:'Will F1 go back to the future with its engines?',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/c2e2zmglvp9o?at_medium=RSS&at_campaign=rss',date:'May 14'},
-  {title:'F1: Chequered Flag',src:'BBC F1',cat:'F1',link:'https://www.bbc.co.uk/sounds/play/p0nl0lfk?at_medium=RSS&at_campaign=rss',date:'May 14'},
-  {title:'Brown writes to FIA over Mercedes-Alpine ownership concerns',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/zak-brown-takes-fia-fight-over-mercedes-alpine-f1-talks-public/10820815/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 14'},
-  {title:'Why Haas fears loss of ground to Alpine in F1-s upper-midfield battle',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/why-haas-fears-loss-of-ground-to-alpine-in-f1s-upper-midfield-battle/10820502/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 14'},
-  {title:'PSG are deserved Ligue 1 champions but Lens put up an admirable fight | Raphaël Jucobin',src:'Guardian L1',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/14/psg-ligue-1-champions-lens-pierre-sage-coupe-de-france',date:'May 14'}
-];
+var FALLBACK_NEWS = [];
 // DO NOT EDIT ABOVE THIS LINE
 
 function isHighImpact(title, cat, filter) {
@@ -132,7 +97,6 @@ function isDuplicate(title, seenExact, seenStories) {
 
 function setFeedFilter(cat, el) {
   currentFilter = cat;
-  localStorage.setItem('last_filter', cat);
   document.querySelectorAll('.fpill').forEach(function(p) { p.classList.remove('active'); });
   if (el) el.classList.add('active');
   renderNewsFeed();
@@ -179,10 +143,6 @@ function setTickerContent(titles) {
 function renderNewsFeed() {
   var container = document.getElementById('critical-posts');
   if (!container) return;
-
-  // Apply saved filter
-  var savedFilter = localStorage.getItem('last_filter');
-  if (savedFilter) currentFilter = savedFilter;
 
   var source   = parsedStoriesCache.length ? parsedStoriesCache : FALLBACK_NEWS;
   var filtered = currentFilter === 'ALL'
