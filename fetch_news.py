@@ -57,4 +57,14 @@ if updated == content:
 with open('js/feed.js', 'w') as f:
     f.write(updated)
 
+# Auto cache bust — update version in index.html every run
+import time
+version = str(int(time.time()))
+with open('index.html', 'r') as f:
+    html = f.read()
+html = re.sub(r'js/feed\.js\?v=[0-9]+', 'js/feed.js?v=' + version, html)
+with open('index.html', 'w') as f:
+    f.write(html)
+
 print("Done: " + str(len(all_items)) + " stories written to js/feed.js")
+print("Cache bust: v=" + version)
