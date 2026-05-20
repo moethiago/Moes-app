@@ -3,29 +3,27 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  # Established reliable sources
   {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Sport'},
   {'url':'https://www.theguardian.com/football/premierleague/rss',      'src':'Guardian PL'},
   {'url':'https://www.theguardian.com/football/serieafootball/rss',     'src':'Guardian Serie A'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bund'},
   {'url':'https://www.theguardian.com/football/ligue1football/rss',     'src':'Guardian L1'},
   {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Sports'},
-  # New dedicated football sources
   {'url':'https://www.90min.com/feed',                                  'src':'90min'},
   {'url':'https://www.caughtoffside.com/feed/',                         'src':'CaughtOffside'},
   {'url':'https://sportslens.com/feed/',                                'src':'Sportslens'},
   {'url':'https://www.foottheball.com/feed/',                           'src':'FootTheBall'},
 ]
 
-MUST = re.compile('arsenal|man city|liverpool|chelsea|tottenham|united|newcastle|real madrid|barcelona|atletico|juventus|inter|napoli|psg|dortmund|leverkusen|bayern|premier league|la liga|serie a|bundesliga|ligue 1|champions league|europa league', re.I)
+MUST = re.compile('arsenal|man city|liverpool|chelsea|tottenham|united|newcastle|real madrid|barcelona|atletico|juventus|inter|napoli|psg|dortmund|leverkusen|bayern|premier league|la liga|serie a|bundesliga|ligue 1|champions league|europa league|transfer|sack|injur|ban|title|champion|relegat|manager|coach|sign', re.I)
 HIGH = re.compile('sacked|fired|resign|transfer|signed|signing|injur|suspended|ban|red card|title|champion|relegat|playoff|expel', re.I)
-MED  = re.compile('win|loss|defeat|derby|final|match report|contract|announce|confirm', re.I)
-JUNK = re.compile('fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of the|talking points|gallery|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|key moments|tiktok|boats|24 hours of', re.I)
+MED  = re.compile('win|loss|defeat|derby|final|match report|contract|announce|confirm|result|goal', re.I)
+JUNK = re.compile('fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of the|talking points|gallery|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|tiktok|boats|24 hours of', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
     if not MUST.search(title): return 0
-    s = 2
+    s = 1
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
     return s
