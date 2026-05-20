@@ -3,18 +3,13 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://www.bavarianfootballworks.com/rss/current.xml',       'src':'Bavarian FW'},
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'src':'Sports Mole Bayern'},
   {'url':'https://www.dailymail.co.uk/sport/football/index.rss',        'src':'Daily Mail Bayern'},
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Bayern'},
-  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Bayern'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bayern'},
+  {'url':'https://fcbayern.com/en/api/rss/contentlists/news',           'src':'Bayern Official', 'timeout':15},
 ]
 
-# For dedicated Bayern feeds (Bavarian FW, Sports Mole) — trust the feed, no MUST
-# For general feeds (BBC, Sky, Guardian, Daily Mail) — require Bayern keyword
-DEDICATED = ['Bavarian FW', 'Sports Mole Bayern']
-
+DEDICATED = ['Sports Mole Bayern']
 MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller|coman|tel|pavlovic|laimer|upamecano|allianz arena', re.I)
 HIGH = re.compile('transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title|deal|agree|resign', re.I)
 MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|bid|win|loss|defeat|goal|result|match', re.I)
@@ -32,8 +27,9 @@ def fetch(max_age, now, min_score):
     items = {}
     for src in SOURCES:
         try:
+            timeout = src.get('timeout', 10)
             req = urllib.request.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 root = ET.fromstring(r.read())
             node = root.find('channel') or root
             is_dedicated = src['src'] in DEDICATED
