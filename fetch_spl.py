@@ -3,9 +3,9 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://www.arabnews.com/cat/5/rss.xml', 'src':'Arab News Sport'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',  'src':'Saudi Gazette'},
   {'url':'https://www.caughtoffside.com/feed/',     'src':'CaughtOffside'},
+  {'url':'https://www.90min.com/feed',              'src':'90min'},
 ]
 
 MUST = re.compile('al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|al ettifaq|al fayha|saudi|spl|pro league|roshn|ronaldo|neymar|benzema|mane|mitrovic|brozovic|kante|milinkovic|malcom|firmino|al-hilal|al-nassr|al-ittihad', re.I)
