@@ -1,5 +1,5 @@
 // ── CORE.JS ─────────────────────────────────────────────
-// Handles: init, clock, tab switching, pull to refresh
+// Handles: init, clock, tab switching
 // Depends on: nothing
 // Safe to edit without affecting feed/sports/health
 
@@ -11,18 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
   try { renderFood();         } catch(e) { console.warn('health:food', e); }
   try { renderSets();         } catch(e) { console.warn('health:sets', e); }
   try { startCountdown();     } catch(e) { console.warn('sports:countdown', e); }
+  try { renderNewsFeed();     } catch(e) { console.warn('feed:render', e); }
   try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
   try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
-
-  // Restore last tab and filter before rendering feed
-  restoreState();
-
-  try { renderNewsFeed();     } catch(e) { console.warn('feed:render', e); }
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
   }, 500);
-
-  initPullToRefresh();
 });
 
 function startClock() {
@@ -43,66 +37,4 @@ function switchTab(tab) {
     if (btn)   btn.classList.toggle('active',   t === tab);
   });
   document.getElementById('scroll-wrap').scrollTop = 0;
-  localStorage.setItem('last_tab', tab);
-}
-
-function restoreState() {
-  // Restore tab
-  var lastTab = localStorage.getItem('last_tab') || 'feed';
-  ['feed','sports','health'].forEach(function(t) {
-    var panel = document.getElementById('panel-' + t);
-    var btn   = document.getElementById('nav-' + t);
-    if (panel) panel.classList.toggle('active', t === lastTab);
-    if (btn)   btn.classList.toggle('active',   t === lastTab);
-  });
-
-  // Restore feed filter
-  var lastFilter = localStorage.getItem('last_filter') || 'ALL';
-  if (typeof currentFilter !== 'undefined') currentFilter = lastFilter;
-  document.querySelectorAll('.fpill').forEach(function(p) {
-    p.classList.remove('active');
-  });
-  document.querySelectorAll('.fpill').forEach(function(p) {
-    if (p.textContent.trim().replace(/\W/g,'').toUpperCase().indexOf(lastFilter) !== -1 || lastFilter === 'ALL' && p.textContent.trim() === 'All') {
-      p.classList.add('active');
-    }
-  });
-}
-
-function initPullToRefresh() {
-  var scrollWrap = document.getElementById('scroll-wrap');
-  if (!scrollWrap) return;
-
-  var indicator = document.createElement('div');
-  indicator.className = 'ptr-indicator';
-  indicator.innerHTML = '<div class="ptr-spinner"></div>';
-  document.getElementById('app').appendChild(indicator);
-
-  var startY    = 0;
-  var pulling   = false;
-  var THRESHOLD = 60;
-
-  scrollWrap.addEventListener('touchstart', function(e) {
-    if (scrollWrap.scrollTop === 0) {
-      startY  = e.touches[0].clientY;
-      pulling = true;
-    }
-  }, { passive: true });
-
-  scrollWrap.addEventListener('touchmove', function(e) {
-    if (!pulling) return;
-    var dist = e.touches[0].clientY - startY;
-    if (dist > 10) indicator.classList.add('visible');
-  }, { passive: true });
-
-  scrollWrap.addEventListener('touchend', function(e) {
-    if (!pulling) return;
-    pulling = false;
-    var dist = e.changedTouches[0].clientY - startY;
-    if (dist > THRESHOLD) {
-      location.reload(true);
-    } else {
-      indicator.classList.remove('visible');
-    }
-  }, { passive: true });
 }
