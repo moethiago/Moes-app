@@ -3,22 +3,19 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://www.arabnews.com/cat/5/rss.xml',          'src':'Arab News Sport'},
+  {'url':'https://www.arabnews.com/rss.xml',                'src':'Arab News'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',           'src':'Saudi Gazette'},
-  {'url':'https://www.90min.com/feed',                      'src':'90min SPL'},
-  {'url':'https://www.caughtoffside.com/feed/',             'src':'CaughtOffside SPL'},
-  {'url':'https://sportslens.com/feed/',                    'src':'Sportslens SPL'},
+  {'url':'https://en.majalla.com/rss.xml',                  'src':'Al Majalla'},
+  {'url':'https://www.sauditimes.org/feed/',                 'src':'Saudi Times'},
 ]
 
-MUST = re.compile('al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|al ettifaq|al fayha|saudi|spl|pro league|roshn|ronaldo|neymar|benzema|mane|mitrovic|brozovic|kante|milinkovic|malcom|firmino', re.I)
-HIGH = re.compile('transfer|signed|signing|sacked|ban|suspended|injur|champion|title|relegat|derby|disciplin|ruling|contract|announce', re.I)
-MED  = re.compile('win|loss|defeat|match|result|manager|coach|goal|score', re.I)
-JUNK = re.compile('cricket|rugby|tennis|golf|boxing|formula|f1|motogp|hockey|basketball|nba|nfl', re.I)
+HIGH = re.compile('decree|royal order|minister|giga|neom|pif|vision 2030|billion|sovereign fund|ipo|economic reform|gdp|policy|infrastructure|investment|project launch|aramco|megaproject', re.I)
+MED  = re.compile('announce|launch|confirm|regulat|fund|market|energy|oil|tourism|initiative|agreement|partnership', re.I)
+JUNK = re.compile('ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf|weather|traffic|recipe|lifestyle', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
-    if not MUST.search(title): return 0
-    s = 2
+    s = 0
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
     return s
@@ -52,7 +49,7 @@ def fetch(max_age, now, min_score):
                     items[key] = {
                         'title': title.replace("'","-").replace('"','-'),
                         'src':   src['src'],
-                        'cat':   'SPL',
+                        'cat':   'KSA',
                         'link':  link.replace("'","%27"),
                         'date':  dt.strftime('%b %-d'),
                         'dt':    dt,
