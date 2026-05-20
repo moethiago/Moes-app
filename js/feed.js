@@ -60,15 +60,16 @@ var TOPICS_LOWER = [
 // ── FALLBACK_NEWS — updated automatically by GitHub Action every hour ──
 // DO NOT EDIT BELOW THIS LINE
 var FALLBACK_NEWS = [
-  {title:'-So much on the line- - Spurs struggles sets up final day relegation decider',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/videos/c2k24l214z8o?at_medium=RSS&at_campaign=rss',date:'May 20'},
+  {title:'How will Verstappen re-adapt to F1 after Nurburgring adventure?',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/how-will-max-verstappen-re-adapt-to-f1-after-nurburgring-24h-adventure/10822303/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 20'},
+  {title:'Dowman becomes youngest Premier League title winner',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cvgz1xwy39ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
+  {title:'World Cup player signs petition calling for protection from extreme heat',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/articles/cjepzgvegk3o?at_medium=RSS&at_campaign=rss',date:'May 20'},
   {title:'Why don-t drivers enter other series like Verstappen? F1 Q&A',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/c9d367vg7wdo?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'How GM tech accelerated Cadillac-s F1 entry',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/how-gm-tech-accelerated-cadillacs-f1-entry/10822240/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 19'},
   {title:'Boats, fire and a TikTok song - inside Arsenal-s title win',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c9v3jx1jmrwo?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'Title despair & Guardiola going - 24 hours of pain for Man City',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c78q300ejz4o?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'The key moments that decided the Premier League title race',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cx21j2nj8z1o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Tottenham lose at Chelsea to take relegation fight to final day',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/videos/cze2r13e0jjo?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'Bournemouth in Europe for first time -  but Champions League still on',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn0p96pxy34o?at_medium=RSS&at_campaign=rss',date:'May 19'},
-  {title:'Women-s coach given lifetime ban for secret filming',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cm2p1pl13j0o?at_medium=RSS&at_campaign=rss',date:'May 19'},
+  {title:'Tottenham lose at Chelsea to take relegation fight to final day',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/videos/cze2r13e0jjo?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'Southend sack Maher two days after Wembley win',src:'BBC Sport',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cvgz8vglrm2o?at_medium=RSS&at_campaign=rss',date:'May 19'},
   {title:'Chelsea 2-1 Tottenham: Premier League survival fight goes to final day – as it happened',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/chelsea-v-tottenham-premier-league-live-west-ham',date:'May 19'},
   {title:'Arsenal crowned Premier League champions for first time in 22 years – as it happened',src:'Guardian PL',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
@@ -92,7 +93,6 @@ var FALLBACK_NEWS = [
   {title:'Will F1 go back to the future with its engines?',src:'BBC F1',cat:'F1',link:'https://www.bbc.com/sport/formula1/articles/c2e2zmglvp9o?at_medium=RSS&at_campaign=rss',date:'May 14'},
   {title:'F1: Chequered Flag',src:'BBC F1',cat:'F1',link:'https://www.bbc.co.uk/sounds/play/p0nl0lfk?at_medium=RSS&at_campaign=rss',date:'May 14'},
   {title:'Brown writes to FIA over Mercedes-Alpine ownership concerns',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/zak-brown-takes-fia-fight-over-mercedes-alpine-f1-talks-public/10820815/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 14'},
-  {title:'Why Haas fears loss of ground to Alpine in F1-s upper-midfield battle',src:'Autosport',cat:'F1',link:'https://www.autosport.com/f1/news/why-haas-fears-loss-of-ground-to-alpine-in-f1s-upper-midfield-battle/10820502/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 14'},
   {title:'PSG are deserved Ligue 1 champions but Lens put up an admirable fight | Raphaël Jucobin',src:'Guardian L1',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/14/psg-ligue-1-champions-lens-pierre-sage-coupe-de-france',date:'May 14'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
