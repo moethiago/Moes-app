@@ -1,3 +1,8 @@
+// ── CORE.JS ─────────────────────────────────────────────
+// Handles: init, clock, tab switching, pull to refresh
+// Depends on: nothing
+// Safe to edit without affecting feed/sports/health
+
 document.addEventListener('DOMContentLoaded', function() {
   try { window.foodLog = JSON.parse(localStorage.getItem('m_food') || '[]'); } catch(e) { window.foodLog = []; }
   try { window.setLog  = JSON.parse(localStorage.getItem('m_sets') || '[]'); } catch(e) { window.setLog  = []; }
@@ -12,6 +17,8 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
   }, 500);
+
+  initPullToRefresh();
 });
 
 function startClock() {
@@ -32,4 +39,45 @@ function switchTab(tab) {
     if (btn)   btn.classList.toggle('active',   t === tab);
   });
   document.getElementById('scroll-wrap').scrollTop = 0;
+}
+
+function initPullToRefresh() {
+  var scrollWrap = document.getElementById('scroll-wrap');
+  if (!scrollWrap) return;
+
+  // Create indicator
+  var indicator = document.createElement('div');
+  indicator.className = 'ptr-indicator';
+  indicator.innerHTML = '<div class="ptr-spinner"></div>';
+  document.getElementById('app').appendChild(indicator);
+
+  var startY   = 0;
+  var pulling  = false;
+  var THRESHOLD = 60;
+
+  scrollWrap.addEventListener('touchstart', function(e) {
+    if (scrollWrap.scrollTop === 0) {
+      startY  = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  scrollWrap.addEventListener('touchmove', function(e) {
+    if (!pulling) return;
+    var dist = e.touches[0].clientY - startY;
+    if (dist > 10) {
+      indicator.classList.add('visible');
+    }
+  }, { passive: true });
+
+  scrollWrap.addEventListener('touchend', function(e) {
+    if (!pulling) return;
+    pulling = false;
+    var dist = e.changedTouches[0].clientY - startY;
+    if (dist > THRESHOLD) {
+      location.reload(true);
+    } else {
+      indicator.classList.remove('visible');
+    }
+  }, { passive: true });
 }
