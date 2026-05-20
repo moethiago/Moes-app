@@ -28,8 +28,3 @@
 .ticker-track{display:flex;white-space:nowrap;width:max-content;animation:tickerScroll 35s linear infinite}
 @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .ticker-item{padding:0 20px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--txt-secondary);display:inline-flex;align-items:center;gap:6px;border-right:1px solid var(--border);flex-shrink:0}
-
-/* ── PULL TO REFRESH ─────────────────────────────────── */
-.ptr-indicator{position:absolute;top:-50px;left:50%;transform:translateX(-50%);width:32px;height:32px;border-radius:50%;background:var(--bg-raised);border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;transition:opacity 0.2s;opacity:0;z-index:999}
-.ptr-indicator.visible{opacity:1}
-.ptr-spinner{width:16px;height:16px;border:2px solid var(--border-hi);border-top-color:var(--ig-blue);border-radius:50%;animation:spin 0.7s linear infinite}
