@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 import fetch_f1, fetch_football, fetch_bayern, fetch_spl, fetch_ksa
 
 MAX_AGE   = timedelta(days=7)
-MIN_SCORE = 3
+MIN_SCORE = 2
 NOW       = datetime.now(timezone.utc)
 
 all_items = []
