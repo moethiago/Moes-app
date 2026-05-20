@@ -1,17 +1,16 @@
 // ── CORE.JS ─────────────────────────────────────────────
-// Handles: init, clock, tab switching
-
 document.addEventListener('DOMContentLoaded', function() {
   try { window.foodLog = JSON.parse(localStorage.getItem('m_food') || '[]'); } catch(e) { window.foodLog = []; }
   try { window.setLog  = JSON.parse(localStorage.getItem('m_sets') || '[]'); } catch(e) { window.setLog  = []; }
 
   startClock();
-  try { renderFood();         } catch(e) { console.warn('health:food', e); }
-  try { renderSets();         } catch(e) { console.warn('health:sets', e); }
-  try { startCountdown();     } catch(e) { console.warn('sports:countdown', e); }
-  try { renderNewsFeed();     } catch(e) { console.warn('feed:render', e); }
-  try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
-  try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
+  try { renderFood();               } catch(e) { console.warn('health:food', e); }
+  try { renderSets();               } catch(e) { console.warn('health:sets', e); }
+  try { initHealthInputListeners(); } catch(e) { console.warn('health:inputs', e); }
+  try { startCountdown();           } catch(e) { console.warn('sports:countdown', e); }
+  try { renderNewsFeed();           } catch(e) { console.warn('feed:render', e); }
+  try { loadFootballScores();       } catch(e) { console.warn('sports:football', e); }
+  try { loadF1Data();               } catch(e) { console.warn('sports:f1', e); }
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
   }, 500);
