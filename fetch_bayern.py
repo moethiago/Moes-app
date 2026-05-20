@@ -4,9 +4,9 @@ from email.utils import parsedate_to_datetime
 
 SOURCES = [
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'src':'Sports Mole Bayern'},
-  {'url':'https://www.dailymail.co.uk/sport/football/index.rss',        'src':'Daily Mail Bayern'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bayern'},
-  {'url':'https://fcbayern.com/en/api/rss/contentlists/news',           'src':'Bayern Official', 'timeout':15},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Bayern'},
+  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Bayern'},
 ]
 
 DEDICATED = ['Sports Mole Bayern']
@@ -27,9 +27,8 @@ def fetch(max_age, now, min_score):
     items = {}
     for src in SOURCES:
         try:
-            timeout = src.get('timeout', 10)
             req = urllib.request.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(req, timeout=10) as r:
                 root = ET.fromstring(r.read())
             node = root.find('channel') or root
             is_dedicated = src['src'] in DEDICATED
