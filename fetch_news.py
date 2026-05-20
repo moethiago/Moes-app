@@ -3,39 +3,38 @@ from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 
 CHANNELS = [
-  # F1 — working
-  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',              'src':'BBC F1',          'cat':'F1'},
-  {'url':'https://www.autosport.com/rss/f1/news/',                        'src':'Autosport',       'cat':'F1'},
+  # F1
+  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',             'src':'BBC F1',          'cat':'F1'},
+  {'url':'https://www.autosport.com/rss/f1/news/',                       'src':'Autosport',       'cat':'F1'},
 
-  # Football — working sources only, LaLiga 404 replaced
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',              'src':'BBC Sport',        'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/premierleague/rss',       'src':'Guardian PL',      'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/serieafootball/rss',      'src':'Guardian Serie A', 'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'src':'Guardian Bund',    'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/ligue1football/rss',      'src':'Guardian L1',      'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/laliga/rss',              'src':'Guardian LaLiga',  'cat':'FOOTBALL'},
-  {'url':'https://www.skysports.com/rss/11095',                          'src':'Sky Sports',       'cat':'FOOTBALL'},
+  # Football
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Sport',        'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/premierleague/rss',      'src':'Guardian PL',      'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/serieafootball/rss',     'src':'Guardian Serie A', 'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bund',    'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/ligue1football/rss',     'src':'Guardian L1',      'cat':'FOOTBALL'},
+  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Sports',       'cat':'FOOTBALL'},
 
-  # Bayern — official timed out, using reliable alternatives
-  {'url':'https://www.bavarianfootballworks.com/rss/current.xml',        'src':'Bavarian FW',      'cat':'BAYERN'},
-  {'url':'https://bulinews.com/rss',                                      'src':'Bulinews',         'cat':'BAYERN', 'filter':'Bayern'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'src':'Guardian Bayern',  'cat':'BAYERN', 'filter':'Bayern'},
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',              'src':'BBC Bayern',       'cat':'BAYERN', 'filter':'Bayern'},
+  # Bayern — filter on Bayern OR Munich OR FCB
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bayern',  'cat':'BAYERN', 'filter':'Bayern|Munich|FCB|Kompany|Neuer|Musiala|Kane|Kimmich|Sane|Davies'},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'src':'BBC Bayern',       'cat':'BAYERN', 'filter':'Bayern|Munich|FCB|Kompany|Neuer|Musiala|Kane|Kimmich'},
+  {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Bayern',       'cat':'BAYERN', 'filter':'Bayern|Munich|FCB|Kompany|Neuer|Musiala|Kane|Kimmich'},
 
-  # Saudi Football — Arab News subpath fixed
-  {'url':'https://www.arabnews.com/cat/5/rss.xml',                       'src':'Arab News Sport',  'cat':'SPL'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'src':'Saudi Gazette',    'cat':'SPL'},
+  # Saudi Football
+  {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'src':'Arab News Sport',  'cat':'SPL'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'src':'Saudi Gazette',    'cat':'SPL'},
 
-  # Saudi Major News — fixed URLs
-  {'url':'https://www.arabnews.com/rss.xml',                             'src':'Arab News',        'cat':'KSA'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'src':'Saudi Gazette KSA','cat':'KSA'},
+  # Saudi Major News
+  {'url':'https://www.arabnews.com/rss.xml',                            'src':'Arab News',        'cat':'KSA'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'src':'Saudi Gazette KSA','cat':'KSA'},
 ]
 
-F1_JUNK       = re.compile(r'motogp|moto gp|indycar|isle of man|nascar|wrc|rally|superbike|rugby|cricket|tennis|golf|boxing|premier league|bundesliga|serie a|ligue 1|world cup player|petition', re.I)
+F1_JUNK       = re.compile(r'motogp|moto gp|indycar|isle of man|nascar|wrc|rally|superbike|rugby|cricket|tennis|golf|boxing|premier league|bundesliga|serie a|ligue 1|petition|q&a|how gm|cadillac', re.I)
 FOOTBALL_KEEP = re.compile(r'sack(ed)?|fired|resign|transfer|sign(ed|ing)?|injur|suspend|ban(ned)?|red card|\btitle\b|champion|relegat|derb|match report|\bwin(s)?\b|\bloss\b|defeat|final|semifinal|playoff|expel', re.I)
-FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|key moments|24 hours of', re.I)
+FOOTBALL_JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of|talking points|gallery|photo|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|key moments|24 hours of|boats|tiktok', re.I)
 BAYERN_JUNK   = re.compile(r'women|youth|reserve|u17|u19|u21|amateure', re.I)
-SPL_JUNK      = re.compile(r'cricket|rugby|tennis|golf|boxing|motorsport|formula|f1', re.I)
+SPL_KEEP      = re.compile(r'al hilal|al nassr|al ittihad|al ahli|saudi|spl|pro league|transfer|sign|sack|injur|ban|title|champion|ronaldo|neymar|benzema|mane|manager|coach', re.I)
+SPL_JUNK      = re.compile(r'cricket|rugby|tennis|golf|boxing|formula|f1|motogp', re.I)
 KSA_KEEP      = re.compile(r'decree|royal|minister|giga|neom|vision 2030|pif|\binvest|\bregulat|reform|\bgdp\b|economic|infrastructure|launch|announce|billion|sovereign|market|\bipo\b|fund|policy|project', re.I)
 KSA_JUNK      = re.compile(r'ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf', re.I)
 
@@ -73,11 +72,13 @@ def fingerprint(title):
     return found
 
 def is_high_impact(title, cat, filt=None):
-    if filt and filt.lower() not in title.lower(): return False
+    if filt:
+        pattern = re.compile(filt, re.I)
+        if not pattern.search(title): return False
     if cat == 'F1':       return not bool(F1_JUNK.search(title))
     if cat == 'FOOTBALL': return bool(FOOTBALL_KEEP.search(title)) and not bool(FOOTBALL_JUNK.search(title))
     if cat == 'BAYERN':   return not bool(BAYERN_JUNK.search(title))
-    if cat == 'SPL':      return not bool(SPL_JUNK.search(title))
+    if cat == 'SPL':      return bool(SPL_KEEP.search(title)) and not bool(SPL_JUNK.search(title))
     if cat == 'KSA':      return bool(KSA_KEEP.search(title)) and not bool(KSA_JUNK.search(title))
     return True
 
