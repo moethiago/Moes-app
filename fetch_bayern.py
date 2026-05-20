@@ -11,14 +11,18 @@ SOURCES = [
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'src':'Guardian Bayern'},
 ]
 
-MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller|coman|tel|pavlovic|laimer|upamecano', re.I)
+# For dedicated Bayern feeds (Bavarian FW, Sports Mole) — trust the feed, no MUST
+# For general feeds (BBC, Sky, Guardian, Daily Mail) — require Bayern keyword
+DEDICATED = ['Bavarian FW', 'Sports Mole Bayern']
+
+MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller|coman|tel|pavlovic|laimer|upamecano|allianz arena', re.I)
 HIGH = re.compile('transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title|deal|agree|resign', re.I)
-MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|bid|win|loss|defeat|goal|result', re.I)
+MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|bid|win|loss|defeat|goal|result|match', re.I)
 JUNK = re.compile('women|youth|reserve|u17|u19|u21|amateur', re.I)
 
-def score(title):
+def score(title, is_dedicated):
     if JUNK.search(title): return 0
-    if not MUST.search(title): return 0
+    if not is_dedicated and not MUST.search(title): return 0
     s = 1
     if HIGH.search(title): s += 5
     if MED.search(title):  s += 2
@@ -32,6 +36,7 @@ def fetch(max_age, now, min_score):
             with urllib.request.urlopen(req, timeout=10) as r:
                 root = ET.fromstring(r.read())
             node = root.find('channel') or root
+            is_dedicated = src['src'] in DEDICATED
             count = 0
             for item in node.findall('item'):
                 if count >= 10: break
@@ -46,7 +51,7 @@ def fetch(max_age, now, min_score):
                 except:
                     dt = now
                 if (now - dt) > max_age: continue
-                s = score(title)
+                s = score(title, is_dedicated)
                 if s < min_score: continue
                 key = re.sub(r'\W+','',title.lower())[:60]
                 if key not in items:
