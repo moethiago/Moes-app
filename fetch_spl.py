@@ -3,14 +3,17 @@ from datetime import timezone
 from email.utils import parsedate_to_datetime
 
 SOURCES = [
-  {'url':'https://www.arabnews.com/cat/5/rss.xml', 'src':'Arab News Sport'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',  'src':'Saudi Gazette'},
+  {'url':'https://www.arabnews.com/cat/5/rss.xml',          'src':'Arab News Sport'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',           'src':'Saudi Gazette'},
+  {'url':'https://www.90min.com/feed',                      'src':'90min SPL'},
+  {'url':'https://www.caughtoffside.com/feed/',             'src':'CaughtOffside SPL'},
+  {'url':'https://sportslens.com/feed/',                    'src':'Sportslens SPL'},
 ]
 
-MUST = re.compile('al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|saudi|spl|pro league|ronaldo|neymar|benzema|mane|mitrovic|brozovic|kante|milinkovic', re.I)
-HIGH = re.compile('transfer|signed|signing|sacked|ban|suspended|injur|champion|title|relegat|derby|disciplin|ruling', re.I)
-MED  = re.compile('win|loss|defeat|match|result|contract|announce|manager|coach', re.I)
-JUNK = re.compile('cricket|rugby|tennis|golf|boxing|formula|f1|motogp|hockey', re.I)
+MUST = re.compile('al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|al ettifaq|al fayha|saudi|spl|pro league|roshn|ronaldo|neymar|benzema|mane|mitrovic|brozovic|kante|milinkovic|malcom|firmino', re.I)
+HIGH = re.compile('transfer|signed|signing|sacked|ban|suspended|injur|champion|title|relegat|derby|disciplin|ruling|contract|announce', re.I)
+MED  = re.compile('win|loss|defeat|match|result|manager|coach|goal|score', re.I)
+JUNK = re.compile('cricket|rugby|tennis|golf|boxing|formula|f1|motogp|hockey|basketball|nba|nfl', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
