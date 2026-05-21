@@ -102,20 +102,39 @@
         </div>
       </div>
 
-      <!-- LIVE FOOTBALL SCORES — ScoreAxis real-time widget -->
+      <!-- LIVE FOOTBALL — SportBusy with league tabs -->
       <p class="section-label" style="padding-left:14px;">Live Football</p>
-      <div style="padding:0 14px 10px;" id="football-scores-container">
-        <div class="scoreaxis-widget" style="width:auto;height:auto;font-size:13px;background-color:#0d0f18;color:#eeeef2;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
-          <script src="https://widgets.scoreaxis.com/api/football/livescores/62321940bf1fa71a67215906?lang=en&timezone=Asia%2FRiyadh&leagues=premier_league%2Cla_liga%2Cserie_a%2Cbundesliga%2Cligue_1%2Cchampions_league&dateRange=today&header=1&links=1&font=heebo&fontSize=13&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230d0f18&textColor=%23eeeef2&linkColor=%238a8fa8&borderColor=%23ffffff0f&tabColor=%231a1d2a" async></script>
-        </div>
+      <div class="league-tab-row">
+        <button class="league-tab active" onclick="switchLeague('epl',this)">PL</button>
+        <button class="league-tab" onclick="switchLeague('la-liga',this)">LaLiga</button>
+        <button class="league-tab" onclick="switchLeague('serie-a',this)">Serie A</button>
+        <button class="league-tab" onclick="switchLeague('bundesliga',this)">Bund</button>
+        <button class="league-tab" onclick="switchLeague('ligue-1',this)">L1</button>
+        <button class="league-tab" onclick="switchLeague('uefa-champions-league',this)">UCL</button>
+      </div>
+      <div style="padding:0 14px 10px;">
+        <iframe
+          id="football-iframe"
+          src="https://www.sportbusy.com/embed?league=epl&theme=dark"
+          width="100%"
+          height="480"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Live Football Scores">
+        </iframe>
       </div>
 
-      <!-- SPL STANDINGS — ScoreAxis real-time widget -->
+      <!-- SPL STANDINGS -->
       <p class="section-label" style="padding-left:14px;">Saudi Pro League</p>
       <div style="padding:0 14px 20px;">
-        <div class="scoreaxis-widget" style="width:auto;height:auto;font-size:13px;background-color:#0d0f18;color:#eeeef2;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
-          <script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?lang=en&teamLogo=1&tableLines=0&homeAway=0&header=1&position=1&goals=0&gamesCount=1&diff=1&winCount=0&drawCount=0&loseCount=0&lastGames=0&points=1&teamsLimit=all&links=1&font=heebo&fontSize=13&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230d0f18&textColor=%23eeeef2&linkColor=%238a8fa8&borderColor=%23ffffff0f&tabColor=%231a1d2a" async></script>
-        </div>
+        <iframe
+          src="https://www.sportbusy.com/embed/standings?league=saudi-pro-league&theme=dark"
+          width="100%"
+          height="480"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Saudi Pro League Standings">
+        </iframe>
       </div>
 
     </div>
@@ -197,7 +216,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/feed.js?v=1779389776"></script>
+<script src="js/feed.js?v=1779387366"></script>
 <script src="js/sports.js"></script>
 <script src="js/health.js"></script>
 <script src="js/core.js"></script>
