@@ -63,11 +63,12 @@ var TOPICS_LOWER = [
 // ── FALLBACK_NEWS - updated automatically by GitHub Action every hour ──
 // DO NOT EDIT BELOW THIS LINE
 var FALLBACK_NEWS = [
-  {title:'FA opens Southampton investigation over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/crmplprldl8o?at_medium=RSS&at_campaign=rss',date:'May 21'},
   {title:'Neuer, 40, reverses retirement to be Germany\'s first-choice World Cup keeper',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c775kgzdmzgo?at_medium=RSS&at_campaign=rss',date:'May 21'},
   {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
-  {title:'Arsenal crowned Premier League champions for first time in 22 years',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
-  {title:'Beers with Prince William, a broken finger and CL next? Villa\'s Europa triumph!',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13546486/aston-villa-win-europa-league',date:'May 21'}
+  {title:'Arsenal crowned Premier League champions for first time in 22 years as it happened',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
+  {title:'Arsenal crowned Premier League champions after Manchester City draw',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/arsenal-premier-league-champions-manchester-city-bournemouth',date:'May 19'},
+  {title:'Beers with Prince William, a broken finger and CL next? Villa\'s Europa triumph!',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13546486/aston-villa-win-europa-league-inside-unai-emerys-latest-european-triumph-including-emiliano-martinezs-broken-finger-and-beers-with-prince-william',date:'May 21'},
+  {title:'Germany include Manuel Neuer in World Cup squad',src:'espn.com',cat:'FOOTBALL',link:'https://www.espn.com/soccer/story/_/id/48834116/germany-recall-manuel-neuer-retirement-world-cup-squad',date:'May 21'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
 
