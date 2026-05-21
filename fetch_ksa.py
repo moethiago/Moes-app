@@ -8,9 +8,9 @@ SOURCES = [
   {'url':'https://en.majalla.com/rss.xml',          'src':'Al Majalla'},
 ]
 
-HIGH = re.compile('decree|royal order|minister|giga|neom|pif|vision 2030|billion|sovereign fund|ipo|economic reform|gdp|policy|infrastructure|investment|aramco|megaproject|budget|reform|regulation', re.I)
-MED  = re.compile('announce|launch|confirm|fund|market|energy|oil|tourism|initiative|agreement|partnership|project|plan|strategy', re.I)
-JUNK = re.compile('ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf|weather|traffic|recipe|lifestyle|entertainment', re.I)
+HIGH = re.compile(r'decree|royal order|minister|giga|neom|pif|vision 2030|billion|sovereign fund|ipo|economic reform|gdp|policy|infrastructure|investment|aramco|megaproject|budget|regulation|trade deal', re.I)
+MED  = re.compile(r'announce|launch|confirm|fund|market|energy|oil|tourism|initiative|agreement|partnership|project|strategy', re.I)
+JUNK = re.compile(r'ceremony|ribbon|visit|tour|festival|fashion|celebrat|inaugurat|honorary|attend|sport|football|cricket|tennis|golf|weather|traffic|recipe|lifestyle|entertainment|pilgrims|hajj|pavilion|forum|children in gaza|injured children', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
@@ -46,7 +46,7 @@ def fetch(max_age, now, min_score):
                 key = re.sub(r'\W+','',title.lower())[:60]
                 if key not in items:
                     items[key] = {
-                        'title': title.replace("'","-").replace('"','-'),
+                        'title': title.replace("'","-").replace('"','-').replace("&#039;","-").replace("&amp;","and"),
                         'src':   src['src'],
                         'cat':   'KSA',
                         'link':  link.replace("'","%27"),
