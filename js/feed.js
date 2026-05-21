@@ -5,8 +5,8 @@
 var currentFilter = 'ALL';
 var parsedStoriesCache = [];
 var tickerTitles = [];
-var tickerIndex = 0;
-var tickerTimer = null;
+var tickerIndex  = 0;
+var tickerTimer  = null;
 
 var MASTER_CHANNELS = [
   // F1 - dedicated feeds only
@@ -63,33 +63,11 @@ var TOPICS_LOWER = [
 // ── FALLBACK_NEWS - updated automatically by GitHub Action every hour ──
 // DO NOT EDIT BELOW THIS LINE
 var FALLBACK_NEWS = [
-  {title:'Ocon denies fabricated rumours of falling out with Haas boss',src:'skysports.com',cat:'F1',link:'https://www.skysports.com/f1/live-blog/12433/12466779/f1-news-rumours-and-gossip-formula-1-latest-updates-on-teams-driver-transfer-market-and-contracts',date:'May 21'},
-  {title:'FIA confirms lowest energy recharge limit for Canada qualifying',src:'racefans.net',cat:'F1',link:'https://www.racefans.net/2026/05/21/fia-confirms-lowest-energy-recharge-limit-yet-for-qualifying-at-montreal/',date:'May 21'},
-  {title:'Williams adds McLaren COO to F1 personnel team',src:'racer.com',cat:'F1',link:'https://racer.com/2026/05/21/williams-f1-adds-new-staff-including-mclaren-coo-thynne',date:'May 21'},
-  {title:'Hamilton says he is very happy at Ferrari',src:'gptoday.net',cat:'F1',link:'https://www.gptoday.net/en/news/f1/295744/hamilton-says-he-is-very-happy-at-ferrari-and-pushes-back-on-exit-rumours?utm_source=other&utm_medium=rss',date:'May 21'},
-  {title:'Williams sign four senior staff from McLaren, Mercedes and Alpine',src:'motorsport.com',cat:'F1',link:'https://www.motorsport.com/f1/news/williams-poaches-key-leaders-from-mclaren-mercedes-alpine/10822589/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=www',date:'May 21'},
-  {title:'Three Ellas advance through McLaren F1 ranks',src:'bbc.com',cat:'F1',link:'https://www.bbc.com/news/articles/c172x8xg8k5o?at_medium=RSS&at_campaign=rss',date:'May 21'},
-  {title:'Jurrien Timber hopeful of recovery for Champions League final',src:'standard.co.uk',cat:'FOOTBALL',link:'https://www.standard.co.uk/sport/football/timber-injury-latest-champions-league-b1283193.html',date:'May 21'},
-  {title:'Inter Miami progressing in talks to sign Casemiro',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/live-blog/11095/12476234/transfer-centre-live-football-transfer-news-updates-and-rumours',date:'May 21'},
-  {title:'Casemiro leaves Manchester United as Michael Carrick confirms exit',src:'independent.co.uk',cat:'FOOTBALL',link:'https://www.independent.co.uk/sport/football/michael-carrick-brazil-manchester-real-madrid-nottingham-forest-b2981343.html',date:'May 21'},
   {title:'FA opens Southampton investigation over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/crmplprldl8o?at_medium=RSS&at_campaign=rss',date:'May 21'},
-  {title:'Casemiro leaves Manchester United, Carrick confirms exit',src:'independent.co.uk',cat:'FOOTBALL',link:'https://www.independent.co.uk/sport/football/michael-carrick-brazil-manchester-real-madrid-nottingham-forest-b2981343.html',date:'May 21'},
-  {title:'Casemiro leaves Manchester United as Carrick confirms early exit',src:'mirror.co.uk',cat:'FOOTBALL',link:'https://www.mirror.co.uk/sport/football/news/casemiro-man-utd-brighton-exit-37189232',date:'May 21'},
-  {title:'Bayern Munich considering move for Bisseck',src:'google.news',cat:'BAYERN',link:'https://news.google.com/rss/articles/CBMidEFVX3lxTE1QMGJXQTZMYXpHXzFLNFlYcXFIRmYtVVdTU0tzTTVyWVdPUFRmV0ltQ21TdDFtUGo1TE83ZlQ2d1loeEg5VF80WDYwMjBSOGxObHViSUpTS3BPYlVxUlVaYnpMMGtnbGFoX19WOEpoWXYtRFlT0gF6QVVfeXFMTWVVc1lMb09jb25QOXIyNkdKMFBSVlo2cnh0aGx5R1BHTktwSzRha1AxZ050cmZJZ1VIRWNZNEQ1ek9tNjZUOEhvM2pTLUlZdjdwcVJka2ZLWVVGckREVGo2Qm9CNW9XMU0wU0ZKOHh1RGJDRzhsZ2p2YlE?oc=5',date:'May 21'},
-  {title:'Bayern Munich vs Stuttgart: DFB-Pokal final preview and team news',src:'google.news',cat:'BAYERN',link:'https://news.google.com/rss/articles/CBMie0FVX3lxTE56dEdrdWgweGtKQURhVWw3QU1hNUhXY2xjMkRWNVh6WFpHYkF3anRIRkpjT1FrMDREVmhwMWNHTGdoUGVfN2YyNHpvSGpHSm1QY1lJTzNrSGRBakFNdHZLTUJmb2VIYTFEWTNzemsyQmNEY1NxTkRudmVrUQ?oc=5',date:'May 21'},
-  {title:'Bayern Munich and Stuttgart compared ahead of DFB Cup final',src:'bundesliga.com',cat:'BAYERN',link:'https://www.bundesliga.com/en/bundesliga/news/bayern-and-stuttgart-compared-dfb-cup-final-kane-olise-undav-37471',date:'May 21'},
-  {title:'Bayern Munich president says Kompany is unsellable and upgrade for club',src:'google.news',cat:'BAYERN',link:'https://news.google.com/rss/articles/CBMirAFBVV95cUxNRUFwQy1LLS16bmdLWnFfSU1HSy03QXRMTHhCTWF0cEtHaEdheGVsek91ZnNmVi1VT0pqdEwyV2g0ZW5RcTNUY1FLVG5NYjB6dVVodTc4b19nNUFiOGVJeE5xRldnRXdrcmZfOGloMkxJUHR3aklPbkRkREE5cVJkSXdueExvVk1tWEZac3ByeG5ZczR1LVRSV1FGU1IxZUpaa1I2NU1aUmpXOEZ6?oc=5',date:'May 21'},
-  {title:'Bayern Munich\'s Bischof discusses DFB Cup hopes and Bundesliga title',src:'bundesliga.com',cat:'BAYERN',link:'https://www.bundesliga.com/en/bundesliga/news/tom-bischof-interview-bayern-munich-dfb-cup-final-title-transfer-37491',date:'May 21'},
-  {title:'Bayern Munich\'s Stanii: Everyone thinking about next title',src:'bundesliga.com',cat:'BAYERN',link:'https://www.bundesliga.com/en/bundesliga/news/josip-stanisic-interview-bayern-munich-kompany-neuer-world-cup-croatia-37495',date:'May 21'},
-  {title:'Al Hilal vs Al Fayha: Saudi Pro League title race Matchday 34',src:'google.news',cat:'SPL',link:'https://news.google.com/rss/articles/CBMi6AFBVV95cUxPcEt2djI2UGJzLVdhcEZFMlZhSFhoV0FEQnRfekxGbEhOSUs4bm9halZ5ck9oaEdRSTB3TS1wS3lDWFpnb0Y2Yk02bXMxMUZMbzZBUkxRT2VRdHBiNWRjUG1QZnEzZVBvdE5MRWRqaDBpRFpfV01nRDIwVHZyWjJsWk5FQTA4Ti15Ui1DWDR2VVhBUjBfMEdCTzI1eFRfckJVQWRSVmhabWtqVXBSc3FobjliYlBidUZhc1lWMDF0ODlzdTBBM3lzbGdEdW9iazg3dE03U1VaY19ueXZxMFg4aUxlUUlmbmtl?oc=5',date:'May 21'},
-  {title:'Al Nassr vs Damac: Saudi Pro League title race implications',src:'google.news',cat:'SPL',link:'https://news.google.com/rss/articles/CBMi3AFBVV95cUxPT1U4SzlKemZIVXlSSkFfbHBuYjNnZFV1SzA4MnZwRG5jX2dmNWZYQzJFc0kwOVZoci1MSG15dXB6TGF6TTVkNlBENGJxVlduT0tsTWRoQ1IxNjhfU19aN0lsTkJiTGJ6V3RCOGUtS3JXYVJURUJnMDRROUtURWg5YkxrTjY4WkNnS0JfMWIwcDBRcS1CYk5CZmFKWHNGRG9qYXZmVEh0dlNhQ0ltTmttdnFacF90dXllRjAyR280MTRRT0F6bGVyOVFXQV81eUhSeHl0NDU5d002WlNo0gHgAUFVX3lxTE02UHhOYXM4UVpSdExlMjM1Mmx3Q3BRUVJZWGdadW5acTdpNnRvTUhiRVpQeGhUNndBQVgxX2ZkN1NSZ19TeFNVUkVOdkIyVGtfSVN1LXpKYkJJbnEtd1NyTDZmWWRNSS1oeEV5anc5SHhhYzAwVzk4SmFITVdlVW96STJScWZfS3laRFV5bHVEU2JtZkpMcC1ScS1xZTJndmdtVDcwWFpaZzNYY0I1dEFldW96S3hZQXpGUzlLcmJoYXBhdkJKd2NuNU9qUTVFY3pYODhvcDExNWh6RzdIU1hQ?oc=5',date:'May 21'},
-  {title:'Al Nassr manager Jorge Jesus targets Saudi Pro League titles',src:'google.news',cat:'SPL',link:'https://news.google.com/rss/articles/CBMiugFBVV95cUxNbXpqTWxjS2JHX3JoLWFzejhpY0tPMGlNc1pJazBFM3MtWnlWelh1S3pwdXJ6cFhlUWYySGw4VU9QeU5raVdPV1dQUzJuQUhOWHBkQ2htMFoxMDV2aDFWRXQ1MTdVbDRKVktTdmtZVHBsdTFubE5DRjR1UXlpY0ZhcnNhcTBoV2xwaEtxMlR3cVloVmx5UzFFTmhsTXEtUkw0UkhlMVhYQmRIakI2MHlZcXRydkIwU0k3ZVE?oc=5',date:'May 21'},
-  {title:'Saudi Arabia, Britain sign deal to support injured Gaza children',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661487/saudi-arabia/saudi-arabia-britain-sign-deal-to-support-injured-children-in-gaza',date:'May 20'},
-  {title:'Saudi Arabia non-oil trade surplus with GCC reaches SR4.47 billion',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661486/saudi-arabia/saudi-arabias-non-oil-trade-surplus-with-gcc-countries-reaches-sr447-billion-in-february',date:'May 20'},
-  {title:'Heritage Commission unearths Abbasid-era gold jewelry in Qassim',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661485/saudi-arabia/heritage-commission-unearths-abbasid-era-gold-jewelry-in-qassim',date:'May 20'},
-  {title:'Saudi Arabia\'s non-oil trade surplus with GCC reaches SR4.47 billion in February',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661486/saudi-arabia/saudi-arabias-non-oil-trade-surplus-with-gcc-countries-reaches-sr447-billion-in-february',date:'May 20'},
-  {title:'Saudi operating revenue index rises 10.2 percent in March',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661481/saudi-arabia/gastat-102-rise-in-saudi-operating-revenue-index-in-march',date:'May 20'},
-  {title:'Saudi FM discusses improving relations with New Zealand, Nepal counterparts',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661479/saudi-arabia/saudi-fm-discusses-ways-to-improve-relations-in-call-with-new-zealand-nepal-counterparts',date:'May 20'}
+  {title:'Neuer, 40, reverses retirement to be Germany\'s first-choice World Cup keeper',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c775kgzdmzgo?at_medium=RSS&at_campaign=rss',date:'May 21'},
+  {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
+  {title:'Arsenal crowned Premier League champions for first time in 22 years',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
+  {title:'Beers with Prince William, a broken finger and CL next? Villa\'s Europa triumph!',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13546486/aston-villa-win-europa-league',date:'May 21'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
 
@@ -134,12 +112,32 @@ function setFeedFilter(cat, el) {
 }
 
 function timeAgo(val) {
-  if (typeof val === 'string') return val;
-  var diff = (Date.now() - val) / 1000;
-  if (diff < 60)    return 'just now';
-  if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
-  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-  return Math.floor(diff / 86400) + 'd ago';
+  // val is either a Unix timestamp (number) or a date string like "May 21"
+  var ts;
+  if (typeof val === 'number') {
+    ts = val;
+  } else {
+    // parse "May 21" style date string
+    try {
+      var year = new Date().getFullYear();
+      ts = Date.parse(val + ' ' + year);
+      if (isNaN(ts)) return val;
+    } catch(e) {
+      return val;
+    }
+  }
+  var diffMs  = Date.now() - ts;
+  var diffMin = Math.floor(diffMs / 60000);
+  var diffHr  = Math.floor(diffMs / 3600000);
+
+  if (diffMin < 1)  return 'just now';
+  if (diffMin < 60) return diffMin + 'm ago';
+  if (diffHr  < 24) return diffHr  + 'h ago';
+
+  // over 24h — show date only, no time
+  var d = new Date(ts);
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[d.getMonth()] + ' ' + d.getDate();
 }
 
 function boldEntities(text) {
@@ -151,11 +149,9 @@ function boldEntities(text) {
 
 function makeWireItem(title, src, timeVal, link) {
   return '<div class="wire-item" onclick="window.open(\'' + link + '\',\'_blank\')">'
-    + '<span class="wire-bullet">•</span>'
     + '<div class="wire-content">'
     +   '<p class="wire-headline">' + boldEntities(title) + '</p>'
     +   '<div class="wire-meta">'
-    +     '<span class="wire-source">' + src + '</span>'
     +     '<span class="wire-time">' + timeAgo(timeVal) + '</span>'
     +   '</div>'
     + '</div>'
