@@ -44,17 +44,17 @@ RSS_SOURCES = [
   {'url':'https://www.90min.com/posts.rss',                             'cat':'FOOTBALL'},
   {'url':'https://www.sportsmole.co.uk/football/rss.xml',               'cat':'FOOTBALL'},
   {'url':'https://www.givemesport.com/rss/football',                    'cat':'FOOTBALL'},
-  # Bayern — only sources that regularly name Bayern specifically
+  # Bayern
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
   {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',              'cat':'BAYERN'},
   {'url':'https://www.transfermarkt.co.uk/rss/news',                    'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'BAYERN'},
   {'url':'https://www.espn.com/espn/rss/soccer/news',                   'cat':'BAYERN'},
-  # Saudi Football — ONLY dedicated Arab/SPL sources
+  # Saudi Football — dedicated Arab/SPL sources only
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
   {'url':'https://www.middleeasteye.net/rss',                           'cat':'SPL'},
-  # Saudi News — dedicated sources only
+  # Saudi News
   {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
   {'url':'https://www.arabnews.com/economy/rss.xml',                    'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
@@ -86,6 +86,11 @@ REDDIT_SOURCES = [
   {'url':'https://www.reddit.com/r/saudiarabia/hot.json',                'cat':'KSA',      'min_score':200,  'min_comments':50},
 ]
 
+# categories where we show best available even if below threshold
+BEST_EFFORT_CATS = {'BAYERN', 'SPL', 'KSA'}
+MIN_SCORE        = 45
+BEST_EFFORT_MIN  = 20  # absolute floor — anything below this is genuinely worthless
+
 # ─────────────────────────────────────────────
 # READ EXISTING FEED
 # ─────────────────────────────────────────────
@@ -101,8 +106,8 @@ def read_existing_feed():
         if not match:
             print("No existing feed found")
             return []
-        raw   = match.group(1)
-        items = []
+        raw     = match.group(1)
+        items   = []
         pattern = re.compile(
             r"\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',date:'([^']*)'\}"
         )
@@ -115,7 +120,7 @@ def read_existing_feed():
                 'date':        m.group(5),
                 'source_type': 'existing',
                 'engagement':  0,
-                'ai_score':    60,
+                'ai_score':    0,  # existing stories must re-compete — no free pass
             })
         print("Existing feed: " + str(len(items)) + " stories loaded")
         return items
@@ -400,7 +405,14 @@ HIGH SCORE (70-100):
 - PIF acquires company
 - Royal decree issued
 
-LOW SCORE (1-30):
+MEDIUM SCORE (45-69):
+- Confirmed injury update (not season-ending)
+- Contract extension confirmed
+- Match result with major implications
+- Regulatory change confirmed
+- Major signing rumour from credible source
+
+LOW SCORE (1-44):
 - Match preview or prediction
 - How to watch
 - Fantasy tips
@@ -415,12 +427,11 @@ LOW SCORE (1-30):
 STRICT CATEGORY RULES — score 0 if story does not belong:
 - F1: Formula 1 ONLY
 - FOOTBALL: top 5 leagues or Champions League ONLY
-- BAYERN: must name FC Bayern Munich, or their players/manager explicitly
-- SPL: must name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League explicitly
-- KSA: Saudi economic/policy/government news ONLY — NOT football, NOT sport
+- BAYERN: must name FC Bayern Munich, or their players/manager explicitly (Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies, Goretzka)
+- SPL: must name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League explicitly — any other football team scores 0
+- KSA: Saudi economic/policy/government news ONLY — sport stories score 0
 
-If a story is assigned SPL but talks about Man United, Arsenal, or any non-Saudi team → score 0.
-If a story is assigned BAYERN but does not mention Bayern, Kompany, Kane, Musiala, Kimmich, etc → score 0.
+Reddit engagement in [brackets] is a fan interest signal — factor it in.
 
 Return ONLY a valid JSON array. Each item: {"idx": number, "score": number}
 Include every headline even if score is 0.
@@ -570,11 +581,18 @@ print("\n" + "=" * 50)
 print("STEP 4 — MERGE WITH EXISTING")
 print("=" * 50)
 
-MIN_SCORE  = 60
-passed_new = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
-print("New items passing threshold (" + str(MIN_SCORE) + "): " + str(len(passed_new)))
+# split new into passed and best-effort pools
+passed_new      = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
+best_effort_new = [i for i in scored_new if BEST_EFFORT_MIN <= i.get('ai_score',0) < MIN_SCORE]
 
-merged = deduplicate(existing_items + passed_new)
+print("New items passing MIN_SCORE (" + str(MIN_SCORE) + "): " + str(len(passed_new)))
+print("New items in best-effort pool (" + str(BEST_EFFORT_MIN) + "-" + str(MIN_SCORE-1) + "): " + str(len(best_effort_new)))
+
+# merge existing + passed new
+merged          = deduplicate(existing_items + passed_new)
+# keep best-effort pool separate for fallback use
+best_effort_all = deduplicate(best_effort_new)
+
 print("Total after merge: " + str(len(merged)))
 
 print("\n" + "=" * 50)
@@ -585,9 +603,24 @@ CATEGORIES  = ['F1','FOOTBALL','BAYERN','SPL','KSA']
 final_items = []
 
 for cat in CATEGORIES:
+    # primary: stories that passed MIN_SCORE
     cat_items = [i for i in merged if i['cat'] == cat and i.get('ai_score',0) >= MIN_SCORE]
     cat_items.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
     top = cat_items[:6]
+
+    # fallback for low-volume categories: fill up to 3 from best-effort pool
+    if len(top) < 3 and cat in BEST_EFFORT_CATS:
+        existing_titles = set(re.sub(r'\W+','',s['title'].lower())[:50] for s in top)
+        fallback = [
+            i for i in best_effort_all
+            if i['cat'] == cat
+            and re.sub(r'\W+','',i['title'].lower())[:50] not in existing_titles
+        ]
+        fallback.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
+        top += fallback[:3 - len(top)]
+        if fallback:
+            print(cat + ": used best-effort fallback (" + str(len(fallback[:3-len(cat_items)])) + " stories)")
+
     print(cat + ": " + str(len(top)) + " stories")
     for story in top:
         print("  [score:" + str(story.get('ai_score',0)) + "] [" + story['date'] + "] " + story['title'][:70])
