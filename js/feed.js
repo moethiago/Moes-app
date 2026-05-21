@@ -64,8 +64,8 @@ var FALLBACK_NEWS = [
   {title:'Neuer, 40, reverses retirement to be Germany-s first-choice World Cup keeper',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c775kgzdmzgo?at_medium=RSS&at_campaign=rss',date:'May 21'},
   {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
   {title:'Arsenal crowned Premier League champions for first time in 22 years - as it happened',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
-  {title:'Beers with Prince William, a broken finger and CL next? Villa-s Europa triumph!',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13546486/aston-villa-win-europa-league-inside-unai-emerys-latest-european-triumph-including-emiliano-martinezs-broken-finger-and-beers-with-prince-william',date:'May 21'},
-  {title:'Southampton-s play-off appeal dismissed - Hull to face Boro in final',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13544383/southamptons-appeal-against-championship-play-off-final-explusion-dismissed-after-spygate-scandal',date:'May 20'}
+  {title:'Arsenal crowned Premier League champions after Manchester City draw',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/arsenal-premier-league-champions-manchester-city-bournemouth',date:'May 19'},
+  {title:'Beers with Prince William, a broken finger and CL next? Villa-s Europa triumph!',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13546486/aston-villa-win-europa-league-inside-unai-emerys-latest-european-triumph-including-emiliano-martinezs-broken-finger-and-beers-with-prince-william',date:'May 21'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
 
@@ -141,10 +141,23 @@ function makeWireItem(title, src, timeVal, link) {
 function setTickerContent(titles) {
   var track = document.getElementById('ticker');
   if (!track || !titles.length) return;
-  var items = titles.slice(0, 10).map(function(t) {
-    return '<span class="ticker-item">• ' + t.substring(0, 80) + '</span>';
+
+  // Remove old animation, force reflow, then re-add to restart cleanly
+  track.style.animation = 'none';
+
+  var safe = titles.slice(0, 10).map(function(t) {
+    var text = t.substring(0, 80).replace(/&/g,'and').replace(/</g,'').replace(/>/g,'').replace(/"/g,'').replace(/'/g,'');
+    var span = document.createElement('span');
+    span.className = 'ticker-item';
+    span.textContent = '• ' + text;
+    return span.outerHTML;
   }).join('');
-  track.innerHTML = items + items;
+
+  track.innerHTML = safe + safe;
+
+  // Force reflow then restart animation
+  void track.offsetWidth;
+  track.style.animation = '';
 }
 
 function renderNewsFeed() {
@@ -158,7 +171,8 @@ function renderNewsFeed() {
 
   var shown = filtered.slice(0, 30);
   if (!shown.length) {
-    container.innerHTML = '<div class="empty-state">Tap REFRESH to load latest headlines</div>';
+    container.innerHTML = '<div class="empty-state">No stories in this category yet — check back soon</div>';
+    setTickerContent(source.slice(0,10).map(function(s){ return s.title; }));
     return;
   }
 
