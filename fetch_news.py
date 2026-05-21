@@ -238,12 +238,13 @@ def fetch_google_news(src, seen_titles):
 
 KEY_ENTITIES = [
     'hamilton','verstappen','norris','leclerc','russell','antonelli','piastri',
-    'alonso','sainz','perez','red bull','mclaren','ferrari','mercedes',
+    'alonso','sainz','perez','red bull','mclaren','ferrari','mercedes','williams',
     'arsenal','man city','liverpool','chelsea','tottenham','man united','newcastle',
     'real madrid','barcelona','atletico','dortmund','psg','juventus','inter','napoli',
+    'aston villa','southampton','man city',
     'al hilal','al nassr','al ittihad','al ahli',
     'ronaldo','benzema','mane','salah','haaland','mbappe','bellingham','kane',
-    'musiala','olise','kompany','kimmich',
+    'musiala','olise','kompany','kimmich','neuer','agrez','dembele',
     'vision 2030','pif','neom','aramco',
 ]
 
@@ -252,6 +253,8 @@ KEY_TOPICS = [
     'banned','ban','suspended','suspension','penalty','crash','dnf','pole',
     'contract','confirmed','title','champion','relegated','relegation','final',
     'expelled','cancelled','postponed','announced','deal','billion',
+    'sign','signs','win','wins','recall','expel','investigation','charges',
+    'verdict','poach','hire',
 ]
 
 def fingerprint(title):
@@ -270,7 +273,7 @@ def deduplicate(items):
             existing = seen_exact[key]
             if item.get('engagement',0) > existing.get('engagement',0):
                 existing['engagement'] = item['engagement']
-            if item['source_type'] in ('rss','google_news'):
+            if item.get('source_type','') in ('rss','google_news'):
                 existing['source'] = item['source']
             if item.get('ai_score',0) > existing.get('ai_score',0):
                 existing['ai_score'] = item['ai_score']
@@ -311,54 +314,47 @@ def score_batch(items, cat):
     cat_rules = {
         'F1':       'Formula 1 ONLY. Score 0 if not about F1.',
         'FOOTBALL': 'Top 5 leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) or Champions League ONLY. Score 0 for anything else.',
-        'BAYERN':   'Must explicitly name FC Bayern Munich or their players/manager (Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies, Goretzka). Score 0 otherwise.',
-        'SPL':      'Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League. Score 0 for ANY other football team or competition.',
-        'KSA':      'Saudi Arabia economic/government/policy news ONLY. Must be ABOUT Saudi Arabia specifically — not UK trade deals that mention Gulf, not general Middle East news. Score 0 for sport, ceremonies, tourism, Hajj.',
+        'BAYERN':   'Must explicitly name FC Bayern Munich or one of their current players or manager: Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies, Goretzka, Laimer, Upamecano, Kim, Tah, Bischof, Gnabry. Neuer IS a Bayern player. Score 0 if Bayern is not the primary subject.',
+        'SPL':      'Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League. Score 0 for ANY other football.',
+        'KSA':      'Saudi Arabia economic/government/policy news ONLY. Must be directly about Saudi Arabia. Score 0 for sport, UK trade deals, general Gulf news, ceremonies, tourism, Hajj.',
     }
 
-    prompt = """You are an extremely harsh news quality filter. Your job is to REJECT most stories.
+    prompt = """You are a brutally strict news quality filter for a breaking news app.
 
 Score these """ + cat + """ headlines 0-100.
 
-CATEGORY RULE (non-negotiable): """ + cat_rules.get(cat,'') + """
+CATEGORY RULE: """ + cat_rules.get(cat,'') + """
 
-AUTOMATIC 0 — reject immediately if headline contains any of these signals:
-- "outlines", "provides update", "timeline", "explains", "discusses"
+RULE 1 — ANONYMITY CAP: If the headline uses vague words instead of a real name, cap the score at 20.
+Vague words that trigger the cap: "hero", "star", "ace", "icon", "legend", "key man", "figure", "leader", "source", "insider", "senior figure", "key leader", "someone", "a player", "the player", "official"
+Examples:
+- "Aston Villa hero rejects transfer" → score MAX 20 (no name = anonymous)
+- "Arsenal star signs new contract" → score MAX 20 (no name)
+- "Emiliano Martinez rejects transfer" → normal scoring (real name given)
+- "Williams sign McLaren COO" → normal scoring (specific role named)
+
+RULE 2 — AUTOMATIC 0: Score 0 immediately if headline contains:
+- "outlines", "provides update", "explains", "discusses", "debate", "verdict on"
 - "could", "might", "may", "potential", "considering", "plotting", "eyeing", "linked"
-- "round-up", "roundup", "wrap", "digest", "notebook"
-- "how", "why", "what", "when", "where" at start of headline
+- "round-up", "roundup", "wrap", "digest", "notebook", "| The Verdict"
 - "ratings", "ranked", "ranking", "power ranking", "best", "worst"
 - "preview", "prediction", "tips", "fantasy"
-- "interview", "my goal", "my aim", "my sole aim", "speaks", "says", "believes", "feels", "thinks"
-- "report", "sources say", "according to", "rumour", "rumored"
-- "watch", "how to watch", "stream"
-- "reaction", "fans react"
-- "ready", "set to", "preparing", "gearing up", "upcoming"
-- story about wind tunnel, car development, technical updates, upgrades
+- "speaks", "says", "believes", "feels", "thinks", "hopes", "wants", "aims", "my goal", "my aim"
+- "sources say", "according to", "rumour", "rumored"
+- "how to watch", "stream"
+- "ready", "preparing", "gearing up", "ahead of", "set to", "ready to"
+- "upgrade", "wind tunnel", "car development", "technical update"
+- "weeks away", "days away", "close to", "soon", "expected to"
+- "long-awaited" — this signals old ongoing news not breaking news
 
-SCORE 70-100 only if ALL of these are true:
-- Something HAPPENED (past tense, confirmed fact)
-- It directly impacts a player, team, or league RIGHT NOW
-- Examples: player CONFIRMED injured/banned/transferred/sacked, title WON, club EXPELLED, ban ISSUED
+RULE 3 — CONFIRMED FACTS ONLY:
+Score 70-100: Something HAPPENED and is CONFIRMED — injury confirmed, transfer confirmed, sacking confirmed, title won, ban issued, club expelled
+Score 45-69: Official confirmed announcement with moderate impact
+Score 1-44: Confirmed but low impact
+Score 0: Anything else
 
-SCORE 45-69 if:
-- Confirmed news with moderate impact
-- Contract SIGNED (not rumoured)
-- Match result that decides something important
-- Official announcement from club or federation
-
-SCORE 1-44 if:
-- Interesting but not breaking
-- Confirmed but low immediate impact
-
-SCORE 0 if:
-- Fails category rule
-- Contains any automatic-0 signal
-- Speculation, rumour, opinion, preview, analysis, interview
-- Technical/development stories
-
-Return ONLY JSON array: [{"idx":0,"score":75},{"idx":1,"score":0}...]
-Be brutal. Most headlines should score 0.
+Return ONLY JSON: [{"idx":0,"score":75},{"idx":1,"score":0}...]
+Most headlines should score 0. Be brutal.
 
 Headlines:
 """ + '\n'.join(headlines)
@@ -446,24 +442,24 @@ def rewrite_titles(items):
 
 RULES:
 - State the FACT plainly — who did what
-- Remove clickbait, vagueness, and hype
-- Remove source attribution in title (no "- BBC", "- ESPN" etc)
+- Remove clickbait, vagueness, hype and filler words
+- Remove source suffixes like "- BBC", "- ESPN", "| The Verdict" etc
 - Maximum 12 words
 - No quotes around the title
 - Do not invent facts not in the original
-- If the original is already clear and direct, keep it as-is
+- If already clear and direct, keep as-is
+- Never use vague words like "hero", "star", "ace", "key man" — if no real name is in the original, keep the headline as-is
 
 EXAMPLES:
 "Williams poaches key leaders from McLaren, Mercedes, Alpine" → "Williams sign four senior staff from McLaren, Mercedes and Alpine"
-"Mercedes and McLaren ready key upgrades for Canada" → REMOVE — this is speculation, return original
-"Red Bull outlines timeline for new F1 wind tunnel" → REMOVE — return original unchanged
 "Manchester City weeks away from long-awaited verdict on 115 charges" → "Manchester City await verdict on 115 financial charges"
-"Mohamed Salah given lifeline in bid to avoid Saudi Pro League" → "Salah set to stay at Liverpool after contract talks progress"
 "Ousmane Dembele issues new injury update ahead of Champions League final" → "Dembele fit for Champions League final"
-"Why Manuel Neuers return for Germany at the FIFA World Cup 2026 is so important" → REMOVE — return original unchanged
+"Villa make history to win Europa League | The Verdict" → "Aston Villa win Europa League"
+"Aston Villa hero rejects transfer after two-year Europa League fight" → keep as-is (no real name to use)
+"FA opens Southampton investigation over Spygate" → keep as-is (already direct)
 
-Return ONLY a JSON array: [{"idx":0,"title":"rewritten title"},...]
-Include every headline. If a headline should not be changed, return it exactly as-is.
+Return ONLY JSON: [{"idx":0,"title":"rewritten title"},...]
+Include every headline.
 
 Headlines:
 """ + '\n'.join(indexed)
@@ -491,17 +487,17 @@ Headlines:
         text       = response['content'][0]['text']
         json_match = re.search(r'\[.*?\]', text, re.DOTALL)
         if not json_match:
-            print("Title rewrite: no valid JSON returned, keeping originals")
+            print("Title rewrite: no valid JSON — keeping originals")
             return items
 
-        rewrites  = json.loads(json_match.group())
+        rewrites    = json.loads(json_match.group())
         rewrite_map = {r['idx']: r['title'] for r in rewrites if 'title' in r}
         for i, item in enumerate(items):
             if i in rewrite_map and rewrite_map[i].strip():
                 old = item['title']
                 item['title'] = rewrite_map[i].strip()
                 if item['title'] != old:
-                    print("  REWRITE: " + old[:50] + " → " + item['title'][:50])
+                    print("  REWRITE: " + old[:55] + " → " + item['title'][:55])
         return items
 
     except Exception as e:
@@ -655,7 +651,10 @@ print("STEP 5b — TITLE REWRITING")
 print("=" * 50)
 
 final_items = rewrite_titles(final_items)
-print("Titles rewritten.")
+
+print("Re-deduplicating after rewrite...")
+final_items = deduplicate(final_items)
+print("Final after re-dedup: " + str(len(final_items)))
 
 print("\n" + "=" * 50)
 print("STEP 6 — OUTPUT")
