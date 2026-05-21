@@ -7,12 +7,17 @@ MIN_SCORE = 2
 NOW       = datetime.now(timezone.utc)
 
 def sanitize(text):
-    result = ''
+    text = text.replace("&#039;", "-")
+    text = text.replace("&amp;", "and")
+    text = text.replace("&quot;", "-")
+    text = text.replace("&lt;", "-")
+    text = text.replace("&gt;", "-")
+    result = ""
     for c in text:
         if ord(c) > 127:
-            result += '-'
-        elif c in ("'", '"', '\\', '\n', '\r'):
-            result += '-'
+            result += "-"
+        elif c in ("'", '"', "\\", "\n", "\r"):
+            result += "-"
         else:
             result += c
     return result
@@ -53,7 +58,6 @@ if updated == content:
 with open('js/feed.js', 'w') as f:
     f.write(updated)
 
-# Auto cache bust
 version = str(int(time.time()))
 with open('index.html', 'r') as f:
     html = f.read()
