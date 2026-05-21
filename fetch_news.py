@@ -44,27 +44,17 @@ RSS_SOURCES = [
   {'url':'https://www.90min.com/posts.rss',                             'cat':'FOOTBALL'},
   {'url':'https://www.sportsmole.co.uk/football/rss.xml',               'cat':'FOOTBALL'},
   {'url':'https://www.givemesport.com/rss/football',                    'cat':'FOOTBALL'},
-  # Bayern
+  # Bayern — only sources that regularly name Bayern specifically
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
   {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',              'cat':'BAYERN'},
-  {'url':'https://www.skysports.com/rss/11095',                         'cat':'BAYERN'},
-  {'url':'https://www.espn.com/espn/rss/soccer/news',                   'cat':'BAYERN'},
   {'url':'https://www.transfermarkt.co.uk/rss/news',                    'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'BAYERN'},
-  {'url':'https://www.mirror.co.uk/sport/football/rss.xml',             'cat':'BAYERN'},
-  {'url':'https://www.independent.co.uk/sport/football/rss',            'cat':'BAYERN'},
-  {'url':'https://www.givemesport.com/rss/football',                    'cat':'BAYERN'},
-  # Saudi Football
+  {'url':'https://www.espn.com/espn/rss/soccer/news',                   'cat':'BAYERN'},
+  # Saudi Football — ONLY dedicated Arab/SPL sources
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
-  {'url':'https://www.espn.com/espn/rss/soccer/news',                   'cat':'SPL'},
-  {'url':'https://www.skysports.com/rss/11095',                         'cat':'SPL'},
-  {'url':'https://www.transfermarkt.co.uk/rss/news',                    'cat':'SPL'},
-  {'url':'https://www.mirror.co.uk/sport/football/rss.xml',             'cat':'SPL'},
-  {'url':'https://www.independent.co.uk/sport/football/rss',            'cat':'SPL'},
   {'url':'https://www.middleeasteye.net/rss',                           'cat':'SPL'},
-  {'url':'https://www.givemesport.com/rss/football',                    'cat':'SPL'},
-  # Saudi News
+  # Saudi News — dedicated sources only
   {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
   {'url':'https://www.arabnews.com/economy/rss.xml',                    'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
@@ -76,16 +66,16 @@ RSS_SOURCES = [
 GOOGLE_NEWS_SOURCES = [
   {'q':'Formula 1 race penalty crash retirement',                        'cat':'F1'},
   {'q':'Formula 1 driver sacked fired banned suspended',                 'cat':'F1'},
-  {'q':'F1 transfer signing confirmed 2025 2026',                        'cat':'F1'},
+  {'q':'F1 transfer signing confirmed 2026',                             'cat':'F1'},
   {'q':'Premier League transfer confirmed sacked injury banned',         'cat':'FOOTBALL'},
   {'q':'La Liga Serie A Bundesliga Ligue 1 transfer sacked injury',      'cat':'FOOTBALL'},
   {'q':'Champions League final winner sacked penalty',                   'cat':'FOOTBALL'},
   {'q':'Bayern Munich transfer injury sacked Kompany Kane Musiala',      'cat':'BAYERN'},
   {'q':'Al Hilal Al Nassr Al Ittihad Al Ahli transfer injury sacked',    'cat':'SPL'},
-  {'q':'Ronaldo Benzema Saudi Pro League goal transfer',                 'cat':'SPL'},
+  {'q':'Ronaldo Benzema Saudi Pro League transfer injury',               'cat':'SPL'},
   {'q':'Saudi Arabia PIF investment billion deal Vision 2030',           'cat':'KSA'},
-  {'q':'NEOM Saudi Arabia announcement project',                        'cat':'KSA'},
-  {'q':'Saudi Aramco PIF royal decree economic reform',                 'cat':'KSA'},
+  {'q':'NEOM Saudi Arabia announcement project billion',                 'cat':'KSA'},
+  {'q':'Saudi Aramco PIF royal decree economic reform',                  'cat':'KSA'},
 ]
 
 REDDIT_SOURCES = [
@@ -111,22 +101,21 @@ def read_existing_feed():
         if not match:
             print("No existing feed found")
             return []
-        raw = match.group(1)
+        raw   = match.group(1)
         items = []
         pattern = re.compile(
             r"\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',date:'([^']*)'\}"
         )
         for m in pattern.finditer(raw):
-            title, src, cat, link, date = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5)
             items.append({
-                'title':       title.replace("\\'", "'"),
-                'url':         link.replace("\\'", "'"),
-                'source':      src.replace("\\'", "'"),
-                'cat':         cat,
-                'date':        date,
+                'title':       m.group(1).replace("\\'","'"),
+                'url':         m.group(4).replace("\\'","'"),
+                'source':      m.group(2).replace("\\'","'"),
+                'cat':         m.group(3),
+                'date':        m.group(5),
                 'source_type': 'existing',
                 'engagement':  0,
-                'ai_score':    50,
+                'ai_score':    60,
             })
         print("Existing feed: " + str(len(items)) + " stories loaded")
         return items
@@ -137,8 +126,8 @@ def read_existing_feed():
 def date_to_dt(date_str):
     try:
         year = NOW.year
-        dt = datetime.strptime(date_str + ' ' + str(year), '%b %d %Y')
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt   = datetime.strptime(date_str + ' ' + str(year), '%b %d %Y')
+        dt   = dt.replace(tzinfo=timezone.utc)
         if (NOW - dt).days < -30:
             dt = dt.replace(year=year - 1)
         return dt
@@ -275,7 +264,7 @@ def fetch_reddit(src, seen_titles):
             count = 0
             for post in posts:
                 if count >= 10: break
-                p = post.get('data',{})
+                p        = post.get('data',{})
                 if p.get('is_video') or p.get('post_hint','') == 'image': continue
                 score    = p.get('score', 0)
                 comments = p.get('num_comments', 0)
@@ -388,53 +377,53 @@ def score_with_claude(items):
 
     prompt = """You are a news scoring engine for a high-signal sports and news app.
 
-Score each headline from 1-100 based on IMPACT and INTEREST. Return scores for ALL headlines.
+Score each headline from 1-100 based on IMPACT and INTEREST.
 
 SCORING CRITERIA:
-- Breaking/urgency (is this happening NOW?)
+- Breaking/urgency
 - Controversy/conflict
-- Famous names involved (Ronaldo, Verstappen, Kane, Mbappe, Haaland etc)
-- Transfer confirmed (not rumoured)
-- Injury/suspension/ban impact
+- Famous names (Ronaldo, Verstappen, Kane, Mbappe, Haaland etc)
+- Transfer CONFIRMED (not rumoured)
+- Injury/suspension/ban
 - Sacking/resignation
 - Title won/lost/decided
 - Economic scale (billions, major deals)
 - Viral/discussion potential
-- Championship implications
 
-HIGH SCORE examples (70-100):
-- Player confirmed transfer to new club
-- Manager sacked after X games
-- Driver penalised and starts from back of grid
-- Star player out for the season with injury
-- Club expelled / banned
-- Title won or mathematically decided
-- PIF acquires major company
-- Royal decree changes economic policy
+HIGH SCORE (70-100):
+- Player confirmed transfer
+- Manager sacked
+- Driver penalised, starts from back
+- Star player out for season
+- Club expelled or banned
+- Title won or decided
+- PIF acquires company
+- Royal decree issued
 
-LOW SCORE examples (1-30):
-- Match preview
+LOW SCORE (1-30):
+- Match preview or prediction
 - How to watch
-- Fantasy football tips
+- Fantasy tips
 - Player ratings
-- Training ground update
+- Training update
 - Generic interview
 - Power rankings
 - Opinion piece
-- Transfer rumour (not confirmed)
-- Generic recap without major incident
+- Unconfirmed rumour
+- Generic recap
 
-CATEGORY RULES - score 0 if headline does not belong to its category:
-- F1: must be about Formula 1 specifically
-- FOOTBALL: must be top 5 leagues or Champions League
-- BAYERN: must mention FC Bayern Munich, their players or manager by name
-- SPL: must mention Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League
-- KSA: must be Saudi economic/policy/government news - NOT sport
+STRICT CATEGORY RULES — score 0 if story does not belong:
+- F1: Formula 1 ONLY
+- FOOTBALL: top 5 leagues or Champions League ONLY
+- BAYERN: must name FC Bayern Munich, or their players/manager explicitly
+- SPL: must name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League explicitly
+- KSA: Saudi economic/policy/government news ONLY — NOT football, NOT sport
 
-Reddit engagement in [brackets] signals fan interest - factor it in.
+If a story is assigned SPL but talks about Man United, Arsenal, or any non-Saudi team → score 0.
+If a story is assigned BAYERN but does not mention Bayern, Kompany, Kane, Musiala, Kimmich, etc → score 0.
 
 Return ONLY a valid JSON array. Each item: {"idx": number, "score": number}
-Include ALL headlines.
+Include every headline even if score is 0.
 
 Headlines:
 """ + '\n'.join(headlines)
@@ -528,7 +517,6 @@ print("=" * 50)
 
 existing_items = read_existing_feed()
 existing_items = [i for i in existing_items if is_within_48h(i['date'])]
-# existing items get their timestamp from date_str
 for item in existing_items:
     if 'timestamp' not in item:
         item['timestamp'] = int(date_to_dt(item['date']).timestamp())
@@ -582,9 +570,9 @@ print("\n" + "=" * 50)
 print("STEP 4 — MERGE WITH EXISTING")
 print("=" * 50)
 
-MIN_SCORE  = 40
+MIN_SCORE  = 60
 passed_new = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
-print("New items passing threshold: " + str(len(passed_new)))
+print("New items passing threshold (" + str(MIN_SCORE) + "): " + str(len(passed_new)))
 
 merged = deduplicate(existing_items + passed_new)
 print("Total after merge: " + str(len(merged)))
@@ -598,12 +586,11 @@ final_items = []
 
 for cat in CATEGORIES:
     cat_items = [i for i in merged if i['cat'] == cat and i.get('ai_score',0) >= MIN_SCORE]
-    # sort: newest first, score as tiebreaker
-    cat_items.sort(key=lambda x: (x.get('timestamp', 0), x.get('ai_score', 0)), reverse=True)
+    cat_items.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
     top = cat_items[:6]
     print(cat + ": " + str(len(top)) + " stories")
     for story in top:
-        print("  [score:" + str(story.get('ai_score',0)) + "] [" + story['date'] + "] " + story['title'][:60])
+        print("  [score:" + str(story.get('ai_score',0)) + "] [" + story['date'] + "] " + story['title'][:70])
     final_items += top
 
 print("\nTotal in feed: " + str(len(final_items)))
