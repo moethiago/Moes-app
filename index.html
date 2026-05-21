@@ -102,25 +102,66 @@
         </div>
       </div>
 
-      <!-- LIVE FOOTBALL — SportBusy -->
+      <!-- LIVE FOOTBALL — all leagues stacked -->
       <p class="section-label" style="padding-left:14px;">Live Football</p>
-      <div class="league-tab-row">
-        <button class="league-tab active" onclick="switchLeague('epl',this)">PL</button>
-        <button class="league-tab" onclick="switchLeague('la-liga',this)">LaLiga</button>
-        <button class="league-tab" onclick="switchLeague('serie-a',this)">Serie A</button>
-        <button class="league-tab" onclick="switchLeague('bundesliga',this)">Bund</button>
-        <button class="league-tab" onclick="switchLeague('ligue-1',this)">L1</button>
-        <button class="league-tab" onclick="switchLeague('uefa-champions-league',this)">UCL</button>
+      <div style="padding:0 14px 6px;">
+        <iframe
+          src="https://www.sportbusy.com/embed?league=epl"
+          width="100%"
+          height="420"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Premier League">
+        </iframe>
+      </div>
+      <div style="padding:0 14px 6px;">
+        <iframe
+          src="https://www.sportbusy.com/embed?league=la-liga"
+          width="100%"
+          height="420"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="La Liga">
+        </iframe>
+      </div>
+      <div style="padding:0 14px 6px;">
+        <iframe
+          src="https://www.sportbusy.com/embed?league=serie-a"
+          width="100%"
+          height="420"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Serie A">
+        </iframe>
+      </div>
+      <div style="padding:0 14px 6px;">
+        <iframe
+          src="https://www.sportbusy.com/embed?league=bundesliga"
+          width="100%"
+          height="420"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Bundesliga">
+        </iframe>
+      </div>
+      <div style="padding:0 14px 6px;">
+        <iframe
+          src="https://www.sportbusy.com/embed?league=ligue-1"
+          width="100%"
+          height="420"
+          style="border:none;border-radius:16px;overflow:hidden;display:block;"
+          loading="lazy"
+          title="Ligue 1">
+        </iframe>
       </div>
       <div style="padding:0 14px 20px;">
         <iframe
-          id="football-iframe"
-          src="https://www.sportbusy.com/embed?league=epl"
+          src="https://www.sportbusy.com/embed?league=uefa-champions-league"
           width="100%"
-          height="500"
+          height="420"
           style="border:none;border-radius:16px;overflow:hidden;display:block;"
           loading="lazy"
-          title="Live Football Scores">
+          title="Champions League">
         </iframe>
       </div>
 
@@ -203,7 +244,7 @@
 </div>
 
 <div id="toast"></div>
-<script src="js/feed.js?v=1779391652"></script>
+<script src="js/feed.js?v=1779387366"></script>
 <script src="js/sports.js"></script>
 <script src="js/health.js"></script>
 <script src="js/core.js"></script>
