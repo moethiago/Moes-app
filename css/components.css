@@ -24,5 +24,8 @@
 .log-btn.red{background:linear-gradient(135deg,var(--f1-red),var(--f1-orange))}
 
 /* ── TICKER ──────────────────────────────────────────── */
-.ticker-wrap{overflow:hidden;background:var(--bg-void);padding:0;border-bottom:1px solid var(--border);height:28px;display:flex;align-items:center}
-.ticker-track{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;animation​​​​​​​​​​​​​​​​
+.ticker-wrap{overflow:hidden;background:var(--bg-void);border-bottom:1px solid var(--border);height:28px;display:flex;align-items:center;padding:0 14px;gap:8px}
+.ticker-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--f1-red);letter-spacing:1px;flex-shrink:0}
+.ticker-text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--txt-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+@keyframes tickerFadeIn{from{opacity:0}to{opacity:1}}
+.ticker-text.fade{animation:tickerFadeIn 0.4s ease}
