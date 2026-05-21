@@ -12,10 +12,10 @@ SOURCES = [
   {'url':'https://www.caughtoffside.com/feed/',                         'src':'CaughtOffside'},
 ]
 
-MUST = re.compile('arsenal|man city|liverpool|chelsea|tottenham|united|newcastle|real madrid|barcelona|atletico|juventus|inter|napoli|psg|dortmund|leverkusen|bayern|premier league|la liga|serie a|bundesliga|ligue 1|champions league|europa league|transfer|sack|injur|ban|title|champion|relegat|manager|coach|sign', re.I)
-HIGH = re.compile('sacked|fired|resign|transfer|signed|signing|injur|suspended|ban|red card|title|champion|relegat|playoff|expel', re.I)
-MED  = re.compile('win|loss|defeat|derby|final|match report|contract|announce|confirm|result|goal', re.I)
-JUNK = re.compile('fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of the|talking points|gallery|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|tiktok|boats|24 hours of', re.I)
+MUST = re.compile(r'arsenal|man city|manchester city|liverpool|chelsea|tottenham|united|newcastle|real madrid|barcelona|atletico|juventus|inter|napoli|psg|dortmund|leverkusen|bayern|premier league|la liga|serie a|bundesliga|ligue 1|champions league|europa league', re.I)
+HIGH = re.compile(r'sacked|fired|resign|transfer|signed|signing|injur|suspended|ban|red card|\btitle\b|champion|relegat|playoff|expel|beats|win|wins|lost|defeat', re.I)
+MED  = re.compile(r'derby|final|match report|contract|announce|confirm|goal', re.I)
+JUNK = re.compile(r'fantasy|predicted lineup|five things|player ratings|watch live|how to watch|betting|quiz|power ranking|player of the|talking points|gallery|ranked|darts|cricket|rugby|tennis|golf|boxing|petition|tiktok|podcast|gcse|never been relegated|which clubs|what is at stake|preview.*week|weekly', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
@@ -52,7 +52,7 @@ def fetch(max_age, now, min_score):
                 key = re.sub(r'\W+','',title.lower())[:60]
                 if key not in items:
                     items[key] = {
-                        'title': title.replace("'","-").replace('"','-'),
+                        'title': title.replace("'","-").replace('"','-').replace("&#039;","-").replace("&amp;","and"),
                         'src':   src['src'],
                         'cat':   'FOOTBALL',
                         'link':  link.replace("'","%27"),
