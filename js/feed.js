@@ -60,19 +60,12 @@ var TOPICS_LOWER = [
 // ── FALLBACK_NEWS - updated automatically by GitHub Action every hour ──
 // DO NOT EDIT BELOW THIS LINE
 var FALLBACK_NEWS = [
-  {title:'Red Bull outlines timeline for new F1 wind tunnel',src:'autosport.com',cat:'F1',link:'https://www.autosport.com/f1/news/red-bull-provides-update-on-long-awaited-new-f1-wind-tunnel/10822485/?utm_source=RSS&utm_medium=referral&utm_campaign=RSS-F1&utm_term=News&utm_content=uk',date:'May 21'},
-  {title:'Ferrari Reportedly Have a Shortlist of Three to Replace Hamilton: Bearman, Verstappen, or Sainz',src:'gptoday.net',cat:'F1',link:'https://www.gptoday.net/en/news/f1/295739/ferrari-reportedly-have-a-shortlist-of-three-to-replace-hamilton-bearman-verstappen-or-sainz?utm_source=other&utm_medium=rss',date:'May 21'},
-  {title:'How potential ICE upgrades could soon give F1 power rankings a shake',src:'racer.com',cat:'F1',link:'https://racer.com/2026/05/20/how-potential-ice-upgrades-could-soon-give-f1-power-rankings-a-shake',date:'May 20'},
-  {title:'-We-ll go down in history- - Villa-s new heroes triumph to end 30-year wait',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn5p6yeql9po?at_medium=RSS&at_campaign=rss',date:'May 20'},
-  {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
   {title:'Arsenal crowned Premier League champions for first time in 22 years - as it happened',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
   {title:'-We-ve done it-: euphoria as Arsenal win first Premier League in a generation',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/weve-done-it-euphoria-as-arsenal-clinch-first-league-title-in-a-generation',date:'May 19'},
-  {title:'Fern-ndez and Chelsea sink Spurs as survival battle goes to the final day',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/chelsea-tottenham-premier-league-match-report',date:'May 19'},
   {title:'Arsenal crowned Premier League champions after Manchester City draw',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/2026/may/19/arsenal-premier-league-champions-manchester-city-bournemouth',date:'May 19'},
-  {title:'Germany pick previously retired Neuer, 40, in World Cup squad',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/live-blog/11095/13509050/world-cup-2026-news-and-live-updates-usa-canada-and-mexico-build-up-plus-latest-on-trump-tickets-and-fans',date:'May 20'},
+  {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
   {title:'Southampton-s play-off appeal dismissed - Hull to face Boro in final',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/news/11095/13544383/southamptons-appeal-against-championship-play-off-final-explusion-dismissed-after-spygate-scandal',date:'May 20'},
-  {title:'UK-GCC free trade deal set to boost Saudi-British trade and investment',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661490/saudi-arabia/uk-gcc-free-trade-deal-set-to-boost-saudi-british-trade-and-investment',date:'May 20'},
-  {title:'Sports Boulevard appoints OVG Middle East to operate Global Sports Tower in Riyadh',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661488/saudi-arabia/sports-boulevard-appoints-ovg-middle-east-to-operate-global-sports-tower-in-riyadh',date:'May 20'}
+  {title:'Germany pick previously retired Neuer, 40, in World Cup squad',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/live-blog/11095/13509050/world-cup-2026-news-and-live-updates-usa-canada-and-mexico-build-up-plus-latest-on-trump-tickets-and-fans',date:'May 20'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
 
