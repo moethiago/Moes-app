@@ -8,36 +8,44 @@ NOW     = datetime.now(timezone.utc)
 
 SOURCES = [
   # F1
-  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',             'cat':'F1'},
-  {'url':'https://www.autosport.com/rss/f1/news/',                       'cat':'F1'},
-  {'url':'https://www.gptoday.net/rss/news/rss.xml',                     'cat':'F1'},
-  {'url':'https://racer.com/category/formula-1/feed/',                   'cat':'F1'},
+  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',              'cat':'F1'},
+  {'url':'https://www.autosport.com/rss/f1/news/',                        'cat':'F1'},
+  {'url':'https://www.gptoday.net/rss/news/rss.xml',                      'cat':'F1'},
+  {'url':'https://racer.com/category/formula-1/feed/',                    'cat':'F1'},
+  {'url':'https://www.motorsport.com/rss/f1/news/',                       'cat':'F1'},
+  {'url':'https://www.crash.net/rss/f1',                                  'cat':'F1'},
   # Football
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/premierleague/rss',      'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/serieafootball/rss',     'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/ligue1football/rss',     'cat':'FOOTBALL'},
-  {'url':'https://www.skysports.com/rss/11095',                         'cat':'FOOTBALL'},
-  {'url':'https://www.caughtoffside.com/feed/',                         'cat':'FOOTBALL'},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',              'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/premierleague/rss',       'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/serieafootball/rss',      'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/ligue1football/rss',      'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/laliga/rss',              'cat':'FOOTBALL'},
+  {'url':'https://www.skysports.com/rss/11095',                          'cat':'FOOTBALL'},
+  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'FOOTBALL'},
+  {'url':'https://talksport.com/feed/',                                   'cat':'FOOTBALL'},
+  {'url':'https://www.football365.com/feed',                             'cat':'FOOTBALL'},
   # Bayern
-  {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'BAYERN'},
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'cat':'BAYERN'},
-  {'url':'https://www.skysports.com/rss/11095',                         'cat':'BAYERN'},
+  {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml',  'cat':'BAYERN'},
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'cat':'BAYERN'},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',              'cat':'BAYERN'},
+  {'url':'https://www.skysports.com/rss/11095',                          'cat':'BAYERN'},
+  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'BAYERN'},
   # Saudi Football
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
-  {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
-  {'url':'https://www.caughtoffside.com/feed/',                         'cat':'SPL'},
-  {'url':'https://www.90min.com/feed',                                  'cat':'SPL'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'SPL'},
+  {'url':'https://www.arabnews.com/cat/5/rss.xml',                       'cat':'SPL'},
+  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'SPL'},
+  {'url':'https://www.90min.com/feed',                                   'cat':'SPL'},
+  {'url':'https://www.skysports.com/rss/11095',                          'cat':'SPL'},
   # Saudi News
-  {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
-  {'url':'https://en.majalla.com/rss.xml',                              'cat':'KSA'},
+  {'url':'https://www.arabnews.com/rss.xml',                             'cat':'KSA'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'KSA'},
+  {'url':'https://en.majalla.com/rss.xml',                               'cat':'KSA'},
 ]
 
 def fetch_all():
     all_items = []
+    seen_titles = set()
     for src in SOURCES:
         try:
             req = urlreq.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
@@ -52,6 +60,10 @@ def fetch_all():
                 link  = item.findtext('link','').strip()
                 pub   = item.findtext('pubDate','').strip()
                 if not title or not link: continue
+                # Basic exact dedupe before sending to Claude
+                title_key = re.sub(r'\W+','',title.lower())[:50]
+                if title_key in seen_titles: continue
+                seen_titles.add(title_key)
                 try:
                     dt = parsedate_to_datetime(pub)
                     if dt.tzinfo is None:
@@ -94,25 +106,28 @@ Examples of what you WANT:
 - Arsenal one win away from sealing the Premier League title
 - McLaren sack their chief of staff after 22 years
 - Saudi Grand Prix cancelled for 2026
+- Southampton expelled from Championship play-offs over Spygate
+- Germany call up retired Neuer aged 40 for World Cup squad
 
 Examples of what you REJECT:
 - Red Bull outlines timeline for new wind tunnel
 - How ICE upgrades could shake up F1 power rankings
-- Villa's heroes triumph to end 30 year wait (vague, no drama)
 - Any headline with: could, might, reportedly, sources say, how, why, ranking, podcast, preview, analysis, opinion, history, timeline, outlines, discusses
+
+CRITICAL DEDUPLICATION RULE:
+If multiple headlines cover the same story or event, pick ONLY ONE — the clearest and most informative version. For example if Arsenal winning the title appears 3 times, pick only the best one headline about it.
 
 Rules:
 - Must be a CONFIRMED fact not speculation
 - Must have IMMEDIATE impact on something happening now
-- Must be DRAMATIC - injury, sacking, ban, cancellation, title won/lost, transfer confirmed
+- Must be DRAMATIC — injury, sacking, ban, cancellation, title won/lost, transfer confirmed, expulsion
 - FOOTBALL stories must be about top 5 leagues: Premier League, La Liga, Serie A, Bundesliga, Ligue 1
-- BAYERN stories must specifically mention FC Bayern Munich, their players or manager
+- BAYERN stories must specifically mention FC Bayern Munich, their players or manager by name
 - SPL stories must specifically mention Saudi Pro League teams: Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League
 - KSA stories must be major Saudi economic or policy news: Vision 2030, PIF investments, royal decrees, billion dollar deals. NOT sport, NOT Hajj, NOT ceremonies
 
 Return ONLY a valid JSON array with no extra text. Each item: {"idx": number, "cat": "category"}
-Pick maximum 6 per category. If nothing qualifies for a category return nothing for that category.
-Be ruthless. If it is not genuinely breaking and dramatic, reject it.
+Pick maximum 6 per category. No duplicate topics. If nothing qualifies for a category return nothing for that category.
 
 Headlines (format: index|category|title):
 """ + "\n".join(headlines)
