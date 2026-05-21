@@ -19,22 +19,21 @@ var F1_RACE = {
 };
 
 // ── FOOTBALL CONFIG ──────────────────────────────────────
-var BACKEND_URL = 'https://moes-app.vercel.app/api/football';
+var BACKEND_URL = 'https://moes-app-two.vercel.app/api/football';
 
 var FOOTBALL_LEAGUES = [
-  { key:'epl',        label:'Premier League',    flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { key:'laliga',     label:'La Liga',            flag:'🇪🇸' },
-  { key:'seriea',     label:'Serie A',            flag:'🇮🇹' },
-  { key:'bundesliga', label:'Bundesliga',         flag:'🇩🇪' },
-  { key:'ligue1',     label:'Ligue 1',            flag:'🇫🇷' },
-  { key:'ucl',        label:'Champions League',   flag:'🏆' },
-  { key:'spl',        label:'Saudi Pro League',   flag:'🇸🇦' },
-  { key:'nations',    label:'Nations League',     flag:'🌍' },
+  { key:'epl',        label:'Premier League',  flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  { key:'laliga',     label:'La Liga',          flag:'🇪🇸' },
+  { key:'seriea',     label:'Serie A',          flag:'🇮🇹' },
+  { key:'bundesliga', label:'Bundesliga',       flag:'🇩🇪' },
+  { key:'ligue1',     label:'Ligue 1',          flag:'🇫🇷' },
+  { key:'ucl',        label:'Champions League', flag:'🏆' },
+  { key:'spl',        label:'Saudi Pro League', flag:'🇸🇦' },
+  { key:'nations',    label:'Nations League',   flag:'🌍' },
 ];
 
 var footballCache = {};
 var footballTimer = null;
-var currentLeagueIndex = 0;
 
 // ── F1 COUNTDOWN ─────────────────────────────────────────
 function getNextSession() {
@@ -94,15 +93,13 @@ function startCountdown() {
 
 // ── FOOTBALL SCORES ──────────────────────────────────────
 function statusLabel(status, elapsed) {
-  if (status === 'LIVE' || status === '1H' || status === '2H' || status === 'ET' || status === 'P') {
+  if (['LIVE','1H','2H','ET','P'].indexOf(status) !== -1) {
     return '<span class="fxt-status live">' + (elapsed ? elapsed + "'" : 'LIVE') + '</span>';
   }
-  if (status === 'HT')  return '<span class="fxt-status ht">HT</span>';
-  if (status === 'FT')  return '<span class="fxt-status ft">FT</span>';
-  if (status === 'NS')  {
-    return '<span class="fxt-status ns">NS</span>';
-  }
-  if (status === 'PST') return '<span class="fxt-status pst">PST</span>';
+  if (status === 'HT')   return '<span class="fxt-status ht">HT</span>';
+  if (status === 'FT')   return '<span class="fxt-status ft">FT</span>';
+  if (status === 'NS')   return '<span class="fxt-status ns">NS</span>';
+  if (status === 'PST')  return '<span class="fxt-status pst">PST</span>';
   if (status === 'CANC') return '<span class="fxt-status ft">CANC</span>';
   return '<span class="fxt-status ns">' + status + '</span>';
 }
@@ -122,7 +119,6 @@ function renderFixtures(fixtures, container) {
     return;
   }
 
-  // sort: live first, then by time
   fixtures.sort(function(a, b) {
     var aLive = isLive(a.status) ? 0 : 1;
     var bLive = isLive(b.status) ? 0 : 1;
@@ -132,10 +128,9 @@ function renderFixtures(fixtures, container) {
 
   var html = '';
   fixtures.forEach(function(f) {
-    var live    = isLive(f.status);
+    var live     = isLive(f.status);
     var hasScore = f.homeScore !== null && f.awayScore !== null;
     var kickoff  = formatKickoff(f.time);
-
     html += '<div class="fxt-row' + (live ? ' fxt-live' : '') + '">'
       + '<div class="fxt-teams">'
       +   '<div class="fxt-team">'
@@ -167,7 +162,6 @@ async function loadLeagueFixtures(leagueKey) {
   var container = document.getElementById('football-fixtures');
   if (!container) return;
 
-  // show cached instantly if available
   if (footballCache[leagueKey]) {
     renderFixtures(footballCache[leagueKey], container);
   } else {
@@ -200,6 +194,7 @@ function switchFootballLeague(key, el) {
 
 function buildFootballSection() {
   var tabsEl = document.getElementById('football-tabs');
+  if (!tabsEl) return;
   var html = '';
   FOOTBALL_LEAGUES.forEach(function(l, i) {
     html += '<button class="fleague-tab' + (i === 0 ? ' active' : '') + '" '
@@ -207,35 +202,33 @@ function buildFootballSection() {
       + l.flag + ' ' + l.label
       + '</button>';
   });
-  if (tabsEl) tabsEl.innerHTML = html;
-
-  // load first league
+  tabsEl.innerHTML = html;
   loadLeagueFixtures(FOOTBALL_LEAGUES[0].key);
 
-  // auto-refresh every 60s
+  if (footballTimer) clearInterval(footballTimer);
   footballTimer = setInterval(function() {
     var activeTab = document.querySelector('.fleague-tab.active');
-    if (activeTab) {
-      var key = FOOTBALL_LEAGUES.findIndex(function(l) {
-        return activeTab.textContent.indexOf(l.label) !== -1;
-      });
-      if (key !== -1) loadLeagueFixtures(FOOTBALL_LEAGUES[key].key);
-    }
+    if (!activeTab) return;
+    FOOTBALL_LEAGUES.forEach(function(l) {
+      if (activeTab.textContent.indexOf(l.label) !== -1) {
+        loadLeagueFixtures(l.key);
+      }
+    });
   }, 60000);
 }
 
 // ── F1 STANDINGS ─────────────────────────────────────────
 var F1_STANDINGS_FALLBACK = [
-  { pos:1, num:12, name:'Antonelli',  cid:'mercedes',     pts:100, wins:3 },
-  { pos:2, num:63, name:'Russell',    cid:'mercedes',     pts:80,  wins:1 },
-  { pos:3, num:16, name:'Leclerc',    cid:'ferrari',      pts:59,  wins:0 },
-  { pos:4, num:4,  name:'Norris',     cid:'mclaren',      pts:51,  wins:0 },
-  { pos:5, num:44, name:'Hamilton',   cid:'ferrari',      pts:51,  wins:0 },
-  { pos:6, num:81, name:'Piastri',    cid:'mclaren',      pts:43,  wins:0 },
-  { pos:7, num:3,  name:'Verstappen', cid:'red_bull',     pts:26,  wins:0 },
-  { pos:8, num:87, name:'Bearman',    cid:'haas',         pts:17,  wins:0 },
-  { pos:9, num:10, name:'Gasly',      cid:'alpine',       pts:16,  wins:0 },
-  { pos:10,num:30, name:'Lawson',     cid:'red_bull',     pts:10,  wins:0 },
+  { pos:1,  num:12, name:'Antonelli',  cid:'mercedes',     pts:100, wins:3 },
+  { pos:2,  num:63, name:'Russell',    cid:'mercedes',     pts:80,  wins:1 },
+  { pos:3,  num:16, name:'Leclerc',    cid:'ferrari',      pts:59,  wins:0 },
+  { pos:4,  num:4,  name:'Norris',     cid:'mclaren',      pts:51,  wins:0 },
+  { pos:5,  num:44, name:'Hamilton',   cid:'ferrari',      pts:51,  wins:0 },
+  { pos:6,  num:81, name:'Piastri',    cid:'mclaren',      pts:43,  wins:0 },
+  { pos:7,  num:3,  name:'Verstappen', cid:'red_bull',     pts:26,  wins:0 },
+  { pos:8,  num:87, name:'Bearman',    cid:'haas',         pts:17,  wins:0 },
+  { pos:9,  num:10, name:'Gasly',      cid:'alpine',       pts:16,  wins:0 },
+  { pos:10, num:30, name:'Lawson',     cid:'red_bull',     pts:10,  wins:0 },
 ];
 
 function renderStandings(drivers, round) {
