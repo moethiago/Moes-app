@@ -27,10 +27,10 @@ function getNextSession() {
 }
 
 function startCountdown() {
-  var trackEl  = document.getElementById('f1-next-track');
-  var sessEl   = document.getElementById('f1-next-session');
-  var labelEl  = document.getElementById('f1-session-label');
-  var subEl    = document.getElementById('f1-cd-sub');
+  var trackEl = document.getElementById('f1-next-track');
+  var sessEl  = document.getElementById('f1-next-session');
+  var labelEl = document.getElementById('f1-session-label');
+  var subEl   = document.getElementById('f1-cd-sub');
 
   if (trackEl) trackEl.textContent = F1_RACE.title;
   if (sessEl)  sessEl.textContent  = F1_RACE.location;
@@ -77,7 +77,7 @@ function startCountdown() {
 function switchLeague(league, el) {
   var iframe = document.getElementById('football-iframe');
   if (iframe) {
-    iframe.src = 'https://www.sportbusy.com/embed?league=' + league + '&theme=dark';
+    iframe.src = 'https://www.sportbusy.com/embed?league=' + league;
   }
   document.querySelectorAll('.league-tab').forEach(function(t) {
     t.classList.remove('active');
@@ -85,18 +85,18 @@ function switchLeague(league, el) {
   if (el) el.classList.add('active');
 }
 
-// ── F1 STANDINGS ────────────────────────────────────────
+// ── F1 STANDINGS ─────────────────────────────────────────
 var F1_STANDINGS_FALLBACK = [
-  { pos:1, num:12, name:'Antonelli', cid:'mercedes',     pts:100, wins:3 },
-  { pos:2, num:63, name:'Russell',   cid:'mercedes',     pts:80,  wins:1 },
-  { pos:3, num:16, name:'Leclerc',   cid:'ferrari',      pts:59,  wins:0 },
-  { pos:4, num:4,  name:'Norris',    cid:'mclaren',      pts:51,  wins:0 },
-  { pos:5, num:44, name:'Hamilton',  cid:'ferrari',      pts:51,  wins:0 },
-  { pos:6, num:81, name:'Piastri',   cid:'mclaren',      pts:43,  wins:0 },
-  { pos:7, num:3,  name:'Verstappen',cid:'red_bull',     pts:26,  wins:0 },
-  { pos:8, num:87, name:'Bearman',   cid:'haas',         pts:17,  wins:0 },
-  { pos:9, num:10, name:'Gasly',     cid:'alpine',       pts:16,  wins:0 },
-  { pos:10,num:30, name:'Lawson',    cid:'red_bull',     pts:10,  wins:0 },
+  { pos:1, num:12, name:'Antonelli',  cid:'mercedes',     pts:100, wins:3 },
+  { pos:2, num:63, name:'Russell',    cid:'mercedes',     pts:80,  wins:1 },
+  { pos:3, num:16, name:'Leclerc',    cid:'ferrari',      pts:59,  wins:0 },
+  { pos:4, num:4,  name:'Norris',     cid:'mclaren',      pts:51,  wins:0 },
+  { pos:5, num:44, name:'Hamilton',   cid:'ferrari',      pts:51,  wins:0 },
+  { pos:6, num:81, name:'Piastri',    cid:'mclaren',      pts:43,  wins:0 },
+  { pos:7, num:3,  name:'Verstappen', cid:'red_bull',     pts:26,  wins:0 },
+  { pos:8, num:87, name:'Bearman',    cid:'haas',         pts:17,  wins:0 },
+  { pos:9, num:10, name:'Gasly',      cid:'alpine',       pts:16,  wins:0 },
+  { pos:10,num:30, name:'Lawson',     cid:'red_bull',     pts:10,  wins:0 },
 ];
 
 function renderStandings(drivers, round) {
@@ -107,10 +107,10 @@ function renderStandings(drivers, round) {
   if (roundEl) roundEl.textContent = round || '2026';
   var html = '<div class="f1-std-header"><span>POS</span><span>NO</span><span>DRIVER</span><span style="text-align:right">W</span><span style="text-align:right">PTS</span></div>';
   drivers.forEach(function(d) {
-    var pos  = d.pos || parseInt(d.position);
-    var num  = d.num || d.Driver && d.Driver.permanentNumber;
-    var name = d.name || d.Driver && d.Driver.familyName;
-    var cid  = d.cid  || d.Constructors && d.Constructors[0] && d.Constructors[0].constructorId || 'default';
+    var pos  = d.pos  || parseInt(d.position);
+    var num  = d.num  || (d.Driver && d.Driver.permanentNumber);
+    var name = d.name || (d.Driver && d.Driver.familyName);
+    var cid  = d.cid  || (d.Constructors && d.Constructors[0] && d.Constructors[0].constructorId) || 'default';
     var pts  = parseFloat(d.pts || d.points);
     var wins = d.wins || 0;
     var col  = TEAM_COLORS[cid] || '#8a8fa8';
@@ -131,7 +131,6 @@ async function loadF1Data() {
   var body = document.getElementById('f1-standings-body');
   if (!body) return;
 
-  // show fallback immediately
   renderStandings(F1_STANDINGS_FALLBACK, '2026 · R4');
 
   try {
@@ -150,9 +149,7 @@ async function loadF1Data() {
     updated.className = 'f1-last-updated';
     updated.textContent = 'Live · Jolpica F1 API · ' + t;
     body.appendChild(updated);
-  } catch(e) {
-    // fallback already shown
-  }
+  } catch(e) {}
 }
 
 function loadFootballScores() {}
