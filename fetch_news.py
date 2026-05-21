@@ -6,8 +6,12 @@ import urllib.request as urlreq
 MAX_AGE = timedelta(days=2)
 NOW     = datetime.now(timezone.utc)
 
-SOURCES = [
-  # ── F1 ──────────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# SOURCES
+# ─────────────────────────────────────────────
+
+RSS_SOURCES = [
+  # F1
   {'url':'https://www.formula1.com/en/latest/all.xml',                   'cat':'F1'},
   {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',             'cat':'F1'},
   {'url':'https://www.autosport.com/rss/f1/news/',                       'cat':'F1'},
@@ -20,9 +24,7 @@ SOURCES = [
   {'url':'https://www.espn.com/espn/rss/f1/news',                        'cat':'F1'},
   {'url':'https://www.motorsportweek.com/feed/',                         'cat':'F1'},
   {'url':'https://www.motorsportmagazine.com/feed/',                     'cat':'F1'},
-  {'url':'https://www.autosport.com/rss/f1/news/',                       'cat':'F1'},
-
-  # ── FOOTBALL ────────────────────────────────────────────
+  # Football
   {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'cat':'FOOTBALL'},
   {'url':'https://www.theguardian.com/football/premierleague/rss',      'cat':'FOOTBALL'},
   {'url':'https://www.theguardian.com/football/laliga/rss',             'cat':'FOOTBALL'},
@@ -42,9 +44,7 @@ SOURCES = [
   {'url':'https://www.90min.com/posts.rss',                             'cat':'FOOTBALL'},
   {'url':'https://www.sportsmole.co.uk/football/rss.xml',               'cat':'FOOTBALL'},
   {'url':'https://www.givemesport.com/rss/football',                    'cat':'FOOTBALL'},
-  {'url':'https://www.eurosport.com/football/rss.xml',                  'cat':'FOOTBALL'},
-
-  # ── BAYERN ──────────────────────────────────────────────
+  # Bayern
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
   {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',              'cat':'BAYERN'},
   {'url':'https://www.skysports.com/rss/11095',                         'cat':'BAYERN'},
@@ -54,9 +54,7 @@ SOURCES = [
   {'url':'https://www.mirror.co.uk/sport/football/rss.xml',             'cat':'BAYERN'},
   {'url':'https://www.independent.co.uk/sport/football/rss',            'cat':'BAYERN'},
   {'url':'https://www.givemesport.com/rss/football',                    'cat':'BAYERN'},
-  {'url':'https://www.eurosport.com/football/rss.xml',                  'cat':'BAYERN'},
-
-  # ── SAUDI FOOTBALL (SPL) ────────────────────────────────
+  # Saudi Football
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
   {'url':'https://www.espn.com/espn/rss/soccer/news',                   'cat':'SPL'},
@@ -66,21 +64,45 @@ SOURCES = [
   {'url':'https://www.independent.co.uk/sport/football/rss',            'cat':'SPL'},
   {'url':'https://www.middleeasteye.net/rss',                           'cat':'SPL'},
   {'url':'https://www.givemesport.com/rss/football',                    'cat':'SPL'},
-
-  # ── SAUDI NEWS (KSA) ────────────────────────────────────
+  # Saudi News
   {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
   {'url':'https://www.arabnews.com/economy/rss.xml',                    'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
   {'url':'https://en.majalla.com/rss.xml',                              'cat':'KSA'},
   {'url':'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',     'cat':'KSA'},
   {'url':'https://www.middleeasteye.net/rss',                           'cat':'KSA'},
-  {'url':'https://www.euronews.com/rss?format=mrss&level=theme&name=news','cat':'KSA'},
 ]
 
-def fetch_all():
-    all_items = []
-    seen_titles = set()
-    for src in SOURCES:
+GOOGLE_NEWS_SOURCES = [
+  {'q':'Formula 1 race penalty crash retirement',                        'cat':'F1'},
+  {'q':'Formula 1 driver sacked fired banned suspended',                 'cat':'F1'},
+  {'q':'F1 transfer signing confirmed 2025 2026',                        'cat':'F1'},
+  {'q':'Premier League transfer confirmed sacked injury banned',         'cat':'FOOTBALL'},
+  {'q':'La Liga Serie A Bundesliga Ligue 1 transfer sacked injury',      'cat':'FOOTBALL'},
+  {'q':'Champions League final winner sacked penalty',                   'cat':'FOOTBALL'},
+  {'q':'Bayern Munich transfer injury sacked Kompany Kane Musiala',      'cat':'BAYERN'},
+  {'q':'Al Hilal Al Nassr Al Ittihad Al Ahli transfer injury sacked',    'cat':'SPL'},
+  {'q':'Ronaldo Benzema Saudi Pro League goal transfer',                 'cat':'SPL'},
+  {'q':'Saudi Arabia PIF investment billion deal Vision 2030',           'cat':'KSA'},
+  {'q':'NEOM Saudi Arabia announcement project',                        'cat':'KSA'},
+  {'q':'Saudi Aramco PIF royal decree economic reform',                 'cat':'KSA'},
+]
+
+REDDIT_SOURCES = [
+  {'url':'https://www.reddit.com/r/formula1/hot.json',                   'cat':'F1',       'min_score':500,  'min_comments':100},
+  {'url':'https://www.reddit.com/r/soccer/hot.json',                     'cat':'FOOTBALL', 'min_score':1000, 'min_comments':200},
+  {'url':'https://www.reddit.com/r/bayernmunich/hot.json',               'cat':'BAYERN',   'min_score':200,  'min_comments':50},
+  {'url':'https://www.reddit.com/r/saudifootball/hot.json',              'cat':'SPL',      'min_score':100,  'min_comments':20},
+  {'url':'https://www.reddit.com/r/saudiarabia/hot.json',                'cat':'KSA',      'min_score':200,  'min_comments':50},
+]
+
+# ─────────────────────────────────────────────
+# FETCH — RSS
+# ─────────────────────────────────────────────
+
+def fetch_rss(src, seen_titles):
+    items = []
+    for attempt in range(2):
         try:
             req = urlreq.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
             with urlreq.urlopen(req, timeout=10) as r:
@@ -99,174 +121,424 @@ def fetch_all():
                 seen_titles.add(title_key)
                 try:
                     dt = parsedate_to_datetime(pub)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                     if (NOW - dt) > MAX_AGE: continue
                     date_str = dt.strftime('%b %-d')
                 except:
                     date_str = NOW.strftime('%b %-d')
-                all_items.append({
-                    'title': title,
-                    'link':  link,
-                    'cat':   src['cat'],
-                    'date':  date_str,
+                items.append({
+                    'title':       title,
+                    'url':         link,
+                    'source':      link.split('/')[2].replace('www.',''),
+                    'cat':         src['cat'],
+                    'date':        date_str,
+                    'source_type': 'rss',
+                    'engagement':  0,
                 })
                 count += 1
-            print("OK " + src['url'].split('/')[2] + ": " + str(count))
+            print("RSS OK " + src['url'].split('/')[2] + ": " + str(count))
+            return items
         except Exception as e:
-            print("SKIP " + src['url'].split('/')[2] + ": " + str(e))
-    return all_items
+            if attempt == 0:
+                time.sleep(2)
+            else:
+                print("RSS SKIP " + src['url'].split('/')[2] + ": " + str(e))
+    return items
 
-def curate_with_claude(items):
+# ─────────────────────────────────────────────
+# FETCH — GOOGLE NEWS
+# ─────────────────────────────────────────────
+
+def fetch_google_news(src, seen_titles):
+    items = []
+    for attempt in range(2):
+        try:
+            q   = src['q'].replace(' ', '+')
+            url = 'https://news.google.com/rss/search?q=' + q + '&hl=en-US&gl=US&ceid=US:en'
+            req = urlreq.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+            with urlreq.urlopen(req, timeout=10) as r:
+                root = ET.fromstring(r.read())
+            node = root.find('channel')
+            if node is None: node = root
+            count = 0
+            for item in node.findall('item'):
+                if count >= 10: break
+                title = item.findtext('title','').strip()
+                link  = item.findtext('link','').strip()
+                pub   = item.findtext('pubDate','').strip()
+                if not title or not link: continue
+                # strip source suffix Google appends: "Title - Source"
+                title = re.sub(r'\s+-\s+[^-]+$', '', title).strip()
+                title_key = re.sub(r'\W+','',title.lower())[:50]
+                if title_key in seen_titles: continue
+                seen_titles.add(title_key)
+                try:
+                    dt = parsedate_to_datetime(pub)
+                    if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
+                    if (NOW - dt) > MAX_AGE: continue
+                    date_str = dt.strftime('%b %-d')
+                except:
+                    date_str = NOW.strftime('%b %-d')
+                items.append({
+                    'title':       title,
+                    'url':         link,
+                    'source':      'google.news',
+                    'cat':         src['cat'],
+                    'date':        date_str,
+                    'source_type': 'google_news',
+                    'engagement':  0,
+                })
+                count += 1
+            print("GNEWS OK [" + src['q'][:30] + "]: " + str(count))
+            return items
+        except Exception as e:
+            if attempt == 0:
+                time.sleep(2)
+            else:
+                print("GNEWS SKIP [" + src['q'][:30] + "]: " + str(e))
+    return items
+
+# ─────────────────────────────────────────────
+# FETCH — REDDIT
+# ─────────────────────────────────────────────
+
+def fetch_reddit(src, seen_titles):
+    items = []
+    for attempt in range(2):
+        try:
+            req = urlreq.Request(
+                src['url'],
+                headers={'User-Agent':'Mozilla/5.0 (compatible; NewsBot/1.0)'}
+            )
+            with urlreq.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            posts = data.get('data',{}).get('children',[])
+            count = 0
+            for post in posts:
+                if count >= 10: break
+                p = post.get('data',{})
+                # skip non-text posts
+                if p.get('is_video') or p.get('post_hint','') == 'image': continue
+                score    = p.get('score', 0)
+                comments = p.get('num_comments', 0)
+                if score < src['min_score'] or comments < src['min_comments']: continue
+                title = p.get('title','').strip()
+                url   = 'https://reddit.com' + p.get('permalink','')
+                if not title: continue
+                title_key = re.sub(r'\W+','',title.lower())[:50]
+                if title_key in seen_titles: continue
+                seen_titles.add(title_key)
+                # normalize engagement to 0-100
+                engagement = min(100, int(score / 100))
+                items.append({
+                    'title':       title,
+                    'url':         url,
+                    'source':      'reddit.com/r/' + p.get('subreddit',''),
+                    'cat':         src['cat'],
+                    'date':        NOW.strftime('%b %-d'),
+                    'source_type': 'reddit',
+                    'engagement':  engagement,
+                })
+                count += 1
+            print("REDDIT OK " + src['url'].split('/r/')[1].split('/')[0] + ": " + str(count))
+            return items
+        except Exception as e:
+            if attempt == 0:
+                time.sleep(2)
+            else:
+                print("REDDIT SKIP " + src['url'] + ": " + str(e))
+    return items
+
+# ─────────────────────────────────────────────
+# DEDUPLICATION
+# ─────────────────────────────────────────────
+
+KEY_ENTITIES = [
+    'hamilton','verstappen','norris','leclerc','russell','antonelli','piastri',
+    'alonso','sainz','perez','red bull','mclaren','ferrari','mercedes',
+    'arsenal','man city','liverpool','chelsea','tottenham','man united','newcastle',
+    'real madrid','barcelona','atletico','dortmund','psg','juventus','inter','napoli',
+    'al hilal','al nassr','al ittihad','al ahli',
+    'ronaldo','benzema','mane','salah','haaland','mbappe','bellingham','kane',
+    'musiala','olise','kompany','kimmich',
+    'vision 2030','pif','neom','aramco',
+]
+
+KEY_TOPICS = [
+    'sacked','fired','resign','transfer','signed','signing','injured','injury',
+    'banned','ban','suspended','suspension','penalty','crash','dnf','pole',
+    'contract','confirmed','title','champion','relegated','relegation','final',
+    'expelled','cancelled','postponed','announced','deal','billion',
+]
+
+def fingerprint(title):
+    t = title.lower()
+    ents   = [e for e in KEY_ENTITIES if e in t]
+    topics = [tp for tp in KEY_TOPICS   if tp in t]
+    return ents, topics
+
+def deduplicate(items):
+    seen_exact   = {}
+    seen_stories = []
+    unique       = []
+    for item in items:
+        key = re.sub(r'\W+','',item['title'].lower())[:60]
+        if key in seen_exact:
+            # merge: keep higher engagement, prefer RSS/google over reddit
+            existing = seen_exact[key]
+            if item['engagement'] > existing['engagement']:
+                existing['engagement'] = item['engagement']
+            if item['source_type'] in ('rss','google_news'):
+                existing['source'] = item['source']
+            continue
+        ents, topics = fingerprint(item['title'])
+        is_dup = False
+        for s in seen_stories:
+            shared_ent   = [e for e in ents   if e in s['ents']]
+            shared_topic = [t for t in topics  if t in s['topics']]
+            if shared_ent and shared_topic:
+                is_dup = True
+                # merge engagement
+                if item['engagement'] > s['engagement']:
+                    s['engagement'] = item['engagement']
+                break
+        if not is_dup:
+            seen_exact[key] = item
+            seen_stories.append({'ents':ents,'topics':topics,'engagement':item['engagement']})
+            unique.append(item)
+    return unique
+
+# ─────────────────────────────────────────────
+# AI SCORING
+# ─────────────────────────────────────────────
+
+def score_with_claude(items):
     import os
     api_key = os.environ.get('ANTHROPIC_API_KEY','')
     if not api_key:
-        print("No API key found")
+        print("No API key")
         sys.exit(1)
 
     headlines = []
     for i, item in enumerate(items):
-        headlines.append(str(i) + "|" + item['cat'] + "|" + item['title'])
+        eng = (' [reddit:' + str(item['engagement']) + ']') if item['engagement'] > 0 else ''
+        headlines.append(str(i) + '|' + item['cat'] + '|' + item['title'] + eng)
 
-    prompt = """You are a ruthless breaking news editor for a sports and news app. Your standard is extremely high.
+    prompt = """You are a news scoring engine for a high-signal sports and news app.
 
-Only pick headlines that are CONFIRMED, IMMEDIATE, and DRAMATIC.
+Score each headline from 1-100 based on IMPACT and INTEREST. Return scores for ALL headlines.
 
-Examples of what you WANT:
-- Harry Kane is injured and out for the rest of the season
-- Max Verstappen sent to the back of the grid due to penalty
-- Lando Norris will not feature in Monaco Grand Prix due to broken hand
-- Arsenal one win away from sealing the Premier League title
-- McLaren sack their chief of staff after 22 years
-- Saudi Grand Prix cancelled for 2026
-- Southampton expelled from Championship play-offs over Spygate
-- Germany call up retired Neuer aged 40 for World Cup squad
-- Al Nassr win Saudi Pro League title
-- Bayern Munich sack manager after Champions League exit
+SCORING CRITERIA:
+- Breaking/urgency (is this happening NOW?)
+- Controversy/conflict
+- Famous names involved (Ronaldo, Verstappen, Kane, Mbappe, Haaland etc)
+- Transfer confirmed (not rumoured)
+- Injury/suspension/ban impact
+- Sacking/resignation
+- Title won/lost/decided
+- Economic scale (billions, major deals)
+- Viral/discussion potential
+- Championship implications
 
-Examples of what you REJECT:
-- Red Bull outlines timeline for new wind tunnel
-- How ICE upgrades could shake up F1 power rankings
-- Any headline with: could, might, reportedly, sources say, how, why, ranking, podcast, preview, analysis, opinion, history, timeline, outlines, discusses, five things, rated, ranked, best, worst, watch, transfer rumour, linked
+HIGH SCORE examples (70-100):
+- Player confirmed transfer to new club
+- Manager sacked after X games
+- Driver penalised and starts from back of grid
+- Star player out for the season with injury
+- Club expelled / banned
+- Title won or mathematically decided
+- PIF acquires major company
+- Royal decree changes economic policy
+- Reddit post with 5000+ upvotes about major incident
 
-CRITICAL DEDUPLICATION RULE:
-If multiple headlines cover the same story or event, pick ONLY ONE — the clearest and most informative version.
+LOW SCORE examples (1-30):
+- Match preview
+- How to watch
+- Fantasy football tips
+- Player ratings
+- Training ground update
+- Generic interview
+- Power rankings
+- Opinion piece
+- Transfer rumour (not confirmed)
+- Generic recap without major incident
 
-Rules:
-- Must be a CONFIRMED fact not speculation
-- Must have IMMEDIATE impact on something happening now
-- Must be DRAMATIC — injury, sacking, ban, cancellation, title won/lost, transfer confirmed, expulsion, crash, penalty, suspension
-- FOOTBALL stories must be about top 5 leagues: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, or Champions League
-- BAYERN stories must specifically mention FC Bayern Munich, their players (Kane, Musiala, Olise, Neuer, Kimmich, Davies, Kompany, Goretzka, Laimer) or manager by name
-- SPL stories must specifically mention Saudi Pro League teams or players: Al Hilal, Al Nassr, Al Ittihad, Al Ahli, Ronaldo, Benzema, Mane, Neymar, or Saudi Pro League
-- KSA stories must be major Saudi economic or policy news: Vision 2030, PIF investments, royal decrees, billion dollar deals, NEOM, Aramco. NOT sport, NOT Hajj, NOT ceremonies, NOT tourism
+CATEGORY RULES - only score if relevant to category:
+- F1: must be about Formula 1 specifically
+- FOOTBALL: must be top 5 leagues or Champions League
+- BAYERN: must mention FC Bayern Munich, their players or manager by name
+- SPL: must mention Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League
+- KSA: must be Saudi economic/policy/government news - NOT sport
 
-Return ONLY a valid JSON array with no extra text. Each item: {"idx": number, "cat": "category"}
-Pick maximum 6 per category. No duplicate topics. If nothing qualifies for a category return nothing for that category.
+If a headline does NOT belong to its category, score it 0.
+Reddit engagement score in [brackets] is a signal - higher means more fan discussion.
+
+Return ONLY a valid JSON array. Each item: {"idx": number, "score": number}
+Include ALL headlines with a score, even if score is 0.
 
 Headlines (format: index|category|title):
-""" + "\n".join(headlines)
+""" + '\n'.join(headlines)
 
     payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 1500,
-        "messages": [{"role": "user", "content": prompt}]
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 2000,
+        'messages':   [{'role':'user','content':prompt}]
     }).encode()
 
     req = urlreq.Request(
         'https://api.anthropic.com/v1/messages',
         data=payload,
         headers={
-            'Content-Type': 'application/json',
-            'x-api-key': api_key,
+            'Content-Type':      'application/json',
+            'x-api-key':         api_key,
             'anthropic-version': '2023-06-01'
         }
     )
 
-    with urlreq.urlopen(req, timeout=30) as r:
+    with urlreq.urlopen(req, timeout=45) as r:
         response = json.loads(r.read())
 
-    text = response['content'][0]['text']
-    json_match = re.search(r'\[.*\]', text, re.DOTALL)
+    text        = response['content'][0]['text']
+    json_match  = re.search(r'\[.*\]', text, re.DOTALL)
     if not json_match:
         print("Claude returned no valid JSON")
         return []
 
-    return json.loads(json_match.group())
+    scores = json.loads(json_match.group())
+    # attach scores back to items
+    score_map = {s['idx']: s['score'] for s in scores}
+    for i, item in enumerate(items):
+        item['ai_score'] = score_map.get(i, 0)
+    return items
+
+# ─────────────────────────────────────────────
+# OUTPUT
+# ─────────────────────────────────────────────
 
 def js_str(text):
-    text = text.replace('&amp;', '&')
-    text = text.replace('&quot;', '"')
-    text = text.replace('&#039;', "'")
-    text = text.replace('&lt;', '<')
-    text = text.replace('&gt;', '>')
-    text = text.encode('ascii', 'ignore').decode('ascii')
-    text = text.replace('\\', '')
-    text = text.replace("'", "\\'")
-    text = text.replace('\n', ' ')
-    text = text.replace('\r', ' ')
-    text = re.sub(r'  +', ' ', text).strip()
-    return text
+    text = text.replace('&amp;','&').replace('&quot;','"')
+    text = text.replace('&#039;',"'").replace('&lt;','<').replace('&gt;','>')
+    text = text.encode('ascii','ignore').decode('ascii')
+    text = text.replace('\\','').replace("'","\\'")
+    text = text.replace('\n',' ').replace('\r',' ')
+    return re.sub(r'  +',' ',text).strip()
 
-print("Fetching headlines...")
-all_items = fetch_all()
-print("Total raw headlines: " + str(len(all_items)))
+def write_output(final_items):
+    lines = []
+    for i in final_items:
+        lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
+            js_str(i['title']),
+            js_str(i['source']),
+            i['cat'],
+            js_str(i['url']),
+            i['date'],
+        ))
 
-print("Asking Claude to curate...")
-try:
-    selected = curate_with_claude(all_items)
-    print("Claude selected: " + str(len(selected)) + " stories")
-except Exception as e:
-    print("Claude curation failed: " + str(e))
-    sys.exit(1)
+    new_block = 'var FALLBACK_NEWS = [\n' + ',\n'.join(lines) + '\n];'
 
-final_items = []
-for s in selected:
+    with open('js/feed.js','r') as f:
+        content = f.read()
+
+    updated = re.sub(
+        r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
+        '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
+        content, flags=re.DOTALL
+    )
+
+    if updated == content:
+        print("Marker not found - skipping write")
+        sys.exit(0)
+
+    with open('js/feed.js','w') as f:
+        f.write(updated)
+
+    version = str(int(time.time()))
+    with open('index.html','r') as f:
+        html = f.read()
+    html = re.sub(r'js/feed\.js(\?v=[0-9]+)?','js/feed.js?v=' + version, html)
+    with open('index.html','w') as f:
+        f.write(html)
+
+# ─────────────────────────────────────────────
+# MAIN PIPELINE
+# ─────────────────────────────────────────────
+
+print("=" * 50)
+print("PHASE 1 — INGESTION")
+print("=" * 50)
+
+seen_titles = set()
+all_items   = []
+
+# RSS
+for src in RSS_SOURCES:
+    all_items += fetch_rss(src, seen_titles)
+
+# Google News
+for src in GOOGLE_NEWS_SOURCES:
+    all_items += fetch_google_news(src, seen_titles)
+
+# Reddit
+for src in REDDIT_SOURCES:
+    all_items += fetch_reddit(src, seen_titles)
+
+print("\nIngested: " + str(len(all_items)) + " raw items")
+
+print("\n" + "=" * 50)
+print("PHASE 2 — DEDUPLICATION")
+print("=" * 50)
+
+unique_items = deduplicate(all_items)
+print("After dedup: " + str(len(unique_items)) + " unique items")
+
+print("\n" + "=" * 50)
+print("PHASE 3 — AI SCORING")
+print("=" * 50)
+
+# score in batches of 150 to stay within token limits
+BATCH_SIZE = 150
+scored_items = []
+batches = [unique_items[i:i+BATCH_SIZE] for i in range(0, len(unique_items), BATCH_SIZE)]
+for b, batch in enumerate(batches):
+    print("Scoring batch " + str(b+1) + "/" + str(len(batches)) + " (" + str(len(batch)) + " items)...")
     try:
-        idx = int(s['idx'])
-        item = all_items[idx]
-        final_items.append({
-            'title': js_str(item['title']),
-            'src':   js_str(item['link'].split('/')[2].replace('www.','')),
-            'cat':   item['cat'],
-            'link':  js_str(item['link']),
-            'date':  item['date'],
-        })
-    except:
-        continue
+        scored = score_with_claude(batch)
+        scored_items += scored
+    except Exception as e:
+        print("Scoring batch failed: " + str(e))
+        # fallback: give all items score 50
+        for item in batch:
+            item['ai_score'] = 50
+        scored_items += batch
+
+print("Scored: " + str(len(scored_items)) + " items")
+
+print("\n" + "=" * 50)
+print("PHASE 4 — SELECTION (top 6 per category)")
+print("=" * 50)
+
+CATEGORIES   = ['F1','FOOTBALL','BAYERN','SPL','KSA']
+final_items  = []
+MIN_SCORE    = 40
+
+for cat in CATEGORIES:
+    cat_items = [i for i in scored_items if i['cat'] == cat and i.get('ai_score',0) >= MIN_SCORE]
+    cat_items.sort(key=lambda x: x.get('ai_score',0), reverse=True)
+    top = cat_items[:6]
+    print(cat + ": " + str(len(top)) + " stories selected (min score " + str(MIN_SCORE) + ")")
+    for story in top:
+        print("  [" + str(story.get('ai_score',0)) + "] " + story['title'][:70])
+    final_items += top
+
+print("\nTotal selected: " + str(len(final_items)) + " stories")
 
 if not final_items:
-    print("No items selected - skipping")
+    print("Nothing passed scoring threshold - preserving existing feed")
     sys.exit(0)
 
-lines = []
-for i in final_items:
-    lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
-        i['title'], i['src'], i['cat'], i['link'], i['date']))
+print("\n" + "=" * 50)
+print("PHASE 5 — OUTPUT")
+print("=" * 50)
 
-new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
-
-with open('js/feed.js', 'r') as f:
-    content = f.read()
-
-updated = re.sub(
-    r'// DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n// DO NOT EDIT ABOVE THIS LINE',
-    '// DO NOT EDIT BELOW THIS LINE\n' + new_block + '\n// DO NOT EDIT ABOVE THIS LINE',
-    content, flags=re.DOTALL
-)
-
-if updated == content:
-    print("Marker not found - skipping")
-    sys.exit(0)
-
-with open('js/feed.js', 'w') as f:
-    f.write(updated)
-
-version = str(int(time.time()))
-with open('index.html', 'r') as f:
-    html = f.read()
-html = re.sub(r'js/feed\.js(\?v=[0-9]+)?', 'js/feed.js?v=' + version, html)
-with open('index.html', 'w') as f:
-    f.write(html)
-
+write_output(final_items)
 print("Done: " + str(len(final_items)) + " stories written to js/feed.js")
