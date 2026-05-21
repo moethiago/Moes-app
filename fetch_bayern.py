@@ -9,11 +9,13 @@ SOURCES = [
   {'url':'https://www.skysports.com/rss/11095',                         'src':'Sky Bayern'},
 ]
 
+# Dedicated feed like Sports Mole Bayern only has Bayern stories
 DEDICATED = ['Sports Mole Bayern']
-MUST = re.compile('bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller|coman|tel|pavlovic|laimer|upamecano|allianz arena', re.I)
-HIGH = re.compile('transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title|deal|agree|resign', re.I)
-MED  = re.compile('squad|lineup|training|return|comeback|target|interest|negotiat|offer|bid|win|loss|defeat|goal|result|match', re.I)
-JUNK = re.compile('women|youth|reserve|u17|u19|u21|amateur', re.I)
+
+MUST = re.compile(r'bayern|munich|fcb|kompany|neuer|musiala|kane|kimmich|sane|davies|gnabry|goretzka|muller|mueller|coman|pavlovic|laimer|upamecano|allianz', re.I)
+HIGH = re.compile(r'transfer|signed|signing|injur|missing|ban|suspended|sacked|contract|announce|confirm|champion|title|deal|agree|resign', re.I)
+MED  = re.compile(r'squad|lineup|return|comeback|target|interest|offer|bid|win|loss|defeat|goal|result|match', re.I)
+JUNK = re.compile(r'women|youth|reserve|u17|u19|u21|amateur', re.I)
 
 def score(title, is_dedicated):
     if JUNK.search(title): return 0
@@ -48,10 +50,12 @@ def fetch(max_age, now, min_score):
                 if (now - dt) > max_age: continue
                 s = score(title, is_dedicated)
                 if s < min_score: continue
+                # Double check: even dedicated feeds must mention Bayern-related terms
+                if not MUST.search(title): continue
                 key = re.sub(r'\W+','',title.lower())[:60]
                 if key not in items:
                     items[key] = {
-                        'title': title.replace("'","-").replace('"','-'),
+                        'title': title.replace("'","-").replace('"','-').replace("&#039;","-").replace("&amp;","and"),
                         'src':   src['src'],
                         'cat':   'BAYERN',
                         'link':  link.replace("'","%27"),
