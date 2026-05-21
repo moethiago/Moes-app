@@ -4,14 +4,16 @@ from email.utils import parsedate_to_datetime
 
 SOURCES = [
   {'url':'https://saudigazette.com.sa/rssFeed/74',  'src':'Saudi Gazette'},
+  {'url':'https://www.arabnews.com/cat/5/rss.xml',  'src':'Arab News Sport'},
   {'url':'https://www.caughtoffside.com/feed/',     'src':'CaughtOffside'},
   {'url':'https://www.90min.com/feed',              'src':'90min'},
 ]
 
-MUST = re.compile('al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|al ettifaq|al fayha|saudi|spl|pro league|roshn|ronaldo|neymar|benzema|mane|mitrovic|brozovic|kante|milinkovic|malcom|firmino|al-hilal|al-nassr|al-ittihad', re.I)
-HIGH = re.compile('transfer|signed|signing|sacked|ban|suspended|injur|champion|title|relegat|derby|disciplin|ruling|contract|announce|resign', re.I)
-MED  = re.compile('win|loss|defeat|match|result|manager|coach|goal|score|select|squad', re.I)
-JUNK = re.compile('cricket|rugby|tennis|golf|boxing|formula|f1|motogp|hockey|basketball|nba|nfl', re.I)
+# Must mention Saudi football specifically
+MUST = re.compile(r'al hilal|al nassr|al ittihad|al ahli|al qadsiah|al shabab|al ettifaq|saudi pro league|roshn league|spl|ronaldo|neymar|benzema|mane|mitrovic|brozovic|firmino|malcom|saudi football', re.I)
+HIGH = re.compile(r'transfer|signed|signing|sacked|ban|suspended|injur|champion|title|relegat|derby|disciplin|ruling|contract|announce|resign', re.I)
+MED  = re.compile(r'win|loss|defeat|match|result|manager|coach|goal|score', re.I)
+JUNK = re.compile(r'cricket|rugby|tennis|golf|boxing|formula|f1|motogp|hockey|basketball|nba|nfl|gaza|pavilion|forum|urban|economic cooperation|global challenges', re.I)
 
 def score(title):
     if JUNK.search(title): return 0
@@ -48,7 +50,7 @@ def fetch(max_age, now, min_score):
                 key = re.sub(r'\W+','',title.lower())[:60]
                 if key not in items:
                     items[key] = {
-                        'title': title.replace("'","-").replace('"','-'),
+                        'title': title.replace("'","-").replace('"','-').replace("&#039;","-").replace("&amp;","and"),
                         'src':   src['src'],
                         'cat':   'SPL',
                         'link':  link.replace("'","%27"),
