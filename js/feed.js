@@ -66,8 +66,9 @@ var FALLBACK_NEWS = [
   {title:'Neuer, 40, reverses retirement to be Germany\'s first-choice World Cup keeper',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/c775kgzdmzgo?at_medium=RSS&at_campaign=rss',date:'May 21'},
   {title:'Southampton lose appeal against play-off expulsion over Spygate',src:'bbc.com',cat:'FOOTBALL',link:'https://www.bbc.com/sport/football/articles/cn4p284ny2ko?at_medium=RSS&at_campaign=rss',date:'May 20'},
   {title:'Arsenal crowned Premier League champions for first time in 22 years as it happened',src:'theguardian.com',cat:'FOOTBALL',link:'https://www.theguardian.com/football/live/2026/may/19/arsenal-premier-league-champions-first-time-in-22-years-live-reaction',date:'May 19'},
-  {title:'Villa win Europa League for 1st trophy in 30 years...',src:'espn.com',cat:'FOOTBALL',link:'https://www.espn.com/soccer/story/_/id/48828984/aston-villa-cruise-freiburg-europa-league-title',date:'May 21'},
-  {title:'Neymar suffers injury setback after being named in Brazil World Cup squad',src:'independent.co.uk',cat:'FOOTBALL',link:'https://www.independent.co.uk/sport/football/world-cup/neymar-injury-news-brazil-world-cup-squad-b2981161.html',date:'May 21'}
+  {title:'Germany pick previously retired Neuer, 40, in World Cup squad',src:'skysports.com',cat:'FOOTBALL',link:'https://www.skysports.com/football/live-blog/11095/13509050/world-cup-2026-news-and-live-updates-usa-canada-and-mexico-build-up-plus-latest-on-trump-tickets-and-fans',date:'May 20'},
+  {title:'Neymar suffers injury setback after being named in Brazil World Cup squad',src:'independent.co.uk',cat:'FOOTBALL',link:'https://www.independent.co.uk/sport/football/world-cup/neymar-injury-news-brazil-world-cup-squad-b2981161.html',date:'May 21'},
+  {title:'Aston Villa win Europa League as Unai Emery joins most successful coaches',src:'transfermarkt.co.uk',cat:'FOOTBALL',link:'https://www.transfermarkt.co.uk/aston-villa-win-europa-league-emery-joins-most-successful-coaches-with-5th-european-trophy/view/news/479762',date:'May 20'}
 ];
 // DO NOT EDIT ABOVE THIS LINE
 
