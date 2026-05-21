@@ -122,7 +122,7 @@ def is_within_48h(date_str):
     return (NOW - date_to_dt(date_str)) <= MAX_AGE
 
 # ─────────────────────────────────────────────
-# FETCH — RSS (handles all sources including Reddit .rss)
+# FETCH — RSS
 # ─────────────────────────────────────────────
 
 def fetch_rss(src, seen_titles):
@@ -294,7 +294,7 @@ def deduplicate(items):
     return unique
 
 # ─────────────────────────────────────────────
-# AI SCORING — per category, batches of 50
+# AI SCORING
 # ─────────────────────────────────────────────
 
 def score_batch(items, cat):
@@ -310,22 +310,54 @@ def score_batch(items, cat):
 
     cat_rules = {
         'F1':       'Formula 1 ONLY. Score 0 if not about F1.',
-        'FOOTBALL': 'Top 5 leagues or Champions League ONLY. Score 0 for any other competition.',
-        'BAYERN':   'Must explicitly name FC Bayern Munich or their players (Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies). Score 0 otherwise.',
-        'SPL':      'Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League. Score 0 for any other football.',
-        'KSA':      'Saudi economic/government/policy news ONLY (PIF, Vision 2030, NEOM, Aramco, royal decrees). Score 0 for sport.',
+        'FOOTBALL': 'Top 5 leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) or Champions League ONLY. Score 0 for anything else.',
+        'BAYERN':   'Must explicitly name FC Bayern Munich or their players/manager (Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies, Goretzka). Score 0 otherwise.',
+        'SPL':      'Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League. Score 0 for ANY other football team or competition.',
+        'KSA':      'Saudi Arabia economic/government/policy news ONLY. Must be ABOUT Saudi Arabia specifically — not UK trade deals that mention Gulf, not general Middle East news. Score 0 for sport, ceremonies, tourism, Hajj.',
     }
 
-    prompt = """Score these """ + cat + """ headlines from 1-100.
+    prompt = """You are an extremely harsh news quality filter. Your job is to REJECT most stories.
 
-CATEGORY RULE: """ + cat_rules.get(cat,'') + """
+Score these """ + cat + """ headlines 0-100.
 
-HIGH (70-100): confirmed transfer, sacking, injury ruling out player, ban, title decided, billion-dollar deal, royal decree
-MEDIUM (45-69): confirmed contract, match result with major implications, regulatory change
-LOW (1-44): preview, opinion, ratings, rumour, training update, how-to-watch, generic interview
+CATEGORY RULE (non-negotiable): """ + cat_rules.get(cat,'') + """
 
-Return ONLY a JSON array: [{"idx":0,"score":75},{"idx":1,"score":30}...]
-Every headline must have a score. Category rule violations score 0.
+AUTOMATIC 0 — reject immediately if headline contains any of these signals:
+- "outlines", "provides update", "timeline", "explains", "discusses"
+- "could", "might", "may", "potential", "considering", "plotting", "eyeing", "linked"
+- "round-up", "roundup", "wrap", "digest", "notebook"
+- "how", "why", "what", "when", "where" at start of headline
+- "ratings", "ranked", "ranking", "power ranking", "best", "worst"
+- "preview", "prediction", "tips", "fantasy"
+- "interview", "my goal", "my aim", "my sole aim", "speaks", "says", "believes", "feels", "thinks"
+- "report", "sources say", "according to", "rumour", "rumored"
+- "watch", "how to watch", "stream"
+- "reaction", "fans react"
+- story about wind tunnel, car development, technical updates
+
+SCORE 70-100 only if ALL of these are true:
+- Something HAPPENED (past tense, confirmed)
+- It directly impacts a player, team, or league RIGHT NOW
+- Examples: player CONFIRMED injured/banned/transferred/sacked, title WON, club EXPELLED, ban ISSUED
+
+SCORE 45-69 if:
+- Confirmed news with moderate impact
+- Contract SIGNED (not rumoured)
+- Match result that decides something important
+- Official announcement from club/federation
+
+SCORE 1-44 if:
+- Interesting but not breaking
+- Confirmed but low immediate impact
+
+SCORE 0 if:
+- Fails category rule
+- Contains any automatic-0 signal above
+- Speculation, rumour, opinion, preview, analysis, interview
+- Duplicate angle of another story in this batch
+
+Return ONLY JSON array: [{"idx":0,"score":75},{"idx":1,"score":0}...]
+Be brutal. Most headlines should score 0.
 
 Headlines:
 """ + '\n'.join(headlines)
@@ -493,7 +525,7 @@ print("STEP 4 — MERGE WITH EXISTING")
 print("=" * 50)
 
 MIN_SCORE        = 45
-BEST_EFFORT_MIN  = 20
+BEST_EFFORT_MIN  = 25
 BEST_EFFORT_CATS = {'BAYERN', 'SPL', 'KSA'}
 
 passed_new      = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
