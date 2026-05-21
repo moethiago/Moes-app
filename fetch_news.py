@@ -12,49 +12,54 @@ NOW     = datetime.now(timezone.utc)
 
 RSS_SOURCES = [
   # F1
-  {'url':'https://www.formula1.com/en/latest/all.xml',                   'cat':'F1'},
-  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',             'cat':'F1'},
-  {'url':'https://www.autosport.com/rss/f1/news/',                       'cat':'F1'},
-  {'url':'https://www.gptoday.net/rss/news/rss.xml',                     'cat':'F1'},
-  {'url':'https://racer.com/category/formula-1/feed/',                   'cat':'F1'},
-  {'url':'https://www.motorsport.com/rss/f1/news/',                      'cat':'F1'},
-  {'url':'https://www.crash.net/rss/f1',                                 'cat':'F1'},
-  {'url':'https://www.racefans.net/feed/',                               'cat':'F1'},
-  {'url':'https://www.skysports.com/rss/12433',                          'cat':'F1'},
-  {'url':'https://www.motorsportweek.com/feed/',                         'cat':'F1'},
+  {'url':'https://www.formula1.com/en/latest/all.xml',                                'cat':'F1'},
+  {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',                          'cat':'F1'},
+  {'url':'https://www.autosport.com/rss/f1/news/',                                    'cat':'F1'},
+  {'url':'https://www.gptoday.net/rss/news/rss.xml',                                  'cat':'F1'},
+  {'url':'https://racer.com/category/formula-1/feed/',                                'cat':'F1'},
+  {'url':'https://www.motorsport.com/rss/f1/news/',                                   'cat':'F1'},
+  {'url':'https://www.crash.net/rss/f1',                                              'cat':'F1'},
+  {'url':'https://www.racefans.net/feed/',                                            'cat':'F1'},
+  {'url':'https://www.skysports.com/rss/12433',                                       'cat':'F1'},
+  {'url':'https://www.motorsportweek.com/feed/',                                      'cat':'F1'},
+  {'url':'https://www.reddit.com/r/formula1/top/.rss?sort=top&t=day&limit=10',        'cat':'F1'},
   # Football
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/premierleague/rss',      'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/laliga/rss',             'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/serieafootball/rss',     'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'FOOTBALL'},
-  {'url':'https://www.theguardian.com/football/ligue1football/rss',     'cat':'FOOTBALL'},
-  {'url':'https://www.skysports.com/rss/11095',                         'cat':'FOOTBALL'},
-  {'url':'https://talksport.com/feed/',                                  'cat':'FOOTBALL'},
-  {'url':'https://www.fourfourtwo.com/rss',                             'cat':'FOOTBALL'},
-  {'url':'https://www.mirror.co.uk/sport/football/rss.xml',             'cat':'FOOTBALL'},
-  {'url':'https://www.independent.co.uk/sport/football/rss',            'cat':'FOOTBALL'},
-  {'url':'https://www.standard.co.uk/sport/football/rss',               'cat':'FOOTBALL'},
-  {'url':'https://www.cbssports.com/rss/headlines/soccer/',             'cat':'FOOTBALL'},
-  {'url':'https://www.transfermarkt.co.uk/rss/news',                    'cat':'FOOTBALL'},
-  {'url':'https://www.marca.com/en/rss/football.xml',                   'cat':'FOOTBALL'},
-  {'url':'https://www.sportsmole.co.uk/football/rss.xml',               'cat':'FOOTBALL'},
+  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',                          'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/premierleague/rss',                   'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/laliga/rss',                          'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/serieafootball/rss',                  'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',              'cat':'FOOTBALL'},
+  {'url':'https://www.theguardian.com/football/ligue1football/rss',                  'cat':'FOOTBALL'},
+  {'url':'https://www.skysports.com/rss/11095',                                      'cat':'FOOTBALL'},
+  {'url':'https://talksport.com/feed/',                                               'cat':'FOOTBALL'},
+  {'url':'https://www.fourfourtwo.com/rss',                                          'cat':'FOOTBALL'},
+  {'url':'https://www.mirror.co.uk/sport/football/rss.xml',                          'cat':'FOOTBALL'},
+  {'url':'https://www.independent.co.uk/sport/football/rss',                         'cat':'FOOTBALL'},
+  {'url':'https://www.standard.co.uk/sport/football/rss',                            'cat':'FOOTBALL'},
+  {'url':'https://www.cbssports.com/rss/headlines/soccer/',                          'cat':'FOOTBALL'},
+  {'url':'https://www.transfermarkt.co.uk/rss/news',                                 'cat':'FOOTBALL'},
+  {'url':'https://www.marca.com/en/rss/football.xml',                                'cat':'FOOTBALL'},
+  {'url':'https://www.sportsmole.co.uk/football/rss.xml',                            'cat':'FOOTBALL'},
+  {'url':'https://www.reddit.com/r/soccer/top/.rss?sort=top&t=day&limit=10',         'cat':'FOOTBALL'},
   # Bayern
-  {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
-  {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',              'cat':'BAYERN'},
-  {'url':'https://www.transfermarkt.co.uk/rss/news',                    'cat':'BAYERN'},
-  {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'BAYERN'},
+  {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml',              'cat':'BAYERN'},
+  {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',                           'cat':'BAYERN'},
+  {'url':'https://www.transfermarkt.co.uk/rss/news',                                 'cat':'BAYERN'},
+  {'url':'https://www.theguardian.com/football/bundesligafootball/rss',              'cat':'BAYERN'},
+  {'url':'https://www.reddit.com/r/bayernmunich/top/.rss?sort=top&t=day&limit=10',   'cat':'BAYERN'},
   # Saudi Football
-  {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
-  {'url':'https://www.middleeasteye.net/rss',                           'cat':'SPL'},
+  {'url':'https://www.arabnews.com/cat/5/rss.xml',                                   'cat':'SPL'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                                   'cat':'SPL'},
+  {'url':'https://www.middleeasteye.net/rss',                                        'cat':'SPL'},
+  {'url':'https://www.reddit.com/r/saudifootball/top/.rss?sort=top&t=day&limit=10',  'cat':'SPL'},
   # Saudi News
-  {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
-  {'url':'https://www.arabnews.com/economy/rss.xml',                    'cat':'KSA'},
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
-  {'url':'https://en.majalla.com/rss.xml',                              'cat':'KSA'},
-  {'url':'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',     'cat':'KSA'},
-  {'url':'https://www.middleeasteye.net/rss',                           'cat':'KSA'},
+  {'url':'https://www.arabnews.com/rss.xml',                                         'cat':'KSA'},
+  {'url':'https://www.arabnews.com/economy/rss.xml',                                 'cat':'KSA'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                                   'cat':'KSA'},
+  {'url':'https://en.majalla.com/rss.xml',                                           'cat':'KSA'},
+  {'url':'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',                  'cat':'KSA'},
+  {'url':'https://www.middleeasteye.net/rss',                                        'cat':'KSA'},
+  {'url':'https://www.reddit.com/r/saudiarabia/top/.rss?sort=top&t=day&limit=10',    'cat':'KSA'},
 ]
 
 GOOGLE_NEWS_SOURCES = [
@@ -117,14 +122,17 @@ def is_within_48h(date_str):
     return (NOW - date_to_dt(date_str)) <= MAX_AGE
 
 # ─────────────────────────────────────────────
-# FETCH — RSS
+# FETCH — RSS (handles all sources including Reddit .rss)
 # ─────────────────────────────────────────────
 
 def fetch_rss(src, seen_titles):
     items = []
     for attempt in range(2):
         try:
-            req = urlreq.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
+            req = urlreq.Request(
+                src['url'],
+                headers={'User-Agent':'Mozilla/5.0 (compatible; NewsBot/1.0; +https://github.com)'}
+            )
             with urlreq.urlopen(req, timeout=10) as r:
                 root = ET.fromstring(r.read())
             node = root.find('channel')
@@ -286,7 +294,7 @@ def deduplicate(items):
     return unique
 
 # ─────────────────────────────────────────────
-# AI SCORING — per category, small batches
+# AI SCORING — per category, batches of 50
 # ─────────────────────────────────────────────
 
 def score_batch(items, cat):
@@ -310,14 +318,14 @@ def score_batch(items, cat):
 
     prompt = """Score these """ + cat + """ headlines from 1-100.
 
-CATEGORY RULE: """ + cat_rules.get(cat, '') + """
+CATEGORY RULE: """ + cat_rules.get(cat,'') + """
 
 HIGH (70-100): confirmed transfer, sacking, injury ruling out player, ban, title decided, billion-dollar deal, royal decree
 MEDIUM (45-69): confirmed contract, match result with major implications, regulatory change
 LOW (1-44): preview, opinion, ratings, rumour, training update, how-to-watch, generic interview
 
 Return ONLY a JSON array: [{"idx":0,"score":75},{"idx":1,"score":30}...]
-Every headline must have a score. If it breaks the category rule, score is 0.
+Every headline must have a score. Category rule violations score 0.
 
 Headlines:
 """ + '\n'.join(headlines)
@@ -343,7 +351,6 @@ Headlines:
 
     text = response['content'][0]['text']
 
-    # try to extract full JSON array
     json_match = re.search(r'\[.*?\]', text, re.DOTALL)
     if json_match:
         try:
@@ -355,13 +362,12 @@ Headlines:
         except:
             pass
 
-    # partial salvage: extract individual {"idx":N,"score":N} objects
     partial = re.findall(r'\{"idx"\s*:\s*(\d+)\s*,\s*"score"\s*:\s*(\d+)\}', text)
     if partial:
         score_map = {int(idx): int(score) for idx, score in partial}
         for i, item in enumerate(items):
             item['ai_score'] = score_map.get(i, 0)
-        print("  (partial salvage: " + str(len(partial)) + "/" + str(len(items)) + " scores recovered)")
+        print("  (partial salvage: " + str(len(partial)) + "/" + str(len(items)) + " scores)")
         return items
 
     print("  WARNING: no scores returned, defaulting to 0")
@@ -370,7 +376,6 @@ Headlines:
     return items
 
 def score_all(items):
-    # score per category in batches of 50
     BATCH = 50
     by_cat = {}
     for item in items:
@@ -513,9 +518,8 @@ for cat in CATEGORIES:
     cat_items.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
     top = cat_items[:6]
 
-    # best-effort fallback for low-volume categories
     if len(top) < 3 and cat in BEST_EFFORT_CATS:
-        have = set(re.sub(r'\W+','',s['title'].lower())[:50] for s in top)
+        have     = set(re.sub(r'\W+','',s['title'].lower())[:50] for s in top)
         fallback = [
             i for i in best_effort_all
             if i['cat'] == cat and re.sub(r'\W+','',i['title'].lower())[:50] not in have
