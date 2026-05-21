@@ -159,6 +159,7 @@ function boldEntities(text) {
 
 function makeWireItem(title, src, timeVal, link) {
   return '<div class="wire-item" onclick="window.open(\'' + link + '\',\'_blank\')">'
+    + '<span class="wire-bullet">•</span>'
     + '<div class="wire-content">'
     +   '<p class="wire-headline">' + boldEntities(title) + '</p>'
     +   '<div class="wire-meta">'
