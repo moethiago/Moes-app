@@ -333,10 +333,11 @@ AUTOMATIC 0 — reject immediately if headline contains any of these signals:
 - "report", "sources say", "according to", "rumour", "rumored"
 - "watch", "how to watch", "stream"
 - "reaction", "fans react"
-- story about wind tunnel, car development, technical updates
+- "ready", "set to", "preparing", "gearing up", "upcoming"
+- story about wind tunnel, car development, technical updates, upgrades
 
 SCORE 70-100 only if ALL of these are true:
-- Something HAPPENED (past tense, confirmed)
+- Something HAPPENED (past tense, confirmed fact)
 - It directly impacts a player, team, or league RIGHT NOW
 - Examples: player CONFIRMED injured/banned/transferred/sacked, title WON, club EXPELLED, ban ISSUED
 
@@ -344,7 +345,7 @@ SCORE 45-69 if:
 - Confirmed news with moderate impact
 - Contract SIGNED (not rumoured)
 - Match result that decides something important
-- Official announcement from club/federation
+- Official announcement from club or federation
 
 SCORE 1-44 if:
 - Interesting but not breaking
@@ -352,9 +353,9 @@ SCORE 1-44 if:
 
 SCORE 0 if:
 - Fails category rule
-- Contains any automatic-0 signal above
+- Contains any automatic-0 signal
 - Speculation, rumour, opinion, preview, analysis, interview
-- Duplicate angle of another story in this batch
+- Technical/development stories
 
 Return ONLY JSON array: [{"idx":0,"score":75},{"idx":1,"score":0}...]
 Be brutal. Most headlines should score 0.
@@ -426,6 +427,86 @@ def score_all(items):
                     item['ai_score'] = 0
                 scored += batch
     return scored
+
+# ─────────────────────────────────────────────
+# TITLE REWRITING
+# ─────────────────────────────────────────────
+
+def rewrite_titles(items):
+    import os
+    api_key = os.environ.get('ANTHROPIC_API_KEY','')
+    if not api_key or not items:
+        return items
+
+    indexed = []
+    for i, item in enumerate(items):
+        indexed.append(str(i) + '|' + item['title'])
+
+    prompt = """You are a wire news editor. Rewrite these headlines to be direct, factual, and specific.
+
+RULES:
+- State the FACT plainly — who did what
+- Remove clickbait, vagueness, and hype
+- Remove source attribution in title (no "- BBC", "- ESPN" etc)
+- Maximum 12 words
+- No quotes around the title
+- Do not invent facts not in the original
+- If the original is already clear and direct, keep it as-is
+
+EXAMPLES:
+"Williams poaches key leaders from McLaren, Mercedes, Alpine" → "Williams sign four senior staff from McLaren, Mercedes and Alpine"
+"Mercedes and McLaren ready key upgrades for Canada" → REMOVE — this is speculation, return original
+"Red Bull outlines timeline for new F1 wind tunnel" → REMOVE — return original unchanged
+"Manchester City weeks away from long-awaited verdict on 115 charges" → "Manchester City await verdict on 115 financial charges"
+"Mohamed Salah given lifeline in bid to avoid Saudi Pro League" → "Salah set to stay at Liverpool after contract talks progress"
+"Ousmane Dembele issues new injury update ahead of Champions League final" → "Dembele fit for Champions League final"
+"Why Manuel Neuers return for Germany at the FIFA World Cup 2026 is so important" → REMOVE — return original unchanged
+
+Return ONLY a JSON array: [{"idx":0,"title":"rewritten title"},...]
+Include every headline. If a headline should not be changed, return it exactly as-is.
+
+Headlines:
+""" + '\n'.join(indexed)
+
+    payload = json.dumps({
+        'model':      'claude-haiku-4-5-20251001',
+        'max_tokens': 1500,
+        'messages':   [{'role':'user','content':prompt}]
+    }).encode()
+
+    req = urlreq.Request(
+        'https://api.anthropic.com/v1/messages',
+        data=payload,
+        headers={
+            'Content-Type':      'application/json',
+            'x-api-key':         api_key,
+            'anthropic-version': '2023-06-01'
+        }
+    )
+
+    try:
+        with urlreq.urlopen(req, timeout=30) as r:
+            response = json.loads(r.read())
+
+        text       = response['content'][0]['text']
+        json_match = re.search(r'\[.*?\]', text, re.DOTALL)
+        if not json_match:
+            print("Title rewrite: no valid JSON returned, keeping originals")
+            return items
+
+        rewrites  = json.loads(json_match.group())
+        rewrite_map = {r['idx']: r['title'] for r in rewrites if 'title' in r}
+        for i, item in enumerate(items):
+            if i in rewrite_map and rewrite_map[i].strip():
+                old = item['title']
+                item['title'] = rewrite_map[i].strip()
+                if item['title'] != old:
+                    print("  REWRITE: " + old[:50] + " → " + item['title'][:50])
+        return items
+
+    except Exception as e:
+        print("Title rewrite failed: " + str(e) + " — keeping originals")
+        return items
 
 # ─────────────────────────────────────────────
 # OUTPUT
@@ -567,15 +648,22 @@ for cat in CATEGORIES:
         print("  [" + str(story.get('ai_score',0)) + "] " + story['title'][:70])
     final_items += top
 
-print("\nTotal in feed: " + str(len(final_items)))
+print("\nTotal selected: " + str(len(final_items)))
 
-if not final_items:
-    print("Nothing to write - preserving existing feed")
-    sys.exit(0)
+print("\n" + "=" * 50)
+print("STEP 5b — TITLE REWRITING")
+print("=" * 50)
+
+final_items = rewrite_titles(final_items)
+print("Titles rewritten.")
 
 print("\n" + "=" * 50)
 print("STEP 6 — OUTPUT")
 print("=" * 50)
+
+if not final_items:
+    print("Nothing to write - preserving existing feed")
+    sys.exit(0)
 
 write_output(final_items)
 print("Done: " + str(len(final_items)) + " stories written to js/feed.js")
