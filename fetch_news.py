@@ -6,7 +6,6 @@ import urllib.request as urlreq
 MAX_AGE = timedelta(days=2)
 NOW     = datetime.now(timezone.utc)
 
-# ── RAW SOURCES ─────────────────────────────────────────
 SOURCES = [
   # F1
   {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',             'cat':'F1'},
@@ -25,16 +24,18 @@ SOURCES = [
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml', 'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss', 'cat':'BAYERN'},
   {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',             'cat':'BAYERN'},
+  {'url':'https://www.skysports.com/rss/11095',                         'cat':'BAYERN'},
   # Saudi Football
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'SPL'},
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                      'cat':'SPL'},
+  {'url':'https://www.caughtoffside.com/feed/',                         'cat':'SPL'},
+  {'url':'https://www.90min.com/feed',                                  'cat':'SPL'},
   # Saudi News
   {'url':'https://www.arabnews.com/rss.xml',                            'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                      'cat':'KSA'},
   {'url':'https://en.majalla.com/rss.xml',                              'cat':'KSA'},
 ]
 
-# ── FETCH ALL RAW HEADLINES ──────────────────────────────
 def fetch_all():
     all_items = []
     for src in SOURCES:
@@ -42,7 +43,8 @@ def fetch_all():
             req = urlreq.Request(src['url'], headers={'User-Agent':'Mozilla/5.0'})
             with urlreq.urlopen(req, timeout=10) as r:
                 root = ET.fromstring(r.read())
-            node = root.find('channel') or root
+            node = root.find('channel')
+            if node is None: node = root
             count = 0
             for item in node.findall('item'):
                 if count >= 15: break
@@ -70,7 +72,6 @@ def fetch_all():
             print("SKIP " + src['url'].split('/')[2] + ": " + str(e))
     return all_items
 
-# ── ASK CLAUDE TO CURATE ─────────────────────────────────
 def curate_with_claude(items):
     import os
     api_key = os.environ.get('ANTHROPIC_API_KEY','')
@@ -78,24 +79,40 @@ def curate_with_claude(items):
         print("No API key found")
         sys.exit(1)
 
-    # Build the headlines list for Claude
     headlines = []
     for i, item in enumerate(items):
-        headlines.append(f"{i}|{item['cat']}|{item['title']}")
+        headlines.append(str(i) + "|" + item['cat'] + "|" + item['title'])
 
-    prompt = """You are a news editor for a sports and news app. I will give you a list of headlines.
+    prompt = """You are a ruthless breaking news editor for a sports and news app. Your standard is extremely high.
 
-Your job: pick only the GENUINELY BREAKING and HIGH-IMPACT headlines for each category.
+Only pick headlines that are CONFIRMED, IMMEDIATE, and DRAMATIC.
 
-Categories and what counts as breaking:
-- F1: race results, pole position, crashes, DNF, penalties, driver transfers, FIA rulings, contract news. NOT: previews, opinions, Q&A, historical pieces, practice sessions
-- FOOTBALL: manager sackings, confirmed transfers, match results from top 5 leagues (PL/LaLiga/SerieA/Bundesliga/Ligue1), title wins, relegation, red cards, major injuries. NOT: podcasts, rankings, predictions, GCSEs, fantasy football, trivia
-- BAYERN: anything specifically about FC Bayern Munich - transfers, injuries, results, manager news. MUST be about Bayern specifically, not just any football story
-- SPL: Saudi Pro League specific news - Al Hilal, Al Nassr, Al Ittihad, Al Ahli, transfers, results, managers. NOT general Saudi news
-- KSA: Major Saudi economic/policy news - Vision 2030, PIF investments, royal decrees, billion dollar deals, major infrastructure. NOT: Hajj guides, pavilions, local ceremonies, sports
+Examples of what you WANT:
+- Harry Kane is injured and out for the rest of the season
+- Max Verstappen sent to the back of the grid due to penalty
+- Lando Norris will not feature in Monaco Grand Prix due to broken hand
+- Arsenal one win away from sealing the Premier League title
+- McLaren sack their chief of staff after 22 years
+- Saudi Grand Prix cancelled for 2026
 
-Return ONLY a JSON array. Each item: {"idx": number, "cat": "category"}
-Pick maximum 8 per category. Only genuinely newsworthy stories.
+Examples of what you REJECT:
+- Red Bull outlines timeline for new wind tunnel
+- How ICE upgrades could shake up F1 power rankings
+- Villa's heroes triumph to end 30 year wait (vague, no drama)
+- Any headline with: could, might, reportedly, sources say, how, why, ranking, podcast, preview, analysis, opinion, history, timeline, outlines, discusses
+
+Rules:
+- Must be a CONFIRMED fact not speculation
+- Must have IMMEDIATE impact on something happening now
+- Must be DRAMATIC - injury, sacking, ban, cancellation, title won/lost, transfer confirmed
+- FOOTBALL stories must be about top 5 leagues: Premier League, La Liga, Serie A, Bundesliga, Ligue 1
+- BAYERN stories must specifically mention FC Bayern Munich, their players or manager
+- SPL stories must specifically mention Saudi Pro League teams: Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League
+- KSA stories must be major Saudi economic or policy news: Vision 2030, PIF investments, royal decrees, billion dollar deals. NOT sport, NOT Hajj, NOT ceremonies
+
+Return ONLY a valid JSON array with no extra text. Each item: {"idx": number, "cat": "category"}
+Pick maximum 6 per category. If nothing qualifies for a category return nothing for that category.
+Be ruthless. If it is not genuinely breaking and dramatic, reject it.
 
 Headlines (format: index|category|title):
 """ + "\n".join(headlines)
@@ -120,16 +137,13 @@ Headlines (format: index|category|title):
         response = json.loads(r.read())
 
     text = response['content'][0]['text']
-    # Extract JSON from response
     json_match = re.search(r'\[.*\]', text, re.DOTALL)
     if not json_match:
         print("Claude returned no valid JSON")
-        sys.exit(1)
+        return []
 
-    selected = json.loads(json_match.group())
-    return selected
+    return json.loads(json_match.group())
 
-# ── SANITIZE ─────────────────────────────────────────────
 def sanitize(text):
     text = text.replace("&#039;", "-").replace("&amp;", "and")
     text = text.replace("&quot;", "-").replace("&lt;", "-").replace("&gt;", "-")
@@ -140,20 +154,18 @@ def sanitize(text):
         else: result += c
     return result
 
-# ── MAIN ─────────────────────────────────────────────────
 print("Fetching headlines...")
 all_items = fetch_all()
-print(f"Total raw headlines: {len(all_items)}")
+print("Total raw headlines: " + str(len(all_items)))
 
 print("Asking Claude to curate...")
 try:
     selected = curate_with_claude(all_items)
-    print(f"Claude selected: {len(selected)} stories")
+    print("Claude selected: " + str(len(selected)) + " stories")
 except Exception as e:
     print("Claude curation failed: " + str(e))
     sys.exit(1)
 
-# Build final list from Claude's selections
 final_items = []
 for s in selected:
     try:
@@ -173,7 +185,6 @@ if not final_items:
     print("No items selected - skipping")
     sys.exit(0)
 
-# Write to feed.js
 lines = []
 for i in final_items:
     lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
@@ -197,7 +208,6 @@ if updated == content:
 with open('js/feed.js', 'w') as f:
     f.write(updated)
 
-# Cache bust
 version = str(int(time.time()))
 with open('index.html', 'r') as f:
     html = f.read()
