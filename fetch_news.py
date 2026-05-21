@@ -160,14 +160,21 @@ Headlines (format: index|category|title):
     return json.loads(json_match.group())
 
 def sanitize(text):
-    text = text.replace("&#039;", "-").replace("&amp;", "and")
-    text = text.replace("&quot;", "-").replace("&lt;", "-").replace("&gt;", "-")
+    # Decode common HTML entities properly
+    text = text.replace("&#039;", "'").replace("&amp;", "&")
+    text = text.replace("&quot;", '"').replace("&lt;", "<").replace("&gt;", ">")
+    # Remove actual control characters but keep apostrophes and normal punctuation
     result = ""
     for c in text:
-        if ord(c) > 127: result += "-"
-        elif c in ("'", '"', "\\", "\n", "\r"): result += "-"
-        else: result += c
-    return result
+        if ord(c) > 127:
+            result += ""
+        elif c == "\\":
+            result += ""
+        elif c in ("\n", "\r"):
+            result += " "
+        else:
+            result += c
+    return result.strip()
 
 print("Fetching headlines...")
 all_items = fetch_all()
@@ -188,9 +195,9 @@ for s in selected:
         item = all_items[idx]
         final_items.append({
             'title': sanitize(item['title']),
-            'src':   sanitize(item['link'].split('/')[2].replace('www.','')),
+            'src':   item['link'].split('/')[2].replace('www.',''),
             'cat':   item['cat'],
-            'link':  sanitize(item['link']),
+            'link':  item['link'],
             'date':  item['date'],
         })
     except:
@@ -202,8 +209,14 @@ if not final_items:
 
 lines = []
 for i in final_items:
-    lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
-        i['title'], i['src'], i['cat'], i['link'], i['date']))
+    # Use JSON encoding for each item so all characters are safely escaped
+    lines.append("  " + json.dumps({
+        'title': i['title'],
+        'src':   i['src'],
+        'cat':   i['cat'],
+        'link':  i['link'],
+        'date':  i['date'],
+    }, ensure_ascii=False))
 
 new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
 
