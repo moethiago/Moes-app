@@ -27,4 +27,4 @@
 .ticker-wrap{overflow:hidden;background:var(--bg-void);padding:6px 0;border-bottom:1px solid var(--border)}
 .ticker-track{display:flex;white-space:nowrap;width:max-content;animation:tickerScroll 40s linear infinite}
 @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.ticker-item{padding:0 16px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--txt-secondary);display:inline-flex;align-items:center;gap:4px;border-right:1px solid var(--border);flex-shrink:0;line-height:1}
+.ticker-item{padding:0 16px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--txt-secondary);display:inline-block;border-right:1px solid var(--border);flex-shrink:0;line-height:20px;white-space:nowrap}
