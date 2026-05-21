@@ -22,23 +22,24 @@ SOURCES = [
   {'url':'https://www.theguardian.com/football/ligue1football/rss',      'cat':'FOOTBALL'},
   {'url':'https://www.theguardian.com/football/laliga/rss',              'cat':'FOOTBALL'},
   {'url':'https://www.skysports.com/rss/11095',                          'cat':'FOOTBALL'},
-  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'FOOTBALL'},
+  {'url':'https://www.espn.com/espn/rss/soccer/news',                    'cat':'FOOTBALL'},
   {'url':'https://talksport.com/feed/',                                   'cat':'FOOTBALL'},
   {'url':'https://www.football365.com/feed',                             'cat':'FOOTBALL'},
-  # Bayern
+  # Bayern - dedicated sources only
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml',  'cat':'BAYERN'},
+  {'url':'https://www.bavarianfootballworks.com/rss/current.xml',        'cat':'BAYERN'},
+  {'url':'https://www.goal.com/en/news/bundesliga/rss',                  'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'cat':'BAYERN'},
-  {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',              'cat':'BAYERN'},
-  {'url':'https://www.skysports.com/rss/11095',                          'cat':'BAYERN'},
-  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'BAYERN'},
-  # Saudi Football
-  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'SPL'},
+  {'url':'https://www.espn.com/espn/rss/soccer/news',                    'cat':'BAYERN'},
+  # Saudi Football - dedicated sources only
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                       'cat':'SPL'},
-  {'url':'https://www.caughtoffside.com/feed/',                          'cat':'SPL'},
-  {'url':'https://www.90min.com/feed',                                   'cat':'SPL'},
+  {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'SPL'},
+  {'url':'https://www.goal.com/en-sa/rss/news',                         'cat':'SPL'},
   {'url':'https://www.skysports.com/rss/11095',                          'cat':'SPL'},
+  {'url':'https://www.90min.com/feed',                                   'cat':'SPL'},
   # Saudi News
   {'url':'https://www.arabnews.com/rss.xml',                             'cat':'KSA'},
+  {'url':'https://www.arabnews.com/economy/rss.xml',                     'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'KSA'},
   {'url':'https://en.majalla.com/rss.xml',                               'cat':'KSA'},
 ]
@@ -60,7 +61,6 @@ def fetch_all():
                 link  = item.findtext('link','').strip()
                 pub   = item.findtext('pubDate','').strip()
                 if not title or not link: continue
-                # Basic exact dedupe before sending to Claude
                 title_key = re.sub(r'\W+','',title.lower())[:50]
                 if title_key in seen_titles: continue
                 seen_titles.add(title_key)
@@ -115,7 +115,7 @@ Examples of what you REJECT:
 - Any headline with: could, might, reportedly, sources say, how, why, ranking, podcast, preview, analysis, opinion, history, timeline, outlines, discusses
 
 CRITICAL DEDUPLICATION RULE:
-If multiple headlines cover the same story or event, pick ONLY ONE — the clearest and most informative version. For example if Arsenal winning the title appears 3 times, pick only the best one headline about it.
+If multiple headlines cover the same story or event, pick ONLY ONE — the clearest and most informative version.
 
 Rules:
 - Must be a CONFIRMED fact not speculation
