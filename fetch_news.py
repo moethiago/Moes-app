@@ -25,13 +25,13 @@ SOURCES = [
   {'url':'https://www.espn.com/espn/rss/soccer/news',                    'cat':'FOOTBALL'},
   {'url':'https://talksport.com/feed/',                                   'cat':'FOOTBALL'},
   {'url':'https://www.football365.com/feed',                             'cat':'FOOTBALL'},
-  # Bayern - dedicated sources only
+  # Bayern
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml',  'cat':'BAYERN'},
   {'url':'https://www.bavarianfootballworks.com/rss/current.xml',        'cat':'BAYERN'},
   {'url':'https://www.goal.com/en/news/bundesliga/rss',                  'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss',  'cat':'BAYERN'},
   {'url':'https://www.espn.com/espn/rss/soccer/news',                    'cat':'BAYERN'},
-  # Saudi Football - dedicated sources only
+  # Saudi Football
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                       'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                       'cat':'SPL'},
   {'url':'https://www.goal.com/en-sa/rss/news',                         'cat':'SPL'},
@@ -159,22 +159,24 @@ Headlines (format: index|category|title):
 
     return json.loads(json_match.group())
 
-def sanitize(text):
-    # Decode common HTML entities properly
-    text = text.replace("&#039;", "'").replace("&amp;", "&")
-    text = text.replace("&quot;", '"').replace("&lt;", "<").replace("&gt;", ">")
-    # Remove actual control characters but keep apostrophes and normal punctuation
-    result = ""
-    for c in text:
-        if ord(c) > 127:
-            result += ""
-        elif c == "\\":
-            result += ""
-        elif c in ("\n", "\r"):
-            result += " "
-        else:
-            result += c
-    return result.strip()
+def js_str(text):
+    """Make a string safe to embed inside JS single-quoted string literals."""
+    # Decode HTML entities to real characters
+    text = text.replace('&amp;', '&')
+    text = text.replace('&quot;', '"')
+    text = text.replace('&#039;', "'")
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    # Remove non-ASCII (causes encoding issues in JS files)
+    text = text.encode('ascii', 'ignore').decode('ascii')
+    # Remove characters that would break a JS single-quoted string
+    text = text.replace('\\', '')
+    text = text.replace("'", "\\'")
+    text = text.replace('\n', ' ')
+    text = text.replace('\r', ' ')
+    # Clean up multiple spaces
+    text = re.sub(r'  +', ' ', text).strip()
+    return text
 
 print("Fetching headlines...")
 all_items = fetch_all()
@@ -194,10 +196,10 @@ for s in selected:
         idx = int(s['idx'])
         item = all_items[idx]
         final_items.append({
-            'title': sanitize(item['title']),
-            'src':   item['link'].split('/')[2].replace('www.',''),
+            'title': js_str(item['title']),
+            'src':   js_str(item['link'].split('/')[2].replace('www.','')),
             'cat':   item['cat'],
-            'link':  item['link'],
+            'link':  js_str(item['link']),
             'date':  item['date'],
         })
     except:
@@ -209,14 +211,8 @@ if not final_items:
 
 lines = []
 for i in final_items:
-    # Use JSON encoding for each item so all characters are safely escaped
-    lines.append("  " + json.dumps({
-        'title': i['title'],
-        'src':   i['src'],
-        'cat':   i['cat'],
-        'link':  i['link'],
-        'date':  i['date'],
-    }, ensure_ascii=False))
+    lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
+        i['title'], i['src'], i['cat'], i['link'], i['date']))
 
 new_block = "var FALLBACK_NEWS = [\n" + ",\n".join(lines) + "\n];"
 
