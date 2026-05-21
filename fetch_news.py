@@ -233,24 +233,127 @@ def fetch_google_news(src, seen_titles):
     return items
 
 # ─────────────────────────────────────────────
-# BASIC DEDUPLICATION (pre-Claude, exact/near matches)
+# BASIC DEDUP
 # ─────────────────────────────────────────────
 
 def basic_dedup(items):
-    seen_exact = {}
-    unique     = []
+    seen = {}
+    unique = []
     for item in items:
         key = re.sub(r'\W+','',item['title'].lower())[:60]
-        if key not in seen_exact:
-            seen_exact[key] = True
+        if key not in seen:
+            seen[key] = True
             unique.append(item)
     return unique
 
 # ─────────────────────────────────────────────
 # CLAUDE EDITORIAL REVIEW
-# One call per category — sees all candidates together
-# Scores, deduplicates, picks best, rewrites titles
 # ─────────────────────────────────────────────
+
+CAT_PROMPTS = {
+
+'F1': """You are the F1 editor for a breaking news app. The reader wants only confirmed, impactful Formula 1 news.
+
+EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
+- "Williams adds McLaren COO to F1 personnel team" — confirmed signing, specific role named
+- "Verstappen penalised and starts Canadian GP from the back" — confirmed penalty with consequence
+- "Norris confirmed out of next race with hand injury" — confirmed injury with impact
+- "McLaren sack team principal after poor start to season" — confirmed sacking
+
+EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
+- "Hamilton says he is very happy at Ferrari" — player quote/sentiment, zero news value
+- "Three Ellas advance through McLaren F1 ranks" — irrelevant filler, no news value
+- "FIA confirms lowest energy recharge limit for Canada qualifying" — vague technical rule, unclear impact
+- "Red Bull outlines timeline for new wind tunnel" — development update, not news
+- "Ocon denies fabricated rumours of falling out with Haas boss" — denial of rumour, not news
+- Any preview, prediction, opinion, interview, or "could/might/may" story
+
+DUPLICATE RULE: If multiple headlines cover the same event (same team doing same thing), keep only the clearest and most specific one. Reject the rest.
+
+SELECT maximum 6 stories. Only include genuinely confirmed, impactful F1 news.
+Reject everything else — it is better to have 2 great stories than 6 mediocre ones.""",
+
+'FOOTBALL': """You are the Football editor for a breaking news app. Top 5 leagues and Champions League only. The reader wants confirmed, impactful club football news.
+
+EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
+- "Casemiro leaves Manchester United, Carrick confirms exit" — named player, confirmed departure, confirmed by someone
+- "Arsenal crowned Premier League champions" — title confirmed
+- "Aston Villa win Europa League" — trophy won, confirmed result
+- "Southampton expelled from Championship play-offs over Spygate" — major consequence confirmed
+
+EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
+- "Arteta learns of title win from crying son at barbecue" — human interest fluff, zero news value
+- "Rogers named Europa League Player of the Season" — award, low impact
+- "FA opens Southampton investigation over Spygate" — investigation opened is vague; prefer specific outcome
+- "Three police officers assigned to 10,000 England fans at World Cup" — irrelevant filler
+- "Manager says he is proud of his players" — quote with no news value
+- Any story about World Cup squad announcements (that is international football, not club)
+- Any preview, prediction, opinion piece, player ratings, fantasy football
+
+DUPLICATE RULE: If the same player leaving/joining/injured appears multiple times, keep only the single clearest version. "Casemiro leaves Manchester United" appearing 3 times = keep best one, reject others.
+
+SPECIFICITY RULE: If a headline uses "hero", "star", "ace" or any vague word instead of naming the actual player, reject it. Good journalism names the person.
+
+SELECT maximum 6 stories. Only confirmed, impactful club football from top 5 leagues or Champions League.""",
+
+'BAYERN': """You are the Bayern Munich editor for a breaking news app. The reader wants confirmed Bayern Munich news only.
+
+EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
+- "Bayern Munich sign [player] from [club]" — confirmed transfer
+- "Kane scores hat-trick as Bayern win DFB Cup" — confirmed result with named player
+- "Kompany sacked as Bayern manager" — confirmed sacking
+- "Musiala out for rest of season with knee injury" — confirmed injury with impact
+
+EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
+- "Bayern Munich's Bischof discusses DFB Cup hopes" — interview, player talking about hopes
+- "Bayern Munich's Stanišić: Everyone thinking about next title" — player quote, zero news
+- "Bayern Munich president says Kompany is unsellable" — opinion/PR statement
+- "Bayern Munich vs Stuttgart: DFB-Pokal final preview" — preview
+- "Bayern Munich and Stuttgart compared ahead of DFB Cup final" — comparison/preview
+- Any story where a Bayern player just talks, gives interview, or expresses opinion
+- Germany national team stories (not Bayern club news)
+
+CATEGORY RULE: Must be about FC Bayern Munich the club. Bayern players include: Kane, Musiala, Olise, Neuer, Kompany, Kimmich, Davies, Goretzka, Laimer, Upamecano, Gnabry, Bischof, Stanišić.
+
+SELECT maximum 6 stories. If nothing qualifies, return [].""",
+
+'SPL': """You are the Saudi Pro League editor for a breaking news app. The reader wants confirmed Saudi Pro League news.
+
+EXAMPLES OF WHAT THE READER RATES 4-5/5 (always include if present):
+- "Al Hilal win increases pressure on Al Nassr in title race" — match result with title implication, specific teams named
+- "Ronaldo scores winner as Al Nassr beat Al Hilal" — confirmed result, named player
+- "Al Ittihad sack manager after fifth consecutive defeat" — confirmed sacking
+
+EXAMPLES OF WHAT THE READER RATES 0-1/5 (always reject):
+- "Al Nassr manager Jorge Jesus targets Saudi Pro League titles" — manager talking about aims, not news
+- "Al Hilal vs Al Fayha: Saudi Pro League title race Matchday 34" — match preview
+- "Al Nassr vs Damac: Saudi Pro League title race implications" — match preview
+
+CATEGORY RULE: Must name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League specifically.
+
+SELECT maximum 6 stories. If nothing qualifies, return [].""",
+
+'KSA': """You are the Saudi Arabia News editor for a breaking news app. The reader wants confirmed, impactful Saudi economic and government news.
+
+EXAMPLES OF WHAT THE READER RATES 4-5/5 (always include if present):
+- "Saudi Arabia non-oil trade surplus with GCC reaches SR4.47 billion" — specific economic data, confirmed figure
+- "Saudi Awwal Bank signs SR6.4 billion financing agreement with AlBawani" — confirmed deal with specific figure
+- "Saudi real estate transactions grow 6.8 percent to $29.85 billion in Q1" — specific confirmed data
+- "PIF announces $10 billion investment in [sector]" — major investment confirmed
+
+EXAMPLES OF WHAT THE READER RATES 0-1/5 (always reject):
+- "Saudi FM discusses improving relations with New Zealand" — low-impact diplomatic meeting
+- "Saudi deputy finance minister attends IMF dialogue" — attendance at meeting, not news
+- "Expo 2030 Riyadh showcases delivery progress at strategic site" — vague progress update
+- Any sport story
+- Any Hajj or religious ceremony story
+- Any tourism promotion story
+- UK trade deals or general Gulf news not specific to Saudi Arabia
+
+DUPLICATE RULE: Same economic data appearing twice — keep only one.
+
+SELECT maximum 6 stories. Only confirmed Saudi economic, government, or major policy news with specific facts and figures.""",
+}
 
 def editorial_review(items, cat):
     import os
@@ -258,63 +361,38 @@ def editorial_review(items, cat):
     if not api_key:
         print("No API key")
         sys.exit(1)
-
     if not items:
         return []
-
-    cat_rules = {
-        'F1': """You are editing the F1 section. Only Formula 1 news.
-KEEP: driver penalty, crash, retirement, disqualification, sacking, confirmed signing, injury confirmed, race result, championship decided, team announcement.
-REJECT: wind tunnel, car development, technical updates, previews, predictions, opinions, interviews, "could"/"might"/"may", round-ups.""",
-
-        'FOOTBALL': """You are editing the Football section. Only top 5 leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) and Champions League.
-KEEP: confirmed transfer with player name, confirmed sacking with manager name, confirmed injury with player name, title won, club banned/expelled, match result that decides something major, official club/federation announcement.
-REJECT: feel-good human interest stories (manager crying, family moments), award ceremonies, World Cup squad announcements (that's international not club football), police/security stories, opinion pieces, previews, "hero"/"star"/"ace" without a real name, anything with "long-awaited"/"weeks away"/"could"/"might".""",
-
-        'BAYERN': """You are editing the Bayern Munich section. Must be directly about FC Bayern Munich.
-KEEP: Bayern player confirmed injured/transferred/sold/signed, Bayern manager sacked/appointed, Bayern match result with major implication, official Bayern announcement. Neuer, Kane, Musiala, Olise, Kompany, Kimmich, Davies are Bayern players.
-REJECT: Germany national team stories, interviews, player quotes about hopes/aims/dreams, Bundesliga general news not about Bayern.""",
-
-        'SPL': """You are editing the Saudi Pro League section. Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League.
-KEEP: confirmed transfer involving SPL team, confirmed injury of named SPL player, title race result, sacking of SPL manager.
-REJECT: any story not naming a specific SPL team.""",
-
-        'KSA': """You are editing the Saudi Arabia News section. Major Saudi economic, government, and policy news only.
-KEEP: PIF investments, Vision 2030 milestones, royal decrees, billion-dollar deals, major Saudi economic data, NEOM announcements, Aramco news.
-REJECT: sport, ceremonies, Hajj, tourism, attendance events, UK trade deals, general Middle East news not specific to Saudi Arabia.""",
-    }
 
     lines = []
     for i, item in enumerate(items):
         lines.append(str(i) + ' | ' + item['title'])
 
-    prompt = cat_rules.get(cat, '') + """
+    prompt = CAT_PROMPTS[cat] + """
 
-Here are the candidate headlines for today's """ + cat + """ section.
-Your job as editor:
+Here are today's candidates for the """ + cat + """ section:
 
-1. IDENTIFY DUPLICATES — if multiple headlines cover the same story, mark all but the best one as duplicate.
-2. REJECT bad stories — anything that fails the rules above.
-3. SELECT maximum 6 stories — the most impactful, confirmed, breaking ones.
-4. REWRITE selected titles to be direct and factual:
-   - State WHO did WHAT
-   - Remove clickbait words: "hero", "star", "ace", "long-awaited", "stunning", "shock"
-   - Remove trailing labels: "| The Verdict", "- Report", "- BBC Sport"
+""" + '\n'.join(lines) + """
+
+Your tasks:
+1. Identify and reject duplicates — same event covered multiple times, keep only the best version
+2. Reject anything that fails the rules above
+3. Select maximum 6 stories
+4. Rewrite selected titles to be direct and factual:
+   - Remove clickbait: "hero", "star", "ace", "stunning", "shock", "incredible"
+   - Remove trailing labels: "| The Verdict", "- Report", "- BBC Sport", "| Analysis"
+   - State WHO did WHAT clearly
    - Maximum 12 words
-   - Do not invent facts not in the original headline
+   - Do not invent facts not in the original
 
-Return ONLY a valid JSON array of selected stories. Each object:
-{"idx": number, "title": "rewritten headline"}
+Return ONLY a valid JSON array of kept stories:
+[{"idx": 0, "title": "rewritten headline"}, ...]
 
-Only include stories you are keeping. If you reject a story, do not include it.
-If nothing qualifies, return an empty array [].
-
-Candidates:
-""" + '\n'.join(lines)
+If nothing qualifies return []. Do not include any explanation."""
 
     payload = json.dumps({
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 1000,
+        'max_tokens': 800,
         'messages':   [{'role':'user','content':prompt}]
     }).encode()
 
@@ -346,18 +424,17 @@ Candidates:
     results = []
     for s in selected:
         try:
-            idx  = int(s['idx'])
-            item = items[idx]
-            old_title = item['title']
-            new_title = s.get('title', old_title).strip()
-            if new_title and new_title != old_title:
-                print("  REWRITE: " + old_title[:50] + " → " + new_title[:50])
-            item = dict(item)
-            item['title']    = new_title if new_title else old_title
+            idx      = int(s['idx'])
+            item     = dict(items[idx])
+            old      = item['title']
+            new      = s.get('title','').strip()
+            if new and new != old:
+                print("  REWRITE: " + old[:50] + " → " + new[:50])
+            item['title']    = new if new else old
             item['ai_score'] = 70
             results.append(item)
         except Exception as e:
-            print("  Error processing idx " + str(s.get('idx','?')) + ": " + str(e))
+            print("  Error idx " + str(s.get('idx','?')) + ": " + str(e))
     return results
 
 # ─────────────────────────────────────────────
@@ -444,46 +521,42 @@ print("STEP 2 — BASIC DEDUP")
 print("=" * 50)
 
 unique_new = basic_dedup(new_items)
-print("Unique new items after basic dedup: " + str(len(unique_new)))
+print("Unique after basic dedup: " + str(len(unique_new)))
 
 print("\n" + "=" * 50)
 print("STEP 3 — CLAUDE EDITORIAL REVIEW (per category)")
 print("=" * 50)
 
-CATEGORIES = ['F1', 'FOOTBALL', 'BAYERN', 'SPL', 'KSA']
+CATEGORIES   = ['F1','FOOTBALL','BAYERN','SPL','KSA']
 approved_new = []
 
 for cat in CATEGORIES:
     cat_items = [i for i in unique_new if i['cat'] == cat]
-    # sort newest first before sending to Claude
-    cat_items.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-    print(cat + ": sending " + str(len(cat_items)) + " candidates to Claude...")
+    cat_items.sort(key=lambda x: x.get('timestamp',0), reverse=True)
+    print(cat + ": " + str(len(cat_items)) + " candidates →")
     try:
         approved = editorial_review(cat_items, cat)
-        print(cat + ": Claude approved " + str(len(approved)) + " stories")
+        print(cat + ": " + str(len(approved)) + " approved")
         approved_new += approved
     except Exception as e:
-        print(cat + ": editorial review failed — " + str(e))
+        print(cat + ": failed — " + str(e))
 
 print("\nTotal approved new: " + str(len(approved_new)))
 
 print("\n" + "=" * 50)
-print("STEP 4 — MERGE WITH EXISTING")
+print("STEP 4 — MERGE WITH EXISTING + FINAL SELECTION")
 print("=" * 50)
 
-# combine existing + newly approved, basic dedup on title
-all_items = existing_items + approved_new
-all_items = basic_dedup(all_items)
-
-# pick top 6 per category, newest first
+all_items   = basic_dedup(existing_items + approved_new)
 final_items = []
+
 for cat in CATEGORIES:
     cat_items = [i for i in all_items if i['cat'] == cat]
-    cat_items.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    cat_items.sort(key=lambda x: x.get('timestamp',0), reverse=True)
     top = cat_items[:6]
-    print(cat + ": " + str(len(top)) + " stories in final feed")
+    print(cat + ": " + str(len(top)) + " stories")
     for s in top:
-        print("  [" + s['date'] + "] " + s['title'][:70])
+        print("  [" + s['date'] + "] " + s['title'][:72])
     final_items += top
 
 print("\nTotal in feed: " + str(len(final_items)))
