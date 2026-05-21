@@ -233,135 +233,88 @@ def fetch_google_news(src, seen_titles):
     return items
 
 # ─────────────────────────────────────────────
-# DEDUPLICATION
+# BASIC DEDUPLICATION (pre-Claude, exact/near matches)
 # ─────────────────────────────────────────────
 
-KEY_ENTITIES = [
-    'hamilton','verstappen','norris','leclerc','russell','antonelli','piastri',
-    'alonso','sainz','perez','red bull','mclaren','ferrari','mercedes','williams',
-    'arsenal','man city','liverpool','chelsea','tottenham','man united','newcastle',
-    'real madrid','barcelona','atletico','dortmund','psg','juventus','inter','napoli',
-    'aston villa','southampton','man city',
-    'al hilal','al nassr','al ittihad','al ahli',
-    'ronaldo','benzema','mane','salah','haaland','mbappe','bellingham','kane',
-    'musiala','olise','kompany','kimmich','neuer','agrez','dembele',
-    'vision 2030','pif','neom','aramco',
-]
-
-KEY_TOPICS = [
-    'sacked','fired','resign','transfer','signed','signing','injured','injury',
-    'banned','ban','suspended','suspension','penalty','crash','dnf','pole',
-    'contract','confirmed','title','champion','relegated','relegation','final',
-    'expelled','cancelled','postponed','announced','deal','billion',
-    'sign','signs','win','wins','recall','expel','investigation','charges',
-    'verdict','poach','hire',
-]
-
-def fingerprint(title):
-    t      = title.lower()
-    ents   = [e  for e  in KEY_ENTITIES if e  in t]
-    topics = [tp for tp in KEY_TOPICS   if tp in t]
-    return ents, topics
-
-def deduplicate(items):
-    seen_exact   = {}
-    seen_stories = []
-    unique       = []
+def basic_dedup(items):
+    seen_exact = {}
+    unique     = []
     for item in items:
         key = re.sub(r'\W+','',item['title'].lower())[:60]
-        if key in seen_exact:
-            existing = seen_exact[key]
-            if item.get('engagement',0) > existing.get('engagement',0):
-                existing['engagement'] = item['engagement']
-            if item.get('source_type','') in ('rss','google_news'):
-                existing['source'] = item['source']
-            if item.get('ai_score',0) > existing.get('ai_score',0):
-                existing['ai_score'] = item['ai_score']
-            continue
-        ents, topics = fingerprint(item['title'])
-        is_dup = False
-        for s in seen_stories:
-            if [e for e in ents if e in s['ents']] and [t for t in topics if t in s['topics']]:
-                is_dup = True
-                if item.get('engagement',0) > s['engagement']:
-                    s['engagement'] = item['engagement']
-                break
-        if not is_dup:
-            seen_exact[key] = item
-            seen_stories.append({
-                'ents':       ents,
-                'topics':     topics,
-                'engagement': item.get('engagement',0)
-            })
+        if key not in seen_exact:
+            seen_exact[key] = True
             unique.append(item)
     return unique
 
 # ─────────────────────────────────────────────
-# AI SCORING
+# CLAUDE EDITORIAL REVIEW
+# One call per category — sees all candidates together
+# Scores, deduplicates, picks best, rewrites titles
 # ─────────────────────────────────────────────
 
-def score_batch(items, cat):
+def editorial_review(items, cat):
     import os
     api_key = os.environ.get('ANTHROPIC_API_KEY','')
     if not api_key:
         print("No API key")
         sys.exit(1)
 
-    headlines = []
-    for i, item in enumerate(items):
-        headlines.append(str(i) + '|' + item['title'])
+    if not items:
+        return []
 
     cat_rules = {
-        'F1':       'Formula 1 ONLY. Score 0 if not about F1.',
-        'FOOTBALL': 'Top 5 leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) or Champions League ONLY. Score 0 for anything else.',
-        'BAYERN':   'Must explicitly name FC Bayern Munich or one of their current players or manager: Kane, Musiala, Olise, Kompany, Kimmich, Neuer, Davies, Goretzka, Laimer, Upamecano, Kim, Tah, Bischof, Gnabry. Neuer IS a Bayern player. Score 0 if Bayern is not the primary subject.',
-        'SPL':      'Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League. Score 0 for ANY other football.',
-        'KSA':      'Saudi Arabia economic/government/policy news ONLY. Must be directly about Saudi Arabia. Score 0 for sport, UK trade deals, general Gulf news, ceremonies, tourism, Hajj.',
+        'F1': """You are editing the F1 section. Only Formula 1 news.
+KEEP: driver penalty, crash, retirement, disqualification, sacking, confirmed signing, injury confirmed, race result, championship decided, team announcement.
+REJECT: wind tunnel, car development, technical updates, previews, predictions, opinions, interviews, "could"/"might"/"may", round-ups.""",
+
+        'FOOTBALL': """You are editing the Football section. Only top 5 leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1) and Champions League.
+KEEP: confirmed transfer with player name, confirmed sacking with manager name, confirmed injury with player name, title won, club banned/expelled, match result that decides something major, official club/federation announcement.
+REJECT: feel-good human interest stories (manager crying, family moments), award ceremonies, World Cup squad announcements (that's international not club football), police/security stories, opinion pieces, previews, "hero"/"star"/"ace" without a real name, anything with "long-awaited"/"weeks away"/"could"/"might".""",
+
+        'BAYERN': """You are editing the Bayern Munich section. Must be directly about FC Bayern Munich.
+KEEP: Bayern player confirmed injured/transferred/sold/signed, Bayern manager sacked/appointed, Bayern match result with major implication, official Bayern announcement. Neuer, Kane, Musiala, Olise, Kompany, Kimmich, Davies are Bayern players.
+REJECT: Germany national team stories, interviews, player quotes about hopes/aims/dreams, Bundesliga general news not about Bayern.""",
+
+        'SPL': """You are editing the Saudi Pro League section. Must explicitly name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League.
+KEEP: confirmed transfer involving SPL team, confirmed injury of named SPL player, title race result, sacking of SPL manager.
+REJECT: any story not naming a specific SPL team.""",
+
+        'KSA': """You are editing the Saudi Arabia News section. Major Saudi economic, government, and policy news only.
+KEEP: PIF investments, Vision 2030 milestones, royal decrees, billion-dollar deals, major Saudi economic data, NEOM announcements, Aramco news.
+REJECT: sport, ceremonies, Hajj, tourism, attendance events, UK trade deals, general Middle East news not specific to Saudi Arabia.""",
     }
 
-    prompt = """You are a brutally strict news quality filter for a breaking news app.
+    lines = []
+    for i, item in enumerate(items):
+        lines.append(str(i) + ' | ' + item['title'])
 
-Score these """ + cat + """ headlines 0-100.
+    prompt = cat_rules.get(cat, '') + """
 
-CATEGORY RULE: """ + cat_rules.get(cat,'') + """
+Here are the candidate headlines for today's """ + cat + """ section.
+Your job as editor:
 
-RULE 1 — ANONYMITY CAP: If the headline uses vague words instead of a real name, cap the score at 20.
-Vague words that trigger the cap: "hero", "star", "ace", "icon", "legend", "key man", "figure", "leader", "source", "insider", "senior figure", "key leader", "someone", "a player", "the player", "official"
-Examples:
-- "Aston Villa hero rejects transfer" → score MAX 20 (no name = anonymous)
-- "Arsenal star signs new contract" → score MAX 20 (no name)
-- "Emiliano Martinez rejects transfer" → normal scoring (real name given)
-- "Williams sign McLaren COO" → normal scoring (specific role named)
+1. IDENTIFY DUPLICATES — if multiple headlines cover the same story, mark all but the best one as duplicate.
+2. REJECT bad stories — anything that fails the rules above.
+3. SELECT maximum 6 stories — the most impactful, confirmed, breaking ones.
+4. REWRITE selected titles to be direct and factual:
+   - State WHO did WHAT
+   - Remove clickbait words: "hero", "star", "ace", "long-awaited", "stunning", "shock"
+   - Remove trailing labels: "| The Verdict", "- Report", "- BBC Sport"
+   - Maximum 12 words
+   - Do not invent facts not in the original headline
 
-RULE 2 — AUTOMATIC 0: Score 0 immediately if headline contains:
-- "outlines", "provides update", "explains", "discusses", "debate", "verdict on"
-- "could", "might", "may", "potential", "considering", "plotting", "eyeing", "linked"
-- "round-up", "roundup", "wrap", "digest", "notebook", "| The Verdict"
-- "ratings", "ranked", "ranking", "power ranking", "best", "worst"
-- "preview", "prediction", "tips", "fantasy"
-- "speaks", "says", "believes", "feels", "thinks", "hopes", "wants", "aims", "my goal", "my aim"
-- "sources say", "according to", "rumour", "rumored"
-- "how to watch", "stream"
-- "ready", "preparing", "gearing up", "ahead of", "set to", "ready to"
-- "upgrade", "wind tunnel", "car development", "technical update"
-- "weeks away", "days away", "close to", "soon", "expected to"
-- "long-awaited" — this signals old ongoing news not breaking news
+Return ONLY a valid JSON array of selected stories. Each object:
+{"idx": number, "title": "rewritten headline"}
 
-RULE 3 — CONFIRMED FACTS ONLY:
-Score 70-100: Something HAPPENED and is CONFIRMED — injury confirmed, transfer confirmed, sacking confirmed, title won, ban issued, club expelled
-Score 45-69: Official confirmed announcement with moderate impact
-Score 1-44: Confirmed but low impact
-Score 0: Anything else
+Only include stories you are keeping. If you reject a story, do not include it.
+If nothing qualifies, return an empty array [].
 
-Return ONLY JSON: [{"idx":0,"score":75},{"idx":1,"score":0}...]
-Most headlines should score 0. Be brutal.
-
-Headlines:
-""" + '\n'.join(headlines)
+Candidates:
+""" + '\n'.join(lines)
 
     payload = json.dumps({
         'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 1200,
+        'max_tokens': 1000,
         'messages':   [{'role':'user','content':prompt}]
     }).encode()
 
@@ -378,131 +331,34 @@ Headlines:
     with urlreq.urlopen(req, timeout=30) as r:
         response = json.loads(r.read())
 
-    text = response['content'][0]['text']
-
+    text       = response['content'][0]['text']
     json_match = re.search(r'\[.*?\]', text, re.DOTALL)
-    if json_match:
-        try:
-            scores    = json.loads(json_match.group())
-            score_map = {s['idx']: s['score'] for s in scores}
-            for i, item in enumerate(items):
-                item['ai_score'] = score_map.get(i, 0)
-            return items
-        except:
-            pass
-
-    partial = re.findall(r'\{"idx"\s*:\s*(\d+)\s*,\s*"score"\s*:\s*(\d+)\}', text)
-    if partial:
-        score_map = {int(idx): int(score) for idx, score in partial}
-        for i, item in enumerate(items):
-            item['ai_score'] = score_map.get(i, 0)
-        print("  (partial salvage: " + str(len(partial)) + "/" + str(len(items)) + " scores)")
-        return items
-
-    print("  WARNING: no scores returned, defaulting to 0")
-    for item in items:
-        item['ai_score'] = 0
-    return items
-
-def score_all(items):
-    BATCH = 50
-    by_cat = {}
-    for item in items:
-        by_cat.setdefault(item['cat'], []).append(item)
-
-    scored = []
-    for cat, cat_items in by_cat.items():
-        batches = [cat_items[i:i+BATCH] for i in range(0, len(cat_items), BATCH)]
-        print(cat + ": " + str(len(cat_items)) + " items in " + str(len(batches)) + " batch(es)")
-        for b, batch in enumerate(batches):
-            try:
-                scored += score_batch(batch, cat)
-            except Exception as e:
-                print("  batch " + str(b+1) + " failed: " + str(e) + " — scoring 0")
-                for item in batch:
-                    item['ai_score'] = 0
-                scored += batch
-    return scored
-
-# ─────────────────────────────────────────────
-# TITLE REWRITING
-# ─────────────────────────────────────────────
-
-def rewrite_titles(items):
-    import os
-    api_key = os.environ.get('ANTHROPIC_API_KEY','')
-    if not api_key or not items:
-        return items
-
-    indexed = []
-    for i, item in enumerate(items):
-        indexed.append(str(i) + '|' + item['title'])
-
-    prompt = """You are a wire news editor. Rewrite these headlines to be direct, factual, and specific.
-
-RULES:
-- State the FACT plainly — who did what
-- Remove clickbait, vagueness, hype and filler words
-- Remove source suffixes like "- BBC", "- ESPN", "| The Verdict" etc
-- Maximum 12 words
-- No quotes around the title
-- Do not invent facts not in the original
-- If already clear and direct, keep as-is
-- Never use vague words like "hero", "star", "ace", "key man" — if no real name is in the original, keep the headline as-is
-
-EXAMPLES:
-"Williams poaches key leaders from McLaren, Mercedes, Alpine" → "Williams sign four senior staff from McLaren, Mercedes and Alpine"
-"Manchester City weeks away from long-awaited verdict on 115 charges" → "Manchester City await verdict on 115 financial charges"
-"Ousmane Dembele issues new injury update ahead of Champions League final" → "Dembele fit for Champions League final"
-"Villa make history to win Europa League | The Verdict" → "Aston Villa win Europa League"
-"Aston Villa hero rejects transfer after two-year Europa League fight" → keep as-is (no real name to use)
-"FA opens Southampton investigation over Spygate" → keep as-is (already direct)
-
-Return ONLY JSON: [{"idx":0,"title":"rewritten title"},...]
-Include every headline.
-
-Headlines:
-""" + '\n'.join(indexed)
-
-    payload = json.dumps({
-        'model':      'claude-haiku-4-5-20251001',
-        'max_tokens': 1500,
-        'messages':   [{'role':'user','content':prompt}]
-    }).encode()
-
-    req = urlreq.Request(
-        'https://api.anthropic.com/v1/messages',
-        data=payload,
-        headers={
-            'Content-Type':      'application/json',
-            'x-api-key':         api_key,
-            'anthropic-version': '2023-06-01'
-        }
-    )
+    if not json_match:
+        print("  " + cat + ": no valid JSON from Claude")
+        return []
 
     try:
-        with urlreq.urlopen(req, timeout=30) as r:
-            response = json.loads(r.read())
+        selected = json.loads(json_match.group())
+    except:
+        print("  " + cat + ": JSON parse failed")
+        return []
 
-        text       = response['content'][0]['text']
-        json_match = re.search(r'\[.*?\]', text, re.DOTALL)
-        if not json_match:
-            print("Title rewrite: no valid JSON — keeping originals")
-            return items
-
-        rewrites    = json.loads(json_match.group())
-        rewrite_map = {r['idx']: r['title'] for r in rewrites if 'title' in r}
-        for i, item in enumerate(items):
-            if i in rewrite_map and rewrite_map[i].strip():
-                old = item['title']
-                item['title'] = rewrite_map[i].strip()
-                if item['title'] != old:
-                    print("  REWRITE: " + old[:55] + " → " + item['title'][:55])
-        return items
-
-    except Exception as e:
-        print("Title rewrite failed: " + str(e) + " — keeping originals")
-        return items
+    results = []
+    for s in selected:
+        try:
+            idx  = int(s['idx'])
+            item = items[idx]
+            old_title = item['title']
+            new_title = s.get('title', old_title).strip()
+            if new_title and new_title != old_title:
+                print("  REWRITE: " + old_title[:50] + " → " + new_title[:50])
+            item = dict(item)
+            item['title']    = new_title if new_title else old_title
+            item['ai_score'] = 70
+            results.append(item)
+        except Exception as e:
+            print("  Error processing idx " + str(s.get('idx','?')) + ": " + str(e))
+    return results
 
 # ─────────────────────────────────────────────
 # OUTPUT
@@ -584,85 +440,61 @@ for src in GOOGLE_NEWS_SOURCES:
 print("\nNew items fetched: " + str(len(new_items)))
 
 print("\n" + "=" * 50)
-print("STEP 2 — DEDUPLICATION")
+print("STEP 2 — BASIC DEDUP")
 print("=" * 50)
 
-unique_new = deduplicate(new_items)
-print("Unique new items: " + str(len(unique_new)))
+unique_new = basic_dedup(new_items)
+print("Unique new items after basic dedup: " + str(len(unique_new)))
 
 print("\n" + "=" * 50)
-print("STEP 3 — AI SCORING (per category)")
+print("STEP 3 — CLAUDE EDITORIAL REVIEW (per category)")
 print("=" * 50)
 
-scored_new = score_all(unique_new)
-print("Total scored: " + str(len(scored_new)))
+CATEGORIES = ['F1', 'FOOTBALL', 'BAYERN', 'SPL', 'KSA']
+approved_new = []
+
+for cat in CATEGORIES:
+    cat_items = [i for i in unique_new if i['cat'] == cat]
+    # sort newest first before sending to Claude
+    cat_items.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    print(cat + ": sending " + str(len(cat_items)) + " candidates to Claude...")
+    try:
+        approved = editorial_review(cat_items, cat)
+        print(cat + ": Claude approved " + str(len(approved)) + " stories")
+        approved_new += approved
+    except Exception as e:
+        print(cat + ": editorial review failed — " + str(e))
+
+print("\nTotal approved new: " + str(len(approved_new)))
 
 print("\n" + "=" * 50)
 print("STEP 4 — MERGE WITH EXISTING")
 print("=" * 50)
 
-MIN_SCORE        = 45
-BEST_EFFORT_MIN  = 25
-BEST_EFFORT_CATS = {'BAYERN', 'SPL', 'KSA'}
+# combine existing + newly approved, basic dedup on title
+all_items = existing_items + approved_new
+all_items = basic_dedup(all_items)
 
-passed_new      = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
-best_effort_new = [i for i in scored_new if BEST_EFFORT_MIN <= i.get('ai_score',0) < MIN_SCORE]
-
-print("Passing MIN_SCORE (" + str(MIN_SCORE) + "): " + str(len(passed_new)))
-print("Best-effort pool (" + str(BEST_EFFORT_MIN) + "-" + str(MIN_SCORE-1) + "): " + str(len(best_effort_new)))
-
-merged          = deduplicate(existing_items + passed_new)
-best_effort_all = deduplicate(best_effort_new)
-print("Total after merge: " + str(len(merged)))
-
-print("\n" + "=" * 50)
-print("STEP 5 — SELECTION (top 6 per category, newest first)")
-print("=" * 50)
-
-CATEGORIES  = ['F1','FOOTBALL','BAYERN','SPL','KSA']
+# pick top 6 per category, newest first
 final_items = []
-
 for cat in CATEGORIES:
-    cat_items = [i for i in merged if i['cat'] == cat and i.get('ai_score',0) >= MIN_SCORE]
-    cat_items.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
+    cat_items = [i for i in all_items if i['cat'] == cat]
+    cat_items.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
     top = cat_items[:6]
-
-    if len(top) < 3 and cat in BEST_EFFORT_CATS:
-        have     = set(re.sub(r'\W+','',s['title'].lower())[:50] for s in top)
-        fallback = [
-            i for i in best_effort_all
-            if i['cat'] == cat and re.sub(r'\W+','',i['title'].lower())[:50] not in have
-        ]
-        fallback.sort(key=lambda x: (x.get('timestamp',0), x.get('ai_score',0)), reverse=True)
-        added = fallback[:3 - len(top)]
-        top  += added
-        if added:
-            print(cat + ": added " + str(len(added)) + " best-effort stories")
-
-    print(cat + ": " + str(len(top)) + " stories")
-    for story in top:
-        print("  [" + str(story.get('ai_score',0)) + "] " + story['title'][:70])
+    print(cat + ": " + str(len(top)) + " stories in final feed")
+    for s in top:
+        print("  [" + s['date'] + "] " + s['title'][:70])
     final_items += top
 
-print("\nTotal selected: " + str(len(final_items)))
-
-print("\n" + "=" * 50)
-print("STEP 5b — TITLE REWRITING")
-print("=" * 50)
-
-final_items = rewrite_titles(final_items)
-
-print("Re-deduplicating after rewrite...")
-final_items = deduplicate(final_items)
-print("Final after re-dedup: " + str(len(final_items)))
-
-print("\n" + "=" * 50)
-print("STEP 6 — OUTPUT")
-print("=" * 50)
+print("\nTotal in feed: " + str(len(final_items)))
 
 if not final_items:
     print("Nothing to write - preserving existing feed")
     sys.exit(0)
+
+print("\n" + "=" * 50)
+print("STEP 5 — OUTPUT")
+print("=" * 50)
 
 write_output(final_items)
 print("Done: " + str(len(final_items)) + " stories written to js/feed.js")
