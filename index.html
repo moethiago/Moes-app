@@ -65,13 +65,15 @@
 
     <!-- SPORTS -->
     <div class="tab-panel" id="panel-sports">
-      <p class="section-label" style="padding-left:14px;">Next Race</p>
+
+      <!-- F1 NEXT SESSION COUNTDOWN -->
+      <p class="section-label" style="padding-left:14px;">Formula 1</p>
       <div style="padding:0 14px 10px;">
         <div class="cd-card">
           <div class="cd-top">
             <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Canadian Grand Prix</span></div>
             <div class="cd-title" id="f1-next-session">Circuit Gilles Villeneuve, Montreal</div>
-            <div class="cd-sub">Round 5 · Sprint Weekend · May 24 2026</div>
+            <div class="cd-session-name" id="f1-session-label">Loading...</div>
           </div>
           <div class="cd-grid">
             <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
@@ -79,24 +81,16 @@
             <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
             <div class="cd-seg"><div class="cd-num" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
           </div>
+          <div class="cd-sessions" id="f1-cd-sub"></div>
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
-        <p class="section-label" style="padding:14px 0 8px;">Live Football</p>
-        <button class="btn-refresh" onclick="loadFootballScores()">REFRESH</button>
-      </div>
-      <div style="padding:0 14px 10px;">
-        <div class="card" id="football-scores-container">
-          <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--epl-green)"></div><span>Loading...</span></div>
-        </div>
-      </div>
-
+      <!-- F1 STANDINGS -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
         <p class="section-label" style="padding:14px 0 8px;">F1 2026 Standings</p>
         <button class="btn-refresh" onclick="loadF1Data()">REFRESH</button>
       </div>
-      <div style="padding:0 14px 20px;">
+      <div style="padding:0 14px 10px;">
         <div class="card">
           <div class="card-header">
             <span class="card-title">Driver Championship</span>
@@ -107,6 +101,23 @@
           </div>
         </div>
       </div>
+
+      <!-- LIVE FOOTBALL SCORES — ScoreAxis real-time widget -->
+      <p class="section-label" style="padding-left:14px;">Live Football</p>
+      <div style="padding:0 14px 10px;" id="football-scores-container">
+        <div class="scoreaxis-widget" style="width:auto;height:auto;font-size:13px;background-color:#0d0f18;color:#eeeef2;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
+          <script src="https://widgets.scoreaxis.com/api/football/livescores/62321940bf1fa71a67215906?lang=en&timezone=Asia%2FRiyadh&leagues=premier_league%2Cla_liga%2Cserie_a%2Cbundesliga%2Cligue_1%2Cchampions_league&dateRange=today&header=1&links=1&font=heebo&fontSize=13&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230d0f18&textColor=%23eeeef2&linkColor=%238a8fa8&borderColor=%23ffffff0f&tabColor=%231a1d2a" async></script>
+        </div>
+      </div>
+
+      <!-- SPL STANDINGS — ScoreAxis real-time widget -->
+      <p class="section-label" style="padding-left:14px;">Saudi Pro League</p>
+      <div style="padding:0 14px 20px;">
+        <div class="scoreaxis-widget" style="width:auto;height:auto;font-size:13px;background-color:#0d0f18;color:#eeeef2;border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">
+          <script src="https://widgets.scoreaxis.com/api/football/league-table/6232265abf1fa71a672159ec?lang=en&teamLogo=1&tableLines=0&homeAway=0&header=1&position=1&goals=0&gamesCount=1&diff=1&winCount=0&drawCount=0&loseCount=0&lastGames=0&points=1&teamsLimit=all&links=1&font=heebo&fontSize=13&rowDensity=100&widgetWidth=auto&widgetHeight=auto&bodyColor=%230d0f18&textColor=%23eeeef2&linkColor=%238a8fa8&borderColor=%23ffffff0f&tabColor=%231a1d2a" async></script>
+        </div>
+      </div>
+
     </div>
 
     <!-- HEALTH -->
