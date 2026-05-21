@@ -111,7 +111,6 @@ def read_existing_feed():
         if not match:
             print("No existing feed found")
             return []
-        # parse JS object literals into dicts
         raw = match.group(1)
         items = []
         pattern = re.compile(
@@ -128,7 +127,6 @@ def read_existing_feed():
                 'source_type': 'existing',
                 'engagement':  0,
                 'ai_score':    50,
-                'fetched_at':  None,
             })
         print("Existing feed: " + str(len(items)) + " stories loaded")
         return items
@@ -136,19 +134,19 @@ def read_existing_feed():
         print("Could not read existing feed: " + str(e))
         return []
 
-def is_within_48h(date_str):
+def date_to_dt(date_str):
     try:
-        # date_str format: "May 21"
-        # parse as current year
         year = NOW.year
         dt = datetime.strptime(date_str + ' ' + str(year), '%b %d %Y')
         dt = dt.replace(tzinfo=timezone.utc)
-        # handle year boundary
         if (NOW - dt).days < -30:
             dt = dt.replace(year=year - 1)
-        return (NOW - dt) <= MAX_AGE
+        return dt
     except:
-        return True  # keep if we can't parse
+        return NOW
+
+def is_within_48h(date_str):
+    return (NOW - date_to_dt(date_str)) <= MAX_AGE
 
 # ─────────────────────────────────────────────
 # FETCH — RSS
@@ -177,15 +175,18 @@ def fetch_rss(src, seen_titles):
                     dt = parsedate_to_datetime(pub)
                     if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                     if (NOW - dt) > MAX_AGE: continue
-                    date_str = dt.strftime('%b %-d')
+                    date_str  = dt.strftime('%b %-d')
+                    timestamp = int(dt.timestamp())
                 except:
-                    date_str = NOW.strftime('%b %-d')
+                    date_str  = NOW.strftime('%b %-d')
+                    timestamp = int(NOW.timestamp())
                 items.append({
                     'title':       title,
                     'url':         link,
                     'source':      link.split('/')[2].replace('www.',''),
                     'cat':         src['cat'],
                     'date':        date_str,
+                    'timestamp':   timestamp,
                     'source_type': 'rss',
                     'engagement':  0,
                     'ai_score':    0,
@@ -230,15 +231,18 @@ def fetch_google_news(src, seen_titles):
                     dt = parsedate_to_datetime(pub)
                     if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                     if (NOW - dt) > MAX_AGE: continue
-                    date_str = dt.strftime('%b %-d')
+                    date_str  = dt.strftime('%b %-d')
+                    timestamp = int(dt.timestamp())
                 except:
-                    date_str = NOW.strftime('%b %-d')
+                    date_str  = NOW.strftime('%b %-d')
+                    timestamp = int(NOW.timestamp())
                 items.append({
                     'title':       title,
                     'url':         link,
                     'source':      'google.news',
                     'cat':         src['cat'],
                     'date':        date_str,
+                    'timestamp':   timestamp,
                     'source_type': 'google_news',
                     'engagement':  0,
                     'ai_score':    0,
@@ -283,12 +287,14 @@ def fetch_reddit(src, seen_titles):
                 if title_key in seen_titles: continue
                 seen_titles.add(title_key)
                 engagement = min(100, int(score / 100))
+                timestamp  = int(p.get('created_utc', NOW.timestamp()))
                 items.append({
                     'title':       title,
                     'url':         url,
                     'source':      'reddit.com/r/' + p.get('subreddit',''),
                     'cat':         src['cat'],
                     'date':        NOW.strftime('%b %-d'),
+                    'timestamp':   timestamp,
                     'source_type': 'reddit',
                     'engagement':  engagement,
                     'ai_score':    0,
@@ -326,8 +332,8 @@ KEY_TOPICS = [
 ]
 
 def fingerprint(title):
-    t = title.lower()
-    ents   = [e for e in KEY_ENTITIES if e in t]
+    t      = title.lower()
+    ents   = [e  for e  in KEY_ENTITIES if e  in t]
     topics = [tp for tp in KEY_TOPICS   if tp in t]
     return ents, topics
 
@@ -343,16 +349,13 @@ def deduplicate(items):
                 existing['engagement'] = item['engagement']
             if item['source_type'] in ('rss','google_news'):
                 existing['source'] = item['source']
-            # keep higher ai_score if existing already scored
             if item.get('ai_score',0) > existing.get('ai_score',0):
                 existing['ai_score'] = item['ai_score']
             continue
         ents, topics = fingerprint(item['title'])
         is_dup = False
         for s in seen_stories:
-            shared_ent   = [e for e in ents   if e in s['ents']]
-            shared_topic = [t for t in topics  if t in s['topics']]
-            if shared_ent and shared_topic:
+            if [e for e in ents if e in s['ents']] and [t for t in topics if t in s['topics']]:
                 is_dup = True
                 if item.get('engagement',0) > s['engagement']:
                     s['engagement'] = item['engagement']
@@ -360,9 +363,9 @@ def deduplicate(items):
         if not is_dup:
             seen_exact[key] = item
             seen_stories.append({
-                'ents':      ents,
-                'topics':    topics,
-                'engagement':item.get('engagement',0)
+                'ents':       ents,
+                'topics':     topics,
+                'engagement': item.get('engagement',0)
             })
             unique.append(item)
     return unique
@@ -408,7 +411,6 @@ HIGH SCORE examples (70-100):
 - Title won or mathematically decided
 - PIF acquires major company
 - Royal decree changes economic policy
-- Reddit post with 5000+ upvotes about major incident
 
 LOW SCORE examples (1-30):
 - Match preview
@@ -422,20 +424,19 @@ LOW SCORE examples (1-30):
 - Transfer rumour (not confirmed)
 - Generic recap without major incident
 
-CATEGORY RULES - only score if relevant to category:
+CATEGORY RULES - score 0 if headline does not belong to its category:
 - F1: must be about Formula 1 specifically
 - FOOTBALL: must be top 5 leagues or Champions League
 - BAYERN: must mention FC Bayern Munich, their players or manager by name
 - SPL: must mention Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League
 - KSA: must be Saudi economic/policy/government news - NOT sport
 
-If a headline does NOT belong to its category, score it 0.
-Reddit engagement score in [brackets] is a signal - higher means more fan discussion.
+Reddit engagement in [brackets] signals fan interest - factor it in.
 
 Return ONLY a valid JSON array. Each item: {"idx": number, "score": number}
-Include ALL headlines with a score, even if score is 0.
+Include ALL headlines.
 
-Headlines (format: index|category|title):
+Headlines:
 """ + '\n'.join(headlines)
 
     payload = json.dumps({
@@ -463,7 +464,7 @@ Headlines (format: index|category|title):
         print("Claude returned no valid JSON")
         return items
 
-    scores = json.loads(json_match.group())
+    scores    = json.loads(json_match.group())
     score_map = {s['idx']: s['score'] for s in scores}
     for i, item in enumerate(items):
         item['ai_score'] = score_map.get(i, 0)
@@ -526,19 +527,20 @@ print("STEP 0 — LOAD EXISTING FEED")
 print("=" * 50)
 
 existing_items = read_existing_feed()
-# drop existing stories older than 48h
 existing_items = [i for i in existing_items if is_within_48h(i['date'])]
+# existing items get their timestamp from date_str
+for item in existing_items:
+    if 'timestamp' not in item:
+        item['timestamp'] = int(date_to_dt(item['date']).timestamp())
 print("Existing stories within 48h: " + str(len(existing_items)))
 
 print("\n" + "=" * 50)
 print("STEP 1 — INGESTION")
 print("=" * 50)
 
-# seed seen_titles from existing so we don't re-fetch duplicates
 seen_titles = set()
 for item in existing_items:
-    key = re.sub(r'\W+','',item['title'].lower())[:50]
-    seen_titles.add(key)
+    seen_titles.add(re.sub(r'\W+','',item['title'].lower())[:50])
 
 new_items = []
 for src in RSS_SOURCES:
@@ -563,12 +565,11 @@ print("=" * 50)
 
 BATCH_SIZE = 150
 scored_new = []
-batches = [unique_new[i:i+BATCH_SIZE] for i in range(0, len(unique_new), BATCH_SIZE)]
+batches    = [unique_new[i:i+BATCH_SIZE] for i in range(0, len(unique_new), BATCH_SIZE)]
 for b, batch in enumerate(batches):
     print("Scoring batch " + str(b+1) + "/" + str(len(batches)) + " (" + str(len(batch)) + " items)...")
     try:
-        scored = score_with_claude(batch)
-        scored_new += scored
+        scored_new += score_with_claude(batch)
     except Exception as e:
         print("Scoring batch failed: " + str(e))
         for item in batch:
@@ -581,29 +582,28 @@ print("\n" + "=" * 50)
 print("STEP 4 — MERGE WITH EXISTING")
 print("=" * 50)
 
-# only keep new items that passed minimum score
-MIN_SCORE   = 40
-passed_new  = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
-print("New items passing score threshold (" + str(MIN_SCORE) + "): " + str(len(passed_new)))
+MIN_SCORE  = 40
+passed_new = [i for i in scored_new if i.get('ai_score',0) >= MIN_SCORE]
+print("New items passing threshold: " + str(len(passed_new)))
 
-# merge: existing + new, deduplicate again
 merged = deduplicate(existing_items + passed_new)
-print("Total after merge + dedup: " + str(len(merged)))
+print("Total after merge: " + str(len(merged)))
 
 print("\n" + "=" * 50)
-print("STEP 5 — SELECTION (top 6 per category)")
+print("STEP 5 — SELECTION (top 6 per category, newest first)")
 print("=" * 50)
 
 CATEGORIES  = ['F1','FOOTBALL','BAYERN','SPL','KSA']
 final_items = []
 
 for cat in CATEGORIES:
-    cat_items = [i for i in merged if i['cat'] == cat]
-    cat_items.sort(key=lambda x: x.get('ai_score',0), reverse=True)
+    cat_items = [i for i in merged if i['cat'] == cat and i.get('ai_score',0) >= MIN_SCORE]
+    # sort: newest first, score as tiebreaker
+    cat_items.sort(key=lambda x: (x.get('timestamp', 0), x.get('ai_score', 0)), reverse=True)
     top = cat_items[:6]
     print(cat + ": " + str(len(top)) + " stories")
     for story in top:
-        print("  [" + str(story.get('ai_score',0)) + "] " + story['title'][:70])
+        print("  [score:" + str(story.get('ai_score',0)) + "] [" + story['date'] + "] " + story['title'][:60])
     final_items += top
 
 print("\nTotal in feed: " + str(len(final_items)))
