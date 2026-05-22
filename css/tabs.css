@@ -1,3 +1,8 @@
+/* ── SPORTS SECTION DIVIDER ─────────────────────────────── */
+.sports-divider{display:flex;align-items:center;gap:12px;padding:8px 14px}
+.sports-divider::before,.sports-divider::after{content:'';flex:1;height:1px;background:var(--border-hi)}
+.sports-divider-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt-muted);white-space:nowrap}
+
 /* ── F1 SESSION PILLS ───────────────────────────────────── */
 .cd-session-name{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
 .cd-sessions{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06)}
@@ -32,7 +37,6 @@
 .active-game{background:rgba(56,211,106,0.1);color:var(--epl-green);border:1px solid rgba(56,211,106,0.25)}
 .ft-game{background:var(--bg-raised);color:var(--txt-muted);border:1px solid var(--border)}
 .soon-game{background:rgba(79,156,249,0.1);color:var(--ig-blue);border:1px solid rgba(79,156,249,0.25)}
-.live-match-events{font-size:11px;color:var(--txt-secondary);padding-top:6px;border-top:1px dashed var(--border)}
 .f1-std-header{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted)}
 .f1-std-row{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center}
 .f1-std-row:last-child{border-bottom:none}
@@ -46,10 +50,10 @@
 .f1-wins{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);text-align:right}
 .f1-pts{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;text-align:right}
 .f1-last-updated{text-align:center;padding:8px;font-size:10px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace;border-top:1px solid var(--border)}
-.cd-card{background:linear-gradient(135deg,#130005,#0d0f18);border-radius:var(--r-lg);border:1px solid rgba(232,0,45,0.2);margin-bottom:12px;overflow:hidden}
+.cd-card{background:linear-gradient(135deg,#130005,#0d0f18);border-radius:var(--r-lg);border:1px solid rgba(232,0,45,0.2);overflow:hidden}
 .cd-top{padding:16px 16px 12px}
 .cd-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--f1-red);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-bottom:6px}
-.cd-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff}
+.cd-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#fff;line-height:1.2}
 .cd-session-name{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
 .cd-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);margin-top:3px}
 .cd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 16px}
@@ -59,6 +63,41 @@
 .cd-sessions{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06)}
 .session-pill{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,0,45,0.3);background:rgba(232,0,45,0.08);color:var(--f1-red);letter-spacing:0.5px;text-transform:uppercase}
 .session-pill.past{border-color:rgba(255,255,255,0.06);background:transparent;color:var(--txt-muted)}
+
+/* ── FOOTBALL FIXTURES ──────────────────────────────────── */
+.fleague-tab-row{display:flex;gap:6px;overflow-x:auto;padding:0 14px 10px;scrollbar-width:none}
+.fleague-tab-row::-webkit-scrollbar{display:none}
+.fleague-tab{flex-shrink:0;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;white-space:nowrap}
+.fleague-tab.active{background:linear-gradient(135deg,#1a6b3a,#0f4d2a);color:#fff;border-color:transparent}
+.fxt-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);gap:12px}
+.fxt-row:last-child{border-bottom:none}
+.fxt-row.fxt-live{background:rgba(56,211,106,0.04)}
+.fxt-teams{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.fxt-team{display:flex;align-items:center;gap:8px}
+.fxt-logo{width:18px;height:18px;object-fit:contain;flex-shrink:0}
+.fxt-name{font-size:13px;font-weight:500;color:var(--txt-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fxt-name.fxt-winning{font-weight:700;color:#fff}
+.fxt-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.fxt-score{display:flex;gap:6px;align-items:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;color:var(--txt-primary)}
+.fxt-score.fxt-score-live{color:var(--epl-green)}
+.fxt-score-sep{color:var(--txt-muted);font-size:14px}
+.fxt-kickoff{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.fxt-status{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px}
+.fxt-status.live{background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3)}
+.fxt-status.ht{background:rgba(255,165,0,0.15);color:orange;border:1px solid rgba(255,165,0,0.3)}
+.fxt-status.ft{background:var(--bg-raised);color:var(--txt-muted);border:1px solid var(--border)}
+.fxt-status.ns{background:rgba(79,156,249,0.1);color:var(--ig-blue);border:1px solid rgba(79,156,249,0.2)}
+.fxt-status.pst{background:rgba(255,0,0,0.1);color:#ff6b6b;border:1px solid rgba(255,0,0,0.2)}
+.fxt-loading{display:flex;align-items:center;gap:10px;padding:24px 16px;color:var(--txt-muted);font-size:13px}
+.fxt-empty{padding:24px 16px;text-align:center;color:var(--txt-muted);font-size:13px}
+.fxt-league-block{margin-bottom:2px}
+.fxt-league-block:last-child{margin-bottom:0}
+.fxt-league-header{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-raised);border-bottom:1px solid var(--border)}
+.fxt-league-flag{font-size:14px}
+.fxt-league-name{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--txt-muted)}
+.fxt-live-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3);margin-left:auto}
+.fxt-upcoming-label{padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
+.fxt-upcoming-date{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ig-blue)}
 
 /* ════ HEALTH TAB ══════════════════════════════════════ */
 .ring-card{background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);padding:20px 16px;margin-bottom:12px}
@@ -88,40 +127,3 @@
 .wk-stat-lbl{font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
 .vol-total{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--txt-secondary)}
 .vol-total strong{color:var(--txt-primary);font-family:'Rajdhani',sans-serif;font-size:18px}
-/* ── FOOTBALL FIXTURES ──────────────────────────────────── */
-.fleague-tab-row{display:flex;gap:6px;overflow-x:auto;padding:0 14px 10px;scrollbar-width:none}
-.fleague-tab-row::-webkit-scrollbar{display:none}
-.fleague-tab{flex-shrink:0;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;white-space:nowrap}
-.fleague-tab.active{background:linear-gradient(135deg,#1a6b3a,#0f4d2a);color:#fff;border-color:transparent}
-.fxt-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);gap:12px}
-.fxt-row:last-child{border-bottom:none}
-.fxt-row.fxt-live{background:rgba(56,211,106,0.04)}
-.fxt-teams{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
-.fxt-team{display:flex;align-items:center;gap:8px}
-.fxt-logo{width:18px;height:18px;object-fit:contain;flex-shrink:0}
-.fxt-name{font-size:13px;font-weight:500;color:var(--txt-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fxt-name.fxt-winning{font-weight:700;color:#fff}
-.fxt-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-.fxt-score{display:flex;gap:6px;align-items:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:20px;color:var(--txt-primary)}
-.fxt-score.fxt-score-live{color:var(--epl-green)}
-.fxt-score-sep{color:var(--txt-muted);font-size:14px}
-.fxt-kickoff{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt-muted)}
-.fxt-status{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px}
-.fxt-status.live{background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3)}
-.fxt-status.ht{background:rgba(255,165,0,0.15);color:orange;border:1px solid rgba(255,165,0,0.3)}
-.fxt-status.ft{background:var(--bg-raised);color:var(--txt-muted);border:1px solid var(--border)}
-.fxt-status.ns{background:rgba(79,156,249,0.1);color:var(--ig-blue);border:1px solid rgba(79,156,249,0.2)}
-.fxt-status.pst{background:rgba(255,0,0,0.1);color:#ff6b6b;border:1px solid rgba(255,0,0,0.2)}
-.fxt-loading{display:flex;align-items:center;gap:10px;padding:24px 16px;color:var(--txt-muted);font-size:13px}
-.fxt-empty{padding:24px 16px;text-align:center;color:var(--txt-muted);font-size:13px}
-/* ── LEAGUE BLOCK HEADERS ───────────────────────────────── */
-.fxt-league-block{margin-bottom:2px}
-.fxt-league-block:last-child{margin-bottom:0}
-.fxt-league-header{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-raised);border-bottom:1px solid var(--border)}
-.fxt-league-flag{font-size:14px}
-.fxt-league-name{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--txt-muted)}
-
-/* ── UPCOMING FIXTURES ──────────────────────────────────── */
-.fxt-upcoming-label{padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
-.fxt-upcoming-date{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--ig-blue)}
-.fxt-live-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3);margin-left:auto}
