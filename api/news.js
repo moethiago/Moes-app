@@ -299,7 +299,9 @@ async function writeFeed(items, currentContent, sha) {
     /\/\/ DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n\/\/ DO NOT EDIT ABOVE THIS LINE/s,
     `// DO NOT EDIT BELOW THIS LINE\n${newBlock}\n// DO NOT EDIT ABOVE THIS LINE`
   );
-  await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
+
+  // write feed.js
+  const feedRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
     method: 'PUT',
     headers: {
       'Authorization': `token ${token}`,
@@ -312,7 +314,36 @@ async function writeFeed(items, currentContent, sha) {
       sha,
     }),
   });
+
+  // update index.html version number so browser cache busts
+  const version = Math.floor(Date.now() / 1000);
+  const indexRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+    },
+  });
+  const indexData = await indexRes.json();
+  const indexContent = Buffer.from(indexData.content, 'base64').toString('utf8');
+  const indexUpdated = indexContent.replace(
+    /js\/feed\.js\?v=\d+/,
+    `js/feed.js?v=${version}`
+  );
+  await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: 'bump feed version',
+      content: Buffer.from(indexUpdated).toString('base64'),
+      sha: indexData.sha,
+    }),
+  });
 }
+
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
