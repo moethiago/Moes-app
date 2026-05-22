@@ -1,8 +1,18 @@
 {
   "functions": {
+    "api/news.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
     "api/football.js": {
       "memory": 128,
       "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/news",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
