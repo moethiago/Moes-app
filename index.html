@@ -63,7 +63,7 @@
       <div id="critical-posts" style="padding:0 14px 14px;"></div>
     </div>
 
-    <!-- SPORTS -->
+        <!-- SPORTS -->
     <div class="tab-panel" id="panel-sports">
 
       <!-- F1 SECTION LABEL -->
@@ -78,8 +78,9 @@
             <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
             <div class="cd-title" id="f1-next-session"></div>
             <div class="cd-session-name" id="f1-session-label">Loading...</div>
+            <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
           </div>
-          <div class="cd-grid">
+          <div class="cd-grid" id="f1-cd-grid">
             <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
             <div class="cd-seg"><div class="cd-num" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
             <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
@@ -91,8 +92,11 @@
 
       <!-- F1 STANDINGS -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
-        <p class="section-label" style="padding:6px 0 8px;">Driver Championship</p>
-        <button class="btn-refresh" onclick="loadF1Data()">REFRESH</button>
+        <p class="section-label" style="padding:6px 0 8px;">Championship</p>
+        <div class="standings-toggle">
+          <button id="standings-btn-driver" class="standings-btn active" onclick="switchStandingsView('driver')">Drivers</button>
+          <button id="standings-btn-constructor" class="standings-btn" onclick="switchStandingsView('constructor')">Teams</button>
+        </div>
       </div>
       <div style="padding:0 14px 14px;">
         <div class="card">
@@ -128,6 +132,7 @@
       </div>
 
     </div>
+
 
     <!-- HEALTH -->
     <div class="tab-panel" id="panel-health">
