@@ -114,4 +114,10 @@
 .fxt-status.pst{background:rgba(255,0,0,0.1);color:#ff6b6b;border:1px solid rgba(255,0,0,0.2)}
 .fxt-loading{display:flex;align-items:center;gap:10px;padding:24px 16px;color:var(--txt-muted);font-size:13px}
 .fxt-empty{padding:24px 16px;text-align:center;color:var(--txt-muted);font-size:13px}
+/* ── LEAGUE BLOCK HEADERS ───────────────────────────────── */
+.fxt-league-block{margin-bottom:2px}
+.fxt-league-block:last-child{margin-bottom:0}
+.fxt-league-header{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-raised);border-bottom:1px solid var(--border)}
+.fxt-league-flag{font-size:14px}
+.fxt-league-name{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--txt-muted)}
 
