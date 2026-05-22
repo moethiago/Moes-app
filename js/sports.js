@@ -1,3 +1,10 @@
+var TEAM_COLORS = {
+mercedes:'#00d2be', ferrari:'#e8002d', red_bull:'#3671c6',
+mclaren:'#ff8700', aston_martin:'#229971', alpine:'#0093cc',
+williams:'#64c4ff', rb:'#6692ff', kick_sauber:'#52e252', haas:'#b6babd',
+cadillac:'#c8102e'
+};
+
 // ── F1 2026 FULL SEASON CALENDAR ─────────────────────────
 var F1_CALENDAR = [
 { race:'Australian Grand Prix', circuit:'Albert Park, Melbourne', round:'R1', flag:'AUS',
