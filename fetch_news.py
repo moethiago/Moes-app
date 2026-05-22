@@ -6,12 +6,7 @@ import urllib.request as urlreq
 MAX_AGE = timedelta(hours=48)
 NOW     = datetime.now(timezone.utc)
 
-# ─────────────────────────────────────────────
-# SOURCES
-# ─────────────────────────────────────────────
-
 RSS_SOURCES = [
-  # F1
   {'url':'https://www.formula1.com/en/latest/all.xml',                                'cat':'F1'},
   {'url':'https://feeds.bbci.co.uk/sport/formula1/rss.xml',                          'cat':'F1'},
   {'url':'https://www.autosport.com/rss/f1/news/',                                    'cat':'F1'},
@@ -23,7 +18,6 @@ RSS_SOURCES = [
   {'url':'https://www.skysports.com/rss/12433',                                       'cat':'F1'},
   {'url':'https://www.motorsportweek.com/feed/',                                      'cat':'F1'},
   {'url':'https://www.reddit.com/r/formula1/top/.rss?sort=top&t=day&limit=10',        'cat':'F1'},
-  # Football
   {'url':'https://feeds.bbci.co.uk/sport/football/rss.xml',                          'cat':'FOOTBALL'},
   {'url':'https://www.theguardian.com/football/premierleague/rss',                   'cat':'FOOTBALL'},
   {'url':'https://www.theguardian.com/football/laliga/rss',                          'cat':'FOOTBALL'},
@@ -41,18 +35,15 @@ RSS_SOURCES = [
   {'url':'https://www.marca.com/en/rss/football.xml',                                'cat':'FOOTBALL'},
   {'url':'https://www.sportsmole.co.uk/football/rss.xml',                            'cat':'FOOTBALL'},
   {'url':'https://www.reddit.com/r/soccer/top/.rss?sort=top&t=day&limit=10',         'cat':'FOOTBALL'},
-  # Bayern
   {'url':'https://www.sportsmole.co.uk/football/bayern-munich/rss.xml',              'cat':'BAYERN'},
   {'url':'https://www.bundesliga.com/rss/en/rss-news.rss',                           'cat':'BAYERN'},
   {'url':'https://www.transfermarkt.co.uk/rss/news',                                 'cat':'BAYERN'},
   {'url':'https://www.theguardian.com/football/bundesligafootball/rss',              'cat':'BAYERN'},
   {'url':'https://www.reddit.com/r/bayernmunich/top/.rss?sort=top&t=day&limit=10',   'cat':'BAYERN'},
-  # Saudi Football
   {'url':'https://www.arabnews.com/cat/5/rss.xml',                                   'cat':'SPL'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                                   'cat':'SPL'},
   {'url':'https://www.middleeasteye.net/rss',                                        'cat':'SPL'},
   {'url':'https://www.reddit.com/r/saudifootball/top/.rss?sort=top&t=day&limit=10',  'cat':'SPL'},
-  # Saudi News
   {'url':'https://www.arabnews.com/rss.xml',                                         'cat':'KSA'},
   {'url':'https://www.arabnews.com/economy/rss.xml',                                 'cat':'KSA'},
   {'url':'https://saudigazette.com.sa/rssFeed/74',                                   'cat':'KSA'},
@@ -71,7 +62,7 @@ GOOGLE_NEWS_SOURCES = [
 ]
 
 # ─────────────────────────────────────────────
-# READ EXISTING FEED
+# READ EXISTING FEED — now reads ts (unix timestamp)
 # ─────────────────────────────────────────────
 
 def read_existing_feed():
@@ -85,20 +76,20 @@ def read_existing_feed():
         if not match:
             print("No existing feed found")
             return []
-        raw     = match.group(1)
-        items   = []
+        raw   = match.group(1)
+        items = []
         pattern = re.compile(
-            r"\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',date:'([^']*)'\}"
+            r"\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',ts:(\d+)\}"
         )
         for m in pattern.finditer(raw):
+            ts = int(m.group(5))
             items.append({
                 'title':       m.group(1).replace("\\'","'"),
-                'url':         m.group(4).replace("\\'","'"),
                 'source':      m.group(2).replace("\\'","'"),
                 'cat':         m.group(3),
-                'date':        m.group(5),
+                'url':         m.group(4).replace("\\'","'"),
+                'timestamp':   ts,
                 'source_type': 'existing',
-                'engagement':  0,
                 'ai_score':    0,
             })
         print("Existing feed: " + str(len(items)) + " stories loaded")
@@ -107,22 +98,11 @@ def read_existing_feed():
         print("Could not read existing feed: " + str(e))
         return []
 
-def date_to_dt(date_str):
-    try:
-        year = NOW.year
-        dt   = datetime.strptime(date_str + ' ' + str(year), '%b %d %Y')
-        dt   = dt.replace(tzinfo=timezone.utc)
-        if (NOW - dt).days < -30:
-            dt = dt.replace(year=year - 1)
-        return dt
-    except:
-        return NOW
-
-def is_within_48h(date_str):
-    return (NOW - date_to_dt(date_str)) <= MAX_AGE
+def is_within_48h(ts):
+    return (NOW - datetime.fromtimestamp(ts, tz=timezone.utc)) <= MAX_AGE
 
 # ─────────────────────────────────────────────
-# FETCH — RSS
+# FETCH RSS
 # ─────────────────────────────────────────────
 
 def fetch_rss(src, seen_titles):
@@ -131,7 +111,7 @@ def fetch_rss(src, seen_titles):
         try:
             req = urlreq.Request(
                 src['url'],
-                headers={'User-Agent':'Mozilla/5.0 (compatible; NewsBot/1.0; +https://github.com)'}
+                headers={'User-Agent':'Mozilla/5.0 (compatible; NewsBot/1.0)'}
             )
             with urlreq.urlopen(req, timeout=10) as r:
                 root = ET.fromstring(r.read())
@@ -151,20 +131,16 @@ def fetch_rss(src, seen_titles):
                     dt = parsedate_to_datetime(pub)
                     if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                     if (NOW - dt) > MAX_AGE: continue
-                    date_str  = dt.strftime('%b %-d')
-                    timestamp = int(dt.timestamp())
+                    ts = int(dt.timestamp())
                 except:
-                    date_str  = NOW.strftime('%b %-d')
-                    timestamp = int(NOW.timestamp())
+                    ts = int(NOW.timestamp())
                 items.append({
                     'title':       title,
                     'url':         link,
                     'source':      link.split('/')[2].replace('www.',''),
                     'cat':         src['cat'],
-                    'date':        date_str,
-                    'timestamp':   timestamp,
+                    'timestamp':   ts,
                     'source_type': 'rss',
-                    'engagement':  0,
                     'ai_score':    0,
                 })
                 count += 1
@@ -178,7 +154,7 @@ def fetch_rss(src, seen_titles):
     return items
 
 # ─────────────────────────────────────────────
-# FETCH — GOOGLE NEWS
+# FETCH GOOGLE NEWS
 # ─────────────────────────────────────────────
 
 def fetch_google_news(src, seen_titles):
@@ -206,20 +182,16 @@ def fetch_google_news(src, seen_titles):
                     dt = parsedate_to_datetime(pub)
                     if dt.tzinfo is None: dt = dt.replace(tzinfo=timezone.utc)
                     if (NOW - dt) > MAX_AGE: continue
-                    date_str  = dt.strftime('%b %-d')
-                    timestamp = int(dt.timestamp())
+                    ts = int(dt.timestamp())
                 except:
-                    date_str  = NOW.strftime('%b %-d')
-                    timestamp = int(NOW.timestamp())
+                    ts = int(NOW.timestamp())
                 items.append({
                     'title':       title,
                     'url':         link,
                     'source':      'google.news',
                     'cat':         src['cat'],
-                    'date':        date_str,
-                    'timestamp':   timestamp,
+                    'timestamp':   ts,
                     'source_type': 'google_news',
-                    'engagement':  0,
                     'ai_score':    0,
                 })
                 count += 1
@@ -247,112 +219,121 @@ def basic_dedup(items):
     return unique
 
 # ─────────────────────────────────────────────
-# CLAUDE EDITORIAL REVIEW
+# CLAUDE EDITORIAL REVIEW — with your exact ratings
 # ─────────────────────────────────────────────
 
 CAT_PROMPTS = {
 
-'F1': """You are the F1 editor for a breaking news app. The reader wants only confirmed, impactful Formula 1 news.
+'F1': """You are the F1 editor for a breaking news app. STRICT rules based on reader ratings:
 
-EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
-- "Williams adds McLaren COO to F1 personnel team" — confirmed signing, specific role named
-- "Verstappen penalised and starts Canadian GP from the back" — confirmed penalty with consequence
-- "Norris confirmed out of next race with hand injury" — confirmed injury with impact
-- "McLaren sack team principal after poor start to season" — confirmed sacking
+RATE 5 — ALWAYS INCLUDE if present:
+- Confirmed signing with specific role (e.g. "Williams recruit McLaren COO Piers Thynne")
+- Confirmed penalty with consequence
+- Confirmed injury affecting race
+- Confirmed sacking or appointment
+- Race result with championship implication
 
-EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
-- "Hamilton says he is very happy at Ferrari" — player quote/sentiment, zero news value
-- "Three Ellas advance through McLaren F1 ranks" — irrelevant filler, no news value
-- "FIA confirms lowest energy recharge limit for Canada qualifying" — vague technical rule, unclear impact
-- "Red Bull outlines timeline for new wind tunnel" — development update, not news
-- "Ocon denies fabricated rumours of falling out with Haas boss" — denial of rumour, not news
-- Any preview, prediction, opinion, interview, or "could/might/may" story
+RATE 0 — ALWAYS REJECT, no exceptions:
+- Any quote or statement from a driver/team (e.g. "Hamilton says he is happy")
+- Any denial of rumour (e.g. "Ocon denies exit rumours")
+- Any rumour or speculation with "linked", "could", "might", "may", "interested in"
+- Technical development updates (wind tunnel, car parts, engine specs)
+- Vague regulatory news without clear impact
+- Preview or prediction articles
+- Human interest stories
+- Any story not 100% confirmed
 
-DUPLICATE RULE: If multiple headlines cover the same event (same team doing same thing), keep only the clearest and most specific one. Reject the rest.
+DUPLICATE RULE — CRITICAL:
+If the same event appears multiple times (same team, same action), you MUST keep only 1.
+"Williams signs McLaren COO" and "Williams recruit McLaren COO Piers Thynne" = SAME STORY, keep best one only.
 
-SELECT maximum 6 stories. Only include genuinely confirmed, impactful F1 news.
-Reject everything else — it is better to have 2 great stories than 6 mediocre ones.""",
+Select maximum 6. Better to return 2 great stories than 6 mediocre ones. Return [] if nothing qualifies.""",
 
-'FOOTBALL': """You are the Football editor for a breaking news app. Top 5 leagues and Champions League only. The reader wants confirmed, impactful club football news.
+'FOOTBALL': """You are the Football editor. Top 5 leagues and Champions League ONLY. STRICT rules:
 
-EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
-- "Casemiro leaves Manchester United, Carrick confirms exit" — named player, confirmed departure, confirmed by someone
-- "Arsenal crowned Premier League champions" — title confirmed
-- "Aston Villa win Europa League" — trophy won, confirmed result
-- "Southampton expelled from Championship play-offs over Spygate" — major consequence confirmed
+RATE 5 — ALWAYS INCLUDE:
+- Confirmed transfer with player name (e.g. "Casemiro leaves Manchester United, Carrick confirms exit")
+- Title won or confirmed
+- Confirmed sacking with manager name
+- Club expelled or banned with specific reason
+- Major match result deciding something significant
 
-EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
-- "Arteta learns of title win from crying son at barbecue" — human interest fluff, zero news value
-- "Rogers named Europa League Player of the Season" — award, low impact
-- "FA opens Southampton investigation over Spygate" — investigation opened is vague; prefer specific outcome
-- "Three police officers assigned to 10,000 England fans at World Cup" — irrelevant filler
-- "Manager says he is proud of his players" — quote with no news value
-- Any story about World Cup squad announcements (that is international football, not club)
-- Any preview, prediction, opinion piece, player ratings, fantasy football
+RATE 0 — ALWAYS REJECT:
+- Human interest / feel-good (e.g. "Arteta learns of title win from crying son")
+- Awards (Player of Season, Manager of Month)
+- Police/security/logistics stories
+- World Cup squad announcements (international not club)
+- Any quote, interview, opinion piece
+- Previews or predictions
+- Stories using "hero", "star", "ace" without naming player
+- Vague investigations without outcome (e.g. "FA opens investigation")
+- Stories about players "addressing", "responds to", "discusses"
 
-DUPLICATE RULE: If the same player leaving/joining/injured appears multiple times, keep only the single clearest version. "Casemiro leaves Manchester United" appearing 3 times = keep best one, reject others.
+DUPLICATE RULE — CRITICAL:
+Same player/event appearing multiple times = keep ONLY the single clearest version.
+"Casemiro leaves Man United" appearing 3 times = pick the best one, reject all others.
 
-SPECIFICITY RULE: If a headline uses "hero", "star", "ace" or any vague word instead of naming the actual player, reject it. Good journalism names the person.
+CATEGORY RULE: Top 5 leagues only. No Championship, no MLS, no international football.
+Select maximum 6. Return [] if nothing qualifies.""",
 
-SELECT maximum 6 stories. Only confirmed, impactful club football from top 5 leagues or Champions League.""",
+'BAYERN': """You are the Bayern Munich editor. STRICT rules:
 
-'BAYERN': """You are the Bayern Munich editor for a breaking news app. The reader wants confirmed Bayern Munich news only.
+RATE 5 — ALWAYS INCLUDE:
+- Confirmed Bayern player transfer in or out with fee or contract
+- Confirmed Bayern manager sacked or appointed
+- Confirmed Bayern player injury with timeline
+- Bayern match result with major title/cup implication
 
-EXAMPLES OF WHAT THE READER RATES 5/5 (always include if present):
-- "Bayern Munich sign [player] from [club]" — confirmed transfer
-- "Kane scores hat-trick as Bayern win DFB Cup" — confirmed result with named player
-- "Kompany sacked as Bayern manager" — confirmed sacking
-- "Musiala out for rest of season with knee injury" — confirmed injury with impact
+RATE 0 — ALWAYS REJECT:
+- Any interview where a player "discusses", "talks about", "addresses", "hopes"
+- Any player quote about aims, dreams, feelings
+- Women's team (Bayern Frauen) — not relevant
+- Youth/reserve team
+- Germany national team stories — Neuer/Musiala playing for Germany is NOT Bayern news
+- Rumours with "linked", "monitored", "interested", "could"
+- Previews
 
-EXAMPLES OF WHAT THE READER RATES 0/5 (always reject):
-- "Bayern Munich's Bischof discusses DFB Cup hopes" — interview, player talking about hopes
-- "Bayern Munich's Stanišić: Everyone thinking about next title" — player quote, zero news
-- "Bayern Munich president says Kompany is unsellable" — opinion/PR statement
-- "Bayern Munich vs Stuttgart: DFB-Pokal final preview" — preview
-- "Bayern Munich and Stuttgart compared ahead of DFB Cup final" — comparison/preview
-- Any story where a Bayern player just talks, gives interview, or expresses opinion
-- Germany national team stories (not Bayern club news)
+DUPLICATE RULE: Same event appearing multiple times = keep only best one.
+Select maximum 6. Return [] if nothing qualifies.""",
 
-CATEGORY RULE: Must be about FC Bayern Munich the club. Bayern players include: Kane, Musiala, Olise, Neuer, Kompany, Kimmich, Davies, Goretzka, Laimer, Upamecano, Gnabry, Bischof, Stanišić.
+'SPL': """You are the Saudi Pro League editor. STRICT rules:
 
-SELECT maximum 6 stories. If nothing qualifies, return [].""",
+RATE 5 — ALWAYS INCLUDE:
+- Match result with title race implication naming specific teams
+- Confirmed transfer involving SPL team with player name
+- Title clinched with specific team and player details
 
-'SPL': """You are the Saudi Pro League editor for a breaking news app. The reader wants confirmed Saudi Pro League news.
+RATE 0 — ALWAYS REJECT:
+- Manager quotes about targets or ambitions
+- Match previews
+- Stories not naming Al Hilal, Al Nassr, Al Ittihad, or Al Ahli specifically
 
-EXAMPLES OF WHAT THE READER RATES 4-5/5 (always include if present):
-- "Al Hilal win increases pressure on Al Nassr in title race" — match result with title implication, specific teams named
-- "Ronaldo scores winner as Al Nassr beat Al Hilal" — confirmed result, named player
-- "Al Ittihad sack manager after fifth consecutive defeat" — confirmed sacking
+DUPLICATE RULE — CRITICAL:
+"Al Nassr win title", "Ronaldo wins Saudi title", "Al Nassr crowned champions" = SAME EVENT.
+Keep only the single most informative version. Reject all others.
 
-EXAMPLES OF WHAT THE READER RATES 0-1/5 (always reject):
-- "Al Nassr manager Jorge Jesus targets Saudi Pro League titles" — manager talking about aims, not news
-- "Al Hilal vs Al Fayha: Saudi Pro League title race Matchday 34" — match preview
-- "Al Nassr vs Damac: Saudi Pro League title race implications" — match preview
+Select maximum 6. Return [] if nothing qualifies.""",
 
-CATEGORY RULE: Must name Al Hilal, Al Nassr, Al Ittihad, Al Ahli, or Saudi Pro League specifically.
+'KSA': """You are the Saudi Arabia News editor. STRICT rules:
 
-SELECT maximum 6 stories. If nothing qualifies, return [].""",
+RATE 5 — ALWAYS INCLUDE:
+- Specific economic data with figures (e.g. "Saudi non-oil trade surplus reaches SR4.47 billion")
+- Confirmed billion-dollar deals or investments
+- PIF announcements with specific figures
+- Major Vision 2030 milestone confirmed
+- Saudi real estate or banking data with specific numbers
 
-'KSA': """You are the Saudi Arabia News editor for a breaking news app. The reader wants confirmed, impactful Saudi economic and government news.
+RATE 1 — ALWAYS REJECT:
+- Diplomatic meetings without major outcome (e.g. "FM discusses relations with New Zealand")
+- Crowd management or technology showcases
+- Gaza or foreign aid stories
+- UK/GCC trade deals (low impact)
+- Hajj or religious ceremony stories
+- Tourism promotion
+- Any story without specific confirmed figures or policy changes
 
-EXAMPLES OF WHAT THE READER RATES 4-5/5 (always include if present):
-- "Saudi Arabia non-oil trade surplus with GCC reaches SR4.47 billion" — specific economic data, confirmed figure
-- "Saudi Awwal Bank signs SR6.4 billion financing agreement with AlBawani" — confirmed deal with specific figure
-- "Saudi real estate transactions grow 6.8 percent to $29.85 billion in Q1" — specific confirmed data
-- "PIF announces $10 billion investment in [sector]" — major investment confirmed
-
-EXAMPLES OF WHAT THE READER RATES 0-1/5 (always reject):
-- "Saudi FM discusses improving relations with New Zealand" — low-impact diplomatic meeting
-- "Saudi deputy finance minister attends IMF dialogue" — attendance at meeting, not news
-- "Expo 2030 Riyadh showcases delivery progress at strategic site" — vague progress update
-- Any sport story
-- Any Hajj or religious ceremony story
-- Any tourism promotion story
-- UK trade deals or general Gulf news not specific to Saudi Arabia
-
-DUPLICATE RULE: Same economic data appearing twice — keep only one.
-
-SELECT maximum 6 stories. Only confirmed Saudi economic, government, or major policy news with specific facts and figures.""",
+DUPLICATE RULE: Same data point appearing twice = keep only one.
+Select maximum 6. Return [] if nothing qualifies.""",
 }
 
 def editorial_review(items, cat):
@@ -370,25 +351,20 @@ def editorial_review(items, cat):
 
     prompt = CAT_PROMPTS[cat] + """
 
-Here are today's candidates for the """ + cat + """ section:
+Candidates for """ + cat + """ section:
 
 """ + '\n'.join(lines) + """
 
-Your tasks:
-1. Identify and reject duplicates — same event covered multiple times, keep only the best version
-2. Reject anything that fails the rules above
-3. Select maximum 6 stories
-4. Rewrite selected titles to be direct and factual:
-   - Remove clickbait: "hero", "star", "ace", "stunning", "shock", "incredible"
-   - Remove trailing labels: "| The Verdict", "- Report", "- BBC Sport", "| Analysis"
-   - State WHO did WHAT clearly
-   - Maximum 12 words
-   - Do not invent facts not in the original
+Tasks:
+1. Reject duplicates — same event = keep only best version
+2. Reject anything failing rules above
+3. Select maximum 6
+4. Rewrite titles: direct, factual, max 12 words, no clickbait, no source labels
 
-Return ONLY a valid JSON array of kept stories:
+Return ONLY valid JSON array:
 [{"idx": 0, "title": "rewritten headline"}, ...]
 
-If nothing qualifies return []. Do not include any explanation."""
+Return [] if nothing qualifies. No explanation."""
 
     payload = json.dumps({
         'model':      'claude-haiku-4-5-20251001',
@@ -424,10 +400,10 @@ If nothing qualifies return []. Do not include any explanation."""
     results = []
     for s in selected:
         try:
-            idx      = int(s['idx'])
-            item     = dict(items[idx])
-            old      = item['title']
-            new      = s.get('title','').strip()
+            idx  = int(s['idx'])
+            item = dict(items[idx])
+            old  = item['title']
+            new  = s.get('title','').strip()
             if new and new != old:
                 print("  REWRITE: " + old[:50] + " → " + new[:50])
             item['title']    = new if new else old
@@ -438,7 +414,7 @@ If nothing qualifies return []. Do not include any explanation."""
     return results
 
 # ─────────────────────────────────────────────
-# OUTPUT
+# OUTPUT — now writes ts instead of date
 # ─────────────────────────────────────────────
 
 def js_str(text):
@@ -452,12 +428,12 @@ def js_str(text):
 def write_output(final_items):
     lines = []
     for i in final_items:
-        lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',date:'%s'}" % (
+        lines.append("  {title:'%s',src:'%s',cat:'%s',link:'%s',ts:%d}" % (
             js_str(i['title']),
             js_str(i['source']),
             i['cat'],
             js_str(i['url']),
-            i['date'],
+            i['timestamp'],
         ))
 
     new_block = 'var FALLBACK_NEWS = [\n' + ',\n'.join(lines) + '\n];'
@@ -494,10 +470,7 @@ print("STEP 0 — LOAD EXISTING FEED")
 print("=" * 50)
 
 existing_items = read_existing_feed()
-existing_items = [i for i in existing_items if is_within_48h(i['date'])]
-for item in existing_items:
-    if 'timestamp' not in item:
-        item['timestamp'] = int(date_to_dt(item['date']).timestamp())
+existing_items = [i for i in existing_items if is_within_48h(i['timestamp'])]
 print("Existing stories within 48h: " + str(len(existing_items)))
 
 print("\n" + "=" * 50)
@@ -524,7 +497,7 @@ unique_new = basic_dedup(new_items)
 print("Unique after basic dedup: " + str(len(unique_new)))
 
 print("\n" + "=" * 50)
-print("STEP 3 — CLAUDE EDITORIAL REVIEW (per category)")
+print("STEP 3 — CLAUDE EDITORIAL REVIEW")
 print("=" * 50)
 
 CATEGORIES   = ['F1','FOOTBALL','BAYERN','SPL','KSA']
@@ -544,7 +517,7 @@ for cat in CATEGORIES:
 print("\nTotal approved new: " + str(len(approved_new)))
 
 print("\n" + "=" * 50)
-print("STEP 4 — MERGE WITH EXISTING + FINAL SELECTION")
+print("STEP 4 — MERGE + FINAL SELECTION")
 print("=" * 50)
 
 all_items   = basic_dedup(existing_items + approved_new)
@@ -556,7 +529,7 @@ for cat in CATEGORIES:
     top = cat_items[:6]
     print(cat + ": " + str(len(top)) + " stories")
     for s in top:
-        print("  [" + s['date'] + "] " + s['title'][:72])
+        print("  [" + str(s['timestamp']) + "] " + s['title'][:72])
     final_items += top
 
 print("\nTotal in feed: " + str(len(final_items)))
