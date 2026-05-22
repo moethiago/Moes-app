@@ -5,6 +5,7 @@ williams:’#64c4ff’, rb:’#6692ff’, kick_sauber:’#52e252’, haas:’#b6
 cadillac:’#c8102e’
 };
 
+
 // ── F1 2026 FULL SEASON CALENDAR ─────────────────────────
 var F1_CALENDAR = [
 { race:‘Australian Grand Prix’, circuit:‘Albert Park, Melbourne’, round:‘R1’, flag:‘🇦🇺’,
