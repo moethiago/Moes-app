@@ -10,6 +10,7 @@ const LEAGUES = {
   ucl:        { id: 2,   season: 2025 },
   spl:        { id: 307, season: 2025 },
   nations:    { id: 5,   season: 2024 },
+  worldcup:   { id: 1,   season: 2026 },
 };
 
 async function fetchFromAPI(path, apiKey) {
@@ -24,6 +25,21 @@ async function fetchFromAPI(path, apiKey) {
   return res.json();
 }
 
+function simplifyFixture(f) {
+  return {
+    id:        f.fixture.id,
+    status:    f.fixture.status.short,
+    elapsed:   f.fixture.status.elapsed,
+    time:      f.fixture.date,
+    home:      f.teams.home.name,
+    homeLogo:  f.teams.home.logo,
+    homeScore: f.goals.home,
+    away:      f.teams.away.name,
+    awayLogo:  f.teams.away.logo,
+    awayScore: f.goals.away,
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
@@ -36,7 +52,6 @@ export default async function handler(req, res) {
   const cacheKey = league + '_' + today;
   const now = Date.now();
 
-  // return cache if fresh
   if (CACHE[cacheKey] && (now - CACHE[cacheKey].ts) < CACHE_TTL) {
     return res.status(200).json(CACHE[cacheKey].data);
   }
@@ -45,26 +60,26 @@ export default async function handler(req, res) {
   if (!leagueConfig) return res.status(400).json({ error: 'Unknown league' });
 
   try {
-    // smart check — first see if league has games today (1 API call)
-    const check = await fetchFromAPI(
+    // fetch today's fixtures
+    const todayData = await fetchFromAPI(
       `/fixtures?league=${leagueConfig.id}&season=${leagueConfig.season}&date=${today}&timezone=Asia/Riyadh`,
       apiKey
     );
 
-    const fixtures = (check.response || []).map(f => ({
-      id:        f.fixture.id,
-      status:    f.fixture.status.short,
-      elapsed:   f.fixture.status.elapsed,
-      time:      f.fixture.date,
-      home:      f.teams.home.name,
-      homeLogo:  f.teams.home.logo,
-      homeScore: f.goals.home,
-      away:      f.teams.away.name,
-      awayLogo:  f.teams.away.logo,
-      awayScore: f.goals.away,
-    }));
+    const fixtures = (todayData.response || []).map(simplifyFixture);
 
-    const result = { league, fixtures, updated: now };
+    let upcoming = [];
+
+    // if no games today, fetch next 5 upcoming fixtures
+    if (fixtures.length === 0) {
+      const upcomingData = await fetchFromAPI(
+        `/fixtures?league=${leagueConfig.id}&season=${leagueConfig.season}&next=5&timezone=Asia/Riyadh`,
+        apiKey
+      );
+      upcoming = (upcomingData.response || []).map(simplifyFixture);
+    }
+
+    const result = { league, fixtures, upcoming, updated: now };
     CACHE[cacheKey] = { data: result, ts: now };
     return res.status(200).json(result);
   } catch(e) {
