@@ -13,6 +13,7 @@ function preFilter(title) {
   return !REJECT_PHRASES.some(phrase => lower.includes(phrase));
 }
 
+// ── STREAM 1: RSS SOURCES ─────────────────────────────────
 const RSS_SOURCES = [
   { url:'https://www.formula1.com/en/latest/all.xml',                               cat:'F1' },
   { url:'https://feeds.bbci.co.uk/sport/formula1/rss.xml',                         cat:'F1' },
@@ -49,6 +50,7 @@ const RSS_SOURCES = [
   { url:'https://www.reddit.com/r/saudiarabia/top/.rss?sort=top&t=day&limit=10',   cat:'KSA' },
 ];
 
+// ── STREAM 2: GOOGLE NEWS RSS ─────────────────────────────
 const GOOGLE_NEWS_SOURCES = [
   { url:'https://news.google.com/rss/search?q=formula+1+breaking&hl=en-US&gl=US&ceid=US:en',                                                cat:'F1' },
   { url:'https://news.google.com/rss/search?q=f1+grand+prix+2026&hl=en-US&gl=US&ceid=US:en',                                                cat:'F1' },
@@ -59,7 +61,25 @@ const GOOGLE_NEWS_SOURCES = [
   { url:'https://news.google.com/rss/search?q=saudi+arabia+economy+OR+investment+OR+billion+OR+pif&hl=en-US&gl=US&ceid=US:en',              cat:'KSA' },
 ];
 
-// Twitter accounts per category — Claude searches for viral/trending tweets only
+// ── STREAM 3: GDELT DOC API — free, no key, Google-backed ─
+const GDELT_QUERIES = [
+  { query:'formula 1 race',           cat:'F1' },
+  { query:'premier league OR laliga OR serie a transfer sacked injury', cat:'FOOTBALL' },
+  { query:'bayern munich',            cat:'BAYERN' },
+  { query:'al hilal OR al nassr',     cat:'SPL' },
+  { query:'saudi arabia economy billion', cat:'KSA' },
+];
+
+// ── STREAM 4: NEWSDATA.IO — 200 free requests/day ─────────
+const NEWSDATA_QUERIES = [
+  { query:'formula 1',  cat:'F1',       language:'en' },
+  { query:'football transfer sacked',  cat:'FOOTBALL', language:'en' },
+  { query:'bayern munich',             cat:'BAYERN',   language:'en' },
+  { query:'saudi pro league',          cat:'SPL',      language:'en' },
+  { query:'saudi arabia economy',      cat:'KSA',      language:'en' },
+];
+
+// ── STREAM 5: TWITTER VIRAL via Claude web search ─────────
 const TWITTER_QUERIES = [
   {
     cat: 'F1',
@@ -69,31 +89,31 @@ Ignore opinions, reactions, promotional content, and low engagement tweets.`
   },
   {
     cat: 'FOOTBALL',
-    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @FabrizioRomano @David_Ornstein @SkySportsNews @BBCSport @OptaJoe @TransferNews.
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @FabrizioRomano @David_Ornstein @SkySportsNews @BBCSport @OptaJoe.
 Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking football news — transfers, sackings, injuries, results.
 Ignore opinions, reactions, promotional content, and low engagement tweets.`
   },
   {
     cat: 'BAYERN',
-    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @iMiaSanMia @MiaSanMia @FCBayernEN @FCBayern @SkySportsBundesliga.
-Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Bayern Munich news.
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @iMiaSanMia @MiaSanMia @FCBayernEN @FCBayern.
+Only return tweets with very high engagement that contain confirmed breaking Bayern Munich news.
 Ignore opinions, reactions, promotional content, and low engagement tweets.`
   },
   {
     cat: 'SPL',
-    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @SPL_EN @AlHilal_EN @AlNassrFC_EN @Alhilal_FC @AlIttihadClub.
-Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Saudi Pro League news.
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @SPL_EN @AlHilal_EN @AlNassrFC_EN @AlIttihadClub.
+Only return tweets with very high engagement that contain confirmed breaking Saudi Pro League news.
 Ignore opinions, reactions, promotional content, and low engagement tweets.`
   },
   {
     cat: 'KSA',
     query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @arabnews @SaudiGazette @SPAregency @PIF_en @NEOM.
-Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Saudi Arabia economic or government news.
+Only return tweets with very high engagement that contain confirmed breaking Saudi Arabia economic or government news.
 Ignore opinions, reactions, promotional content, and low engagement tweets.`
   },
 ];
 
-// General web search queries — catches anything missed
+// ── STREAM 6: GENERAL WEB SEARCH ─────────────────────────
 const WEB_SEARCH_QUERIES = [
   { query:'Formula 1 breaking news confirmed today 2026',                           cat:'F1' },
   { query:'Premier League La Liga Serie A confirmed transfer sacking injury today', cat:'FOOTBALL' },
@@ -102,38 +122,65 @@ const WEB_SEARCH_QUERIES = [
   { query:'Saudi Arabia economy investment deal billion today',                     cat:'KSA' },
 ];
 
+// ── CLAUDE EDITORIAL — 0-10 SCORING (from Horizon) ────────
 const CAT_PROMPTS = {
-  F1: `You are the F1 editor for a breaking news app.
-INCLUDE only: confirmed driver signing/sacking with specific role, confirmed race penalty with consequence, confirmed injury affecting race, official FIA or team announcement with real impact, race result with championship implication.
-REJECT always: any quote or statement from driver/team, denials, rumours with linked/could/might/may, technical/car development updates, vague regulatory news, previews, predictions, human interest.
-DUPLICATE RULE: Same event from any source = keep ONLY the single best version.
-Select max 6. Return [] if nothing qualifies.`,
+  F1: `You are the F1 editor for a breaking news app. Score each story 0-10:
+10 = race result with championship impact, confirmed driver signing/sacking
+8-9 = confirmed penalty with consequence, confirmed injury affecting race
+6-7 = official team announcement with real impact
+0-5 = REJECT: driver quotes, denials, rumours, technical updates, previews, opinions
 
-  FOOTBALL: `You are the Football editor. Top 5 leagues and Champions League ONLY.
-INCLUDE only: confirmed transfer with player name and clubs, title won or confirmed, confirmed sacking or appointment with manager name, club expelled/banned/penalised, major match result deciding something significant.
-REJECT always: human interest or feel-good stories, awards, police or security stories, international/World Cup squad stories, player quotes/interviews/opinions, previews or predictions, stories without a named player or manager, vague investigations without outcome.
-DUPLICATE RULE: Same player or event from multiple sources = keep ONLY the single clearest version.
-Select max 6. Return [] if nothing qualifies.`,
+DUPLICATE RULE: Same event from multiple sources = keep ONLY the single best version.
+Return ONLY stories scoring 7 or above.
+Return JSON: [{"idx":0,"title":"rewritten headline","score":9}]
+Return [] if nothing scores 7+.`,
 
-  BAYERN: `You are the Bayern Munich editor. Must be directly about FC Bayern Munich club.
-INCLUDE only: confirmed Bayern transfer in or out, confirmed manager sacked or appointed, confirmed player injury with timeline, Bayern match result with major title or cup implication.
-REJECT always: player interviews/quotes/hopes/feelings, Bayern Frauen, youth or reserve team, Germany national team stories, rumours, previews, cup final previews.
+  FOOTBALL: `You are the Football editor. Top 5 leagues and Champions League ONLY. Score each story 0-10:
+10 = title won, confirmed sacking of major manager, confirmed transfer with fee
+8-9 = confirmed transfer with player name, club banned/expelled, decisive match result
+6-7 = confirmed appointment, official club statement with real impact
+0-5 = REJECT: quotes, opinions, human interest, awards, previews, World Cup squad, vague investigations
+
+DUPLICATE RULE: Same player or event = keep ONLY the single clearest version.
+Return ONLY stories scoring 7 or above.
+Return JSON: [{"idx":0,"title":"rewritten headline","score":9}]
+Return [] if nothing scores 7+.`,
+
+  BAYERN: `You are the Bayern Munich editor. Must be directly about FC Bayern Munich. Score each story 0-10:
+10 = confirmed transfer with fee, manager sacked/appointed
+8-9 = confirmed injury with timeline, major match result with title implication
+6-7 = official Bayern club statement
+0-5 = REJECT: interviews, quotes, women's team, youth team, Germany national team, rumours, previews
+
 DUPLICATE RULE: Same event = keep only best version.
-Select max 6. Return [] if nothing qualifies.`,
+Return ONLY stories scoring 7 or above.
+Return JSON: [{"idx":0,"title":"rewritten headline","score":9}]
+Return [] if nothing scores 7+.`,
 
-  SPL: `You are the Saudi Pro League editor.
-INCLUDE only: match result with title race implication naming Al Hilal/Al Nassr/Al Ittihad/Al Ahli, confirmed transfer involving SPL team with player name, title clinched with specific details, confirmed sacking of SPL manager.
-REJECT always: manager quotes about targets or ambitions, match previews, stories not naming a specific SPL team.
+  SPL: `You are the Saudi Pro League editor. Score each story 0-10:
+10 = title clinched, confirmed high-profile transfer
+8-9 = match result with title race implication naming Al Hilal/Al Nassr/Al Ittihad/Al Ahli, confirmed sacking
+6-7 = confirmed squad news with specific player
+0-5 = REJECT: manager quotes, previews, stories not naming a specific SPL team
+
 DUPLICATE RULE: Same event = keep only most informative version.
-Select max 6. Return [] if nothing qualifies.`,
+Return ONLY stories scoring 7 or above.
+Return JSON: [{"idx":0,"title":"rewritten headline","score":9}]
+Return [] if nothing scores 7+.`,
 
-  KSA: `You are the Saudi Arabia News editor.
-INCLUDE only: specific economic data with confirmed figures, confirmed billion-dollar investment or deal, PIF announcement with specific figures, major Vision 2030 milestone confirmed, Saudi real estate or banking data with specific numbers, royal decree with economic impact.
-REJECT always: diplomatic meetings without major confirmed outcome, crowd management or technology showcases, Gaza or foreign aid stories, Hajj or religious ceremony stories, tourism promotion, anything without specific confirmed figures.
+  KSA: `You are the Saudi Arabia News editor. Score each story 0-10:
+10 = confirmed billion-dollar deal with specific figures, major royal decree with economic impact
+8-9 = PIF announcement with specific figures, Vision 2030 milestone with confirmed data
+6-7 = specific economic data with confirmed numbers
+0-5 = REJECT: diplomatic meetings without outcome, Hajj/religious, tourism, Gaza/aid, anything without specific confirmed figures
+
 DUPLICATE RULE: Same data point twice = keep only one.
-Select max 6. Return [] if nothing qualifies.`,
+Return ONLY stories scoring 7 or above.
+Return JSON: [{"idx":0,"title":"rewritten headline","score":9}]
+Return [] if nothing scores 7+.`,
 };
 
+// ── HELPERS ───────────────────────────────────────────────
 const STOP_WORDS = new Set(['the','and','for','with','this','that','from','news','about','has','have','are','was','were','been','being']);
 
 function isSimilar(titleA, titleB) {
@@ -163,8 +210,7 @@ function parseRSS(xml, cat) {
     let title = extractTag(item, 'title')
       .replace(/<[^>]+>/g, '')
       .replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#039;/g,"'")
-      .replace(/\s+-\s+[^-]+$/, '')
-      .trim();
+      .replace(/\s+-\s+[^-]+$/, '').trim();
     let link = extractTag(item, 'link');
     if (!link) {
       const m = item.match(/<link[^>]*href="([^"]+)"/i);
@@ -199,29 +245,83 @@ async function fetchRSS(src, seenTitles) {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
       if (seenTitles.has(key)) continue;
       seenTitles.add(key);
-      try {
-        results.push({ ...item, source: new URL(src.url).hostname.replace('www.','') });
-      } catch(e) {}
+      try { results.push({ ...item, source: new URL(src.url).hostname.replace('www.','') }); } catch(e) {}
     }
     return results;
   } catch(e) { return []; }
 }
 
+// ── GDELT fetcher — free, no key needed ──────────────────
+async function fetchGDELT(q, seenTitles) {
+  try {
+    const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(q.query)}&mode=ArtList&maxrecords=10&timespan=4h&format=json&sort=datedesc`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const articles = data.articles || [];
+    const results = [];
+    for (const a of articles) {
+      const title = (a.title || '').trim();
+      const link  = (a.url || '').trim();
+      if (!title || !link || !preFilter(title)) continue;
+      const key = title.toLowerCase().replace(/\W+/g,'').slice(0,50);
+      if (seenTitles.has(key)) continue;
+      seenTitles.add(key);
+      results.push({
+        title,
+        url: link,
+        source: 'gdelt',
+        cat: q.cat,
+        ts: Math.floor(Date.now() / 1000),
+      });
+    }
+    console.log('GDELT ' + q.cat + ': ' + results.length + ' items');
+    return results;
+  } catch(e) {
+    console.error('GDELT failed for ' + q.cat + ': ' + e.message);
+    return [];
+  }
+}
+
+// ── NewsData.io fetcher ───────────────────────────────────
+async function fetchNewsData(q, apiKey, seenTitles) {
+  if (!apiKey) return [];
+  try {
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(q.query)}&language=${q.language}&size=5`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const articles = data.results || [];
+    const results = [];
+    for (const a of articles) {
+      const title = (a.title || '').trim();
+      const link  = (a.link || '').trim();
+      if (!title || !link || !preFilter(title)) continue;
+      const key = title.toLowerCase().replace(/\W+/g,'').slice(0,50);
+      if (seenTitles.has(key)) continue;
+      seenTitles.add(key);
+      results.push({
+        title,
+        url: link,
+        source: a.source_id || 'newsdata',
+        cat: q.cat,
+        ts: a.pubDate ? Math.floor(new Date(a.pubDate).getTime() / 1000) : Math.floor(Date.now() / 1000),
+      });
+    }
+    console.log('NewsData ' + q.cat + ': ' + results.length + ' items');
+    return results;
+  } catch(e) {
+    console.error('NewsData failed for ' + q.cat + ': ' + e.message);
+    return [];
+  }
+}
+
+// ── Claude web search ─────────────────────────────────────
 async function claudeWebSearch(query, cat, apiKey, isTwitter = false) {
   try {
     const prompt = isTwitter
-      ? `${query}
-
-Return ONLY a JSON array of confirmed breaking news stories you find:
-[{"title":"headline max 12 words, factual and direct","url":"tweet or article url"}]
-Only include tweets/posts with very high engagement that contain confirmed facts.
-No opinions, no reactions, no promotional content.
-Return [] if nothing qualifies. No markdown, just JSON.`
-      : `Search for: "${query}"
-Return ONLY a JSON array of top breaking news from the last 24 hours:
-[{"title":"headline max 12 words","url":"source url"}]
-Only confirmed factual breaking news. No opinions, no previews, no quotes.
-Return [] if nothing qualifies. No markdown, just JSON.`;
+      ? `${query}\n\nReturn ONLY a JSON array of confirmed breaking news stories you find:\n[{"title":"headline max 12 words","url":"tweet or article url"}]\nOnly include tweets with very high engagement containing confirmed facts. No opinions, no reactions.\nReturn [] if nothing qualifies. No markdown, just JSON.`
+      : `Search for: "${query}"\nReturn ONLY a JSON array of top breaking news from the last 24 hours:\n[{"title":"headline max 12 words","url":"source url"}]\nOnly confirmed factual breaking news. No opinions, no previews, no quotes.\nReturn [] if nothing qualifies. No markdown, just JSON.`;
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -253,15 +353,16 @@ Return [] if nothing qualifies. No markdown, just JSON.`;
         ts:     Math.floor(Date.now() / 1000),
       }));
   } catch(e) {
-    console.error('Search failed for ' + cat + ': ' + e.message);
+    console.error('Web search failed for ' + cat + ': ' + e.message);
     return [];
   }
 }
 
+// ── Claude editorial scoring (Horizon approach) ───────────
 async function callClaude(items, cat, apiKey) {
   if (!apiKey || !items.length) return [];
   const lines = items.map((item, i) => `${i} | ${item.title}`).join('\n');
-  const prompt = CAT_PROMPTS[cat] + `\n\nCandidates:\n${lines}\n\nReturn ONLY valid JSON array: [{"idx": 0, "title": "rewritten headline"}]. No explanations.`;
+  const prompt = CAT_PROMPTS[cat] + `\n\nCandidates:\n${lines}\n\nReturn ONLY valid JSON. No explanations.`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -281,24 +382,26 @@ async function callClaude(items, cat, apiKey) {
     const text = data.content?.[0]?.text || '';
     const match = text.match(/\[[\s\S]*?\]/);
     if (!match) return [];
-    return JSON.parse(match[0]).map(s => {
-      const idx = parseInt(s.idx);
-      if (isNaN(idx) || !items[idx]) return null;
-      const item = { ...items[idx] };
-      if (s.title?.trim()) item.title = s.title.trim();
-      return item;
-    }).filter(Boolean);
+    return JSON.parse(match[0])
+      .filter(s => s.score >= 7)
+      .map(s => {
+        const idx = parseInt(s.idx);
+        if (isNaN(idx) || !items[idx]) return null;
+        const item = { ...items[idx], score: s.score };
+        if (s.title?.trim()) item.title = s.title.trim();
+        return item;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score);
   } catch(e) { return []; }
 }
 
+// ── GitHub read/write ─────────────────────────────────────
 async function getCurrentFeed() {
   try {
     const token = process.env.GITHUB_TOKEN;
     const res = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
-      headers: {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
     });
     const data = await res.json();
     const content = Buffer.from(data.content, 'base64').toString('utf8');
@@ -341,51 +444,34 @@ async function writeFeed(items, currentContent, sha) {
     /\/\/ DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = \[.*?\];\n\/\/ DO NOT EDIT ABOVE THIS LINE/s,
     `// DO NOT EDIT BELOW THIS LINE\n${newBlock}\n// DO NOT EDIT ABOVE THIS LINE`
   );
-
   await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
     method: 'PUT',
-    headers: {
-      'Authorization': `token ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: 'news update via Vercel',
-      content: Buffer.from(updated).toString('base64'),
-      sha,
-    }),
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'news update via Vercel', content: Buffer.from(updated).toString('base64'), sha }),
   });
 
-  // bust browser cache by updating index.html version
+  // bust browser cache
   const version = Math.floor(Date.now() / 1000);
   const indexRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
-    headers: {
-      'Authorization': `token ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-    },
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
   });
   const indexData = await indexRes.json();
   const indexContent = Buffer.from(indexData.content, 'base64').toString('utf8');
   const indexUpdated = indexContent.replace(/js\/feed\.js\?v=\d+/, `js/feed.js?v=${version}`);
   await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
     method: 'PUT',
-    headers: {
-      'Authorization': `token ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: 'bump feed version',
-      content: Buffer.from(indexUpdated).toString('base64'),
-      sha: indexData.sha,
-    }),
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'bump feed version', content: Buffer.from(indexUpdated).toString('base64'), sha: indexData.sha }),
   });
 }
 
+// ── MAIN HANDLER ──────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey      = process.env.ANTHROPIC_API_KEY;
+  const newsDataKey = process.env.NEWSDATA_API_KEY;
+
   if (!apiKey) return res.status(500).json({ error: 'No Anthropic API key' });
 
   const now = Math.floor(Date.now() / 1000);
@@ -397,41 +483,53 @@ export default async function handler(req, res) {
     const existing = existingItems.filter(i => (now - i.ts) < maxAge);
     const seenTitles = new Set(existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50)));
 
-    // Stream 1+2: RSS + Google News in parallel
-    const allSources = [...RSS_SOURCES, ...GOOGLE_NEWS_SOURCES];
-    const rssResults = await Promise.all(allSources.map(src => fetchRSS(src, seenTitles)));
-    const rssItems = rssResults.flat();
-    console.log('RSS + Google News: ' + rssItems.length + ' items');
+    // All streams in parallel
+    const [
+      rssResults,
+      gdeltResults,
+      newsdataResults,
+      twitterResults,
+      webResults,
+    ] = await Promise.all([
+      // Stream 1+2: RSS + Google News
+      Promise.all([...RSS_SOURCES, ...GOOGLE_NEWS_SOURCES].map(src => fetchRSS(src, seenTitles))),
+      // Stream 3: GDELT
+      Promise.all(GDELT_QUERIES.map(q => fetchGDELT(q, seenTitles))),
+      // Stream 4: NewsData.io
+      Promise.all(NEWSDATA_QUERIES.map(q => fetchNewsData(q, newsDataKey, seenTitles))),
+      // Stream 5: Twitter viral
+      Promise.all(TWITTER_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, true))),
+      // Stream 6: General web search
+      Promise.all(WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, false))),
+    ]);
 
-    // Stream 3: Twitter viral search per category in parallel
-    const twitterResults = await Promise.all(
-      TWITTER_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, true))
-    );
-    const twitterItems = twitterResults.flat().filter(item => {
+    const rssItems      = rssResults.flat();
+    const gdeltItems    = gdeltResults.flat();
+    const newsdataItems = newsdataResults.flat();
+    const twitterItems  = twitterResults.flat().filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
       if (seenTitles.has(key) || !preFilter(item.title)) return false;
       seenTitles.add(key);
       return true;
     });
-    console.log('Twitter: ' + twitterItems.length + ' items');
-
-    // Stream 4: General web search per category in parallel
-    const webResults = await Promise.all(
-      WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, false))
-    );
     const webItems = webResults.flat().filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
       if (seenTitles.has(key) || !preFilter(item.title)) return false;
       seenTitles.add(key);
       return true;
     });
-    console.log('Web search: ' + webItems.length + ' items');
+
+    console.log(`RSS+Google: ${rssItems.length} | GDELT: ${gdeltItems.length} | NewsData: ${newsdataItems.length} | Twitter: ${twitterItems.length} | Web: ${webItems.length}`);
 
     // Combine all new items
-    const allNew = [...rssItems, ...twitterItems, ...webItems];
+    const allNew = [...rssItems, ...gdeltItems, ...newsdataItems, ...twitterItems, ...webItems];
+
+    // Fuzzy dedup against existing feed
     const trulyNew = allNew.filter(newItem =>
       !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title))
     );
+
+    // Exact dedup within new items
     const seenKeys = new Set();
     const uniqueNew = trulyNew.filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,60);
@@ -439,25 +537,26 @@ export default async function handler(req, res) {
       seenKeys.add(key);
       return true;
     });
-    console.log('Unique new: ' + uniqueNew.length + ' items');
 
-    // Claude editorial review — all categories in parallel
+    console.log('Unique new candidates: ' + uniqueNew.length);
+
+    // Claude editorial scoring — all categories in parallel
     const approvedArrays = await Promise.all(
       CATEGORIES.map(async (cat) => {
         const catItems = uniqueNew.filter(i => i.cat === cat).sort((a,b) => b.ts - a.ts);
         if (!catItems.length) return [];
         const result = await callClaude(catItems, cat, apiKey);
-        console.log(cat + ': ' + result.length + ' approved from ' + catItems.length);
+        console.log(`${cat}: ${result.length} approved (score 7+) from ${catItems.length} candidates`);
         return result;
       })
     );
     const approved = approvedArrays.flat();
 
-    // Stamp approved stories with feed-added time
+    // Stamp with feed-added time
     const feedAddedAt = Math.floor(Date.now() / 1000);
     approved.forEach(item => { item.ts = feedAddedAt; });
 
-    // Merge, dedup, sort, top 6
+    // Merge, dedup, sort by score then time, top 6 per category
     const all = [...existing, ...approved];
     const finalDeduped = [];
     for (const item of all) {
@@ -467,7 +566,14 @@ export default async function handler(req, res) {
     }
 
     const final = CATEGORIES.map(cat =>
-      finalDeduped.filter(i => i.cat === cat).sort((a,b) => b.ts - a.ts).slice(0, 6)
+      finalDeduped
+        .filter(i => i.cat === cat)
+        .sort((a,b) => {
+          // approved stories sorted by score first, then time
+          const scoreDiff = (b.score || 0) - (a.score || 0);
+          return scoreDiff !== 0 ? scoreDiff : b.ts - a.ts;
+        })
+        .slice(0, 6)
     ).flat();
 
     console.log('Final feed: ' + final.length + ' stories');
