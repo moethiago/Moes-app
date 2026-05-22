@@ -59,25 +59,48 @@ const GOOGLE_NEWS_SOURCES = [
   { url:'https://news.google.com/rss/search?q=saudi+arabia+economy+OR+investment+OR+billion+OR+pif&hl=en-US&gl=US&ceid=US:en',              cat:'KSA' },
 ];
 
-const WEB_SEARCH_QUERIES = [
-  // F1
-  { query:'site:twitter.com OR site:x.com @F1 OR @SkySportsF1 OR @autosport breaking news today 2026', cat:'F1' },
-  { query:'Formula 1 breaking news confirmed today 2026', cat:'F1' },
-  // Football
-  { query:'site:twitter.com OR site:x.com @FabrizioRomano confirmed transfer today', cat:'FOOTBALL' },
-  { query:'site:twitter.com OR site:x.com @David_Ornstein OR @SkySportsNews transfer sacking injury today', cat:'FOOTBALL' },
-  { query:'Premier League La Liga Serie A confirmed transfer sacking injury today', cat:'FOOTBALL' },
-  // Bayern
-  { query:'site:twitter.com OR site:x.com @iMiaSanMia OR @MiaSanMia Bayern Munich news today', cat:'BAYERN' },
-  { query:'Bayern Munich confirmed news today', cat:'BAYERN' },
-  // SPL
-  { query:'site:twitter.com OR site:x.com @SPL_EN Al Hilal Al Nassr news today', cat:'SPL' },
-  { query:'Al Hilal Al Nassr Saudi Pro League news today', cat:'SPL' },
-  // KSA
-  { query:'site:twitter.com OR site:x.com @arabnews Saudi Arabia economy billion today', cat:'KSA' },
-  { query:'Saudi Arabia economy investment deal billion today', cat:'KSA' },
+// Twitter accounts per category — Claude searches for viral/trending tweets only
+const TWITTER_QUERIES = [
+  {
+    cat: 'F1',
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @F1 @SkySportsF1 @autosport @RacingNews365 @MercedesAMGF1 @scuderiaferrari @McLarenF1 @redbullracing @WilliamsRacing.
+Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking F1 news.
+Ignore opinions, reactions, promotional content, and low engagement tweets.`
+  },
+  {
+    cat: 'FOOTBALL',
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @FabrizioRomano @David_Ornstein @SkySportsNews @BBCSport @OptaJoe @TransferNews.
+Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking football news — transfers, sackings, injuries, results.
+Ignore opinions, reactions, promotional content, and low engagement tweets.`
+  },
+  {
+    cat: 'BAYERN',
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @iMiaSanMia @MiaSanMia @FCBayernEN @FCBayern @SkySportsBundesliga.
+Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Bayern Munich news.
+Ignore opinions, reactions, promotional content, and low engagement tweets.`
+  },
+  {
+    cat: 'SPL',
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @SPL_EN @AlHilal_EN @AlNassrFC_EN @Alhilal_FC @AlIttihadClub.
+Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Saudi Pro League news.
+Ignore opinions, reactions, promotional content, and low engagement tweets.`
+  },
+  {
+    cat: 'KSA',
+    query: `Search Twitter/X for the most viral and highly liked tweets from today from these accounts: @arabnews @SaudiGazette @SPAregency @PIF_en @NEOM.
+Only return tweets with very high engagement (thousands of likes or retweets) that contain confirmed breaking Saudi Arabia economic or government news.
+Ignore opinions, reactions, promotional content, and low engagement tweets.`
+  },
 ];
 
+// General web search queries — catches anything missed
+const WEB_SEARCH_QUERIES = [
+  { query:'Formula 1 breaking news confirmed today 2026',                           cat:'F1' },
+  { query:'Premier League La Liga Serie A confirmed transfer sacking injury today', cat:'FOOTBALL' },
+  { query:'Bayern Munich confirmed news today',                                     cat:'BAYERN' },
+  { query:'Al Hilal Al Nassr Saudi Pro League news today',                          cat:'SPL' },
+  { query:'Saudi Arabia economy investment deal billion today',                     cat:'KSA' },
+];
 
 const CAT_PROMPTS = {
   F1: `You are the F1 editor for a breaking news app.
@@ -94,7 +117,7 @@ Select max 6. Return [] if nothing qualifies.`,
 
   BAYERN: `You are the Bayern Munich editor. Must be directly about FC Bayern Munich club.
 INCLUDE only: confirmed Bayern transfer in or out, confirmed manager sacked or appointed, confirmed player injury with timeline, Bayern match result with major title or cup implication.
-REJECT always: player interviews/quotes/hopes/feelings, Bayern Frauen (women's team), youth or reserve team, Germany national team stories, rumours with linked/monitored/interested, previews, cup final previews.
+REJECT always: player interviews/quotes/hopes/feelings, Bayern Frauen, youth or reserve team, Germany national team stories, rumours, previews, cup final previews.
 DUPLICATE RULE: Same event = keep only best version.
 Select max 6. Return [] if nothing qualifies.`,
 
@@ -184,8 +207,22 @@ async function fetchRSS(src, seenTitles) {
   } catch(e) { return []; }
 }
 
-async function claudeWebSearch(query, cat, apiKey) {
+async function claudeWebSearch(query, cat, apiKey, isTwitter = false) {
   try {
+    const prompt = isTwitter
+      ? `${query}
+
+Return ONLY a JSON array of confirmed breaking news stories you find:
+[{"title":"headline max 12 words, factual and direct","url":"tweet or article url"}]
+Only include tweets/posts with very high engagement that contain confirmed facts.
+No opinions, no reactions, no promotional content.
+Return [] if nothing qualifies. No markdown, just JSON.`
+      : `Search for: "${query}"
+Return ONLY a JSON array of top breaking news from the last 24 hours:
+[{"title":"headline max 12 words","url":"source url"}]
+Only confirmed factual breaking news. No opinions, no previews, no quotes.
+Return [] if nothing qualifies. No markdown, just JSON.`;
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -199,14 +236,7 @@ async function claudeWebSearch(query, cat, apiKey) {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{
-          role: 'user',
-          content: `Search for: "${query}"
-Return ONLY a JSON array of top breaking news from the last 24 hours:
-[{"title":"headline max 12 words","url":"source url"}]
-Only confirmed factual breaking news. No opinions, no previews, no quotes.
-Return [] if nothing qualifies. No markdown, just JSON.`
-        }]
+        messages: [{ role: 'user', content: prompt }]
       }),
     });
     const data = await res.json();
@@ -218,12 +248,12 @@ Return [] if nothing qualifies. No markdown, just JSON.`
       .map(s => ({
         title:  s.title.trim(),
         url:    s.url,
-        source: 'web.search',
+        source: isTwitter ? 'twitter' : 'web.search',
         cat,
         ts:     Math.floor(Date.now() / 1000),
       }));
   } catch(e) {
-    console.error('Web search failed for ' + cat + ': ' + e.message);
+    console.error('Search failed for ' + cat + ': ' + e.message);
     return [];
   }
 }
@@ -312,7 +342,6 @@ async function writeFeed(items, currentContent, sha) {
     `// DO NOT EDIT BELOW THIS LINE\n${newBlock}\n// DO NOT EDIT ABOVE THIS LINE`
   );
 
-  // write feed.js
   await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
     method: 'PUT',
     headers: {
@@ -327,7 +356,7 @@ async function writeFeed(items, currentContent, sha) {
     }),
   });
 
-  // update index.html version number to bust browser cache
+  // bust browser cache by updating index.html version
   const version = Math.floor(Date.now() / 1000);
   const indexRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
     headers: {
@@ -337,10 +366,7 @@ async function writeFeed(items, currentContent, sha) {
   });
   const indexData = await indexRes.json();
   const indexContent = Buffer.from(indexData.content, 'base64').toString('utf8');
-  const indexUpdated = indexContent.replace(
-    /js\/feed\.js\?v=\d+/,
-    `js/feed.js?v=${version}`
-  );
+  const indexUpdated = indexContent.replace(/js\/feed\.js\?v=\d+/, `js/feed.js?v=${version}`);
   await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
     method: 'PUT',
     headers: {
@@ -377,11 +403,23 @@ export default async function handler(req, res) {
     const rssItems = rssResults.flat();
     console.log('RSS + Google News: ' + rssItems.length + ' items');
 
-    // Stream 3: Claude web search in parallel
-    const webSearchResults = await Promise.all(
-      WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey))
+    // Stream 3: Twitter viral search per category in parallel
+    const twitterResults = await Promise.all(
+      TWITTER_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, true))
     );
-    const webItems = webSearchResults.flat().filter(item => {
+    const twitterItems = twitterResults.flat().filter(item => {
+      const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
+      if (seenTitles.has(key) || !preFilter(item.title)) return false;
+      seenTitles.add(key);
+      return true;
+    });
+    console.log('Twitter: ' + twitterItems.length + ' items');
+
+    // Stream 4: General web search per category in parallel
+    const webResults = await Promise.all(
+      WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, false))
+    );
+    const webItems = webResults.flat().filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
       if (seenTitles.has(key) || !preFilter(item.title)) return false;
       seenTitles.add(key);
@@ -389,8 +427,8 @@ export default async function handler(req, res) {
     });
     console.log('Web search: ' + webItems.length + ' items');
 
-    // Combine and deduplicate against existing
-    const allNew = [...rssItems, ...webItems];
+    // Combine all new items
+    const allNew = [...rssItems, ...twitterItems, ...webItems];
     const trulyNew = allNew.filter(newItem =>
       !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title))
     );
@@ -415,11 +453,11 @@ export default async function handler(req, res) {
     );
     const approved = approvedArrays.flat();
 
-    // ── KEY CHANGE: stamp approved stories with NOW not publish time ──
+    // Stamp approved stories with feed-added time
     const feedAddedAt = Math.floor(Date.now() / 1000);
     approved.forEach(item => { item.ts = feedAddedAt; });
 
-    // Merge with existing, final dedup, sort newest first, top 6 per category
+    // Merge, dedup, sort, top 6
     const all = [...existing, ...approved];
     const finalDeduped = [];
     for (const item of all) {
