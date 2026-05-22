@@ -291,9 +291,10 @@ var isPast   = now > start + duration;
 var cls = isPast ? ’ past’ : (isLive ? ’ live-now’ : ‘’);
 var timeStr = new Date(start).toLocaleTimeString([], { hour:‘2-digit’, minute:‘2-digit’, timeZone:‘Asia/Riyadh’ });
 return ‘<span class="session-pill' + cls + '" title="' + timeStr + ' AST">’
-+ (isLive ? ‘🔴 ’ : ‘’) + s.name + ‘</span>’;
-}).join(’’);
-}
+
+- (isLive ? ‘🔴 ’ : ‘’) + s.name + ‘</span>’;
+  }).join(’’);
+  }
 
 var lastRenderedWeekend = null;
 
@@ -303,69 +304,67 @@ var live = getCurrentSession();
 var next = live || getNextRaceAndSession();
 var raceWeekend = getCurrentRaceWeekend();
 
-```
 // only re-render weekend card if it changed
 if (weekendEl) {
-  try {
-    if (raceWeekend) {
-      if (lastRenderedWeekend !== raceWeekend.race) {
-        renderWeekendCard(raceWeekend, weekendEl);
-        lastRenderedWeekend = raceWeekend.race;
-      }
-      weekendEl.style.display = 'block';
-    } else {
-      weekendEl.style.display = 'none';
-    }
-  } catch(e) {}
+try {
+if (raceWeekend) {
+if (lastRenderedWeekend !== raceWeekend.race) {
+renderWeekendCard(raceWeekend, weekendEl);
+lastRenderedWeekend = raceWeekend.race;
+}
+weekendEl.style.display = ‘block’;
+} else {
+weekendEl.style.display = ‘none’;
+}
+} catch(e) {}
 }
 
 if (!next) {
-  if (trackEl) trackEl.textContent = '2026 Season Complete';
-  if (sessEl)  sessEl.textContent  = 'See you in 2027';
-  if (labelEl) labelEl.textContent = '';
-  if (liveEl)  liveEl.style.display = 'none';
-  if (gridEl)  gridEl.style.display = 'none';
-  if (subEl)   subEl.innerHTML = '';
-  stopLiveTiming();
-  return;
+if (trackEl) trackEl.textContent = ‘2026 Season Complete’;
+if (sessEl)  sessEl.textContent  = ‘See you in 2027’;
+if (labelEl) labelEl.textContent = ‘’;
+if (liveEl)  liveEl.style.display = ‘none’;
+if (gridEl)  gridEl.style.display = ‘none’;
+if (subEl)   subEl.innerHTML = ‘’;
+stopLiveTiming();
+return;
 }
 
-if (trackEl) trackEl.textContent = next.race.flag + ' ' + next.race.race;
-if (sessEl)  sessEl.textContent  = next.race.circuit + ' · ' + next.race.round;
+if (trackEl) trackEl.textContent = next.race.flag + ’ ’ + next.race.race;
+if (sessEl)  sessEl.textContent  = next.race.circuit + ’ · ’ + next.race.round;
 
 if (live) {
-  if (liveEl) {
-    liveEl.style.display = 'flex';
-    liveEl.innerHTML = '<span class="pulse"></span><span>🔴 LIVE NOW — ' + live.session.name + '</span>';
-  }
-  if (gridEl)  gridEl.style.display = 'none';
-  if (labelEl) labelEl.style.display = 'none';
-  startLiveTiming();
+if (liveEl) {
+liveEl.style.display = ‘flex’;
+liveEl.innerHTML = ’<span class="pulse"></span><span>🔴 LIVE NOW - ’ + live.session.name + ‘</span>’;
+}
+if (gridEl)  gridEl.style.display = ‘none’;
+if (labelEl) labelEl.style.display = ‘none’;
+startLiveTiming();
 } else {
-  if (liveEl)  liveEl.style.display = 'none';
-  if (gridEl)  gridEl.style.display = 'grid';
-  if (labelEl) {
-    labelEl.style.display = 'block';
-    labelEl.textContent = 'Next: ' + next.session.name;
-  }
-  stopLiveTiming();
+if (liveEl)  liveEl.style.display = ‘none’;
+if (gridEl)  gridEl.style.display = ‘grid’;
+if (labelEl) {
+labelEl.style.display = ‘block’;
+labelEl.textContent = ’Next: ’ + next.session.name;
+}
+stopLiveTiming();
 
-  var diff = Date.parse(next.session.time) - Date.now();
-  if (diff <= 0) { tick(); return; }
+var diff = Date.parse(next.session.time) - Date.now();
+if (diff <= 0) { tick(); return; }
 
-  var d = document.getElementById('cd-days');
-  var h = document.getElementById('cd-hours');
-  var m = document.getElementById('cd-mins');
-  var s = document.getElementById('cd-secs');
-  if (d) d.textContent = String(Math.floor(diff / 86400000)).padStart(2,'0');
-  if (h) h.textContent = String(Math.floor(diff % 86400000 / 3600000)).padStart(2,'0');
-  if (m) m.textContent = String(Math.floor(diff % 3600000 / 60000)).padStart(2,'0');
-  if (s) s.textContent = String(Math.floor(diff % 60000 / 1000)).padStart(2,'0');
+var d = document.getElementById(‘cd-days’);
+var h = document.getElementById(‘cd-hours’);
+var m = document.getElementById(‘cd-mins’);
+var s = document.getElementById(‘cd-secs’);
+if (d) d.textContent = String(Math.floor(diff / 86400000)).padStart(2,‘0’);
+if (h) h.textContent = String(Math.floor(diff % 86400000 / 3600000)).padStart(2,‘0’);
+if (m) m.textContent = String(Math.floor(diff % 3600000 / 60000)).padStart(2,‘0’);
+if (s) s.textContent = String(Math.floor(diff % 60000 / 1000)).padStart(2,‘0’);
 }
 
 renderPills(next.race);
-} catch(e) { console.error('tick error:', e); }
-```
+} catch(e) { console.error(‘tick error:’, e); }
 
 }
 
@@ -379,8 +378,9 @@ setInterval(tick, 1000);
 function renderWeekendCard(weekend, el) {
 var now = Date.now();
 var html = ‘<div class="f1-weekend-card">’
-+ ‘<div class="f1-weekend-title">’ + weekend.flag + ’ ’ + weekend.race + ’ Weekend</div>’
-+ ‘<div class="f1-weekend-sessions">’;
+
+- ‘<div class="f1-weekend-title">’ + weekend.flag + ’ ’ + weekend.race + ’ Weekend</div>’
+- ‘<div class="f1-weekend-sessions">’;
 
 weekend.sessions.forEach(function(s) {
 var start    = Date.parse(s.time);
@@ -393,10 +393,11 @@ hour:‘2-digit’, minute:‘2-digit’, timeZone:‘Asia/Riyadh’
 }) + ’ AST’;
 var cls = isLive ? ‘wk-sess live’ : (isPast ? ‘wk-sess past’ : ‘wk-sess’);
 html += ‘<div class="' + cls + '">’
-+ ‘<span class="wk-sess-name">’ + (isLive ? ’🔴 ’ : ‘’) + s.name + ‘</span>’
-+ ‘<span class="wk-sess-time">’ + timeStr + ‘</span>’
-+ ‘</div>’;
-});
+
+- ‘<span class="wk-sess-name">’ + (isLive ? ’🔴 ’ : ‘’) + s.name + ‘</span>’
+- ‘<span class="wk-sess-time">’ + timeStr + ‘</span>’
+- ‘</div>’;
+  });
 
 html += ‘</div></div>’;
 el.innerHTML = html;
@@ -415,19 +416,18 @@ if (!sessRes.ok) return null;
 var sessions = await sessRes.json();
 if (!sessions.length) return null;
 
-```
 // find most recent session
 var latest = sessions.reduce(function(a, b) {
-  return (a.session_key > b.session_key) ? a : b;
+return (a.session_key > b.session_key) ? a : b;
 });
 var sessionKey = latest.session_key;
 
 // fetch positions, intervals, drivers in parallel
 var results = await Promise.all([
-  fetch('https://api.openf1.org/v1/position?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/intervals?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/drivers?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/laps?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
+fetch(‘https://api.openf1.org/v1/position?session_key=’ + sessionKey, { signal: AbortSignal.timeout(5000) }),
+fetch(‘https://api.openf1.org/v1/intervals?session_key=’ + sessionKey, { signal: AbortSignal.timeout(5000) }),
+fetch(‘https://api.openf1.org/v1/drivers?session_key=’ + sessionKey, { signal: AbortSignal.timeout(5000) }),
+fetch(‘https://api.openf1.org/v1/laps?session_key=’ + sessionKey, { signal: AbortSignal.timeout(5000) }),
 ]);
 
 var positions = results[0].ok ? await results[0].json() : [];
@@ -436,7 +436,6 @@ var drivers   = results[2].ok ? await results[2].json() : [];
 var laps      = results[3].ok ? await results[3].json() : [];
 
 return { sessionKey, positions, intervals, drivers, laps, sessionName: latest.session_name };
-```
 
 } catch(e) {
 return null;
@@ -471,11 +470,12 @@ var maxLap = 0;
 data.laps.forEach(function(l) { if (l.lap_number > maxLap) maxLap = l.lap_number; });
 
 var html = ‘<div class="f1-timing-card">’
-+ ‘<div class="f1-timing-header">’
-+ ’<span class="f1-timing-title">🔴 LIVE — ’ + (data.sessionName || ‘Session’) + ‘</span>’
-+ (maxLap ? ’<span class="f1-timing-lap">Lap ’ + maxLap + ‘</span>’ : ‘’)
-+ ‘</div>’
-+ ‘<div class="f1-timing-list">’;
+
+- ‘<div class="f1-timing-header">’
+- ’<span class="f1-timing-title">🔴 LIVE - ’ + (data.sessionName || ‘Session’) + ‘</span>’
+- (maxLap ? ’<span class="f1-timing-lap">Lap ’ + maxLap + ‘</span>’ : ‘’)
+- ‘</div>’
+- ‘<div class="f1-timing-list">’;
 
 sorted.slice(0, 10).forEach(function(p) {
 var drv  = driverMap[p.driver_number] || {};
@@ -483,17 +483,16 @@ var intv = intMap[p.driver_number];
 var pos  = p.position;
 var name = drv.last_name || (’Car ’ + p.driver_number);
 var col  = drv.team_colour ? ‘#’ + drv.team_colour : ‘#8a8fa8’;
-var gap  = pos === 1 ? ‘LEADER’ : (intv && intv.gap_to_leader ? ‘+’ + intv.gap_to_leader : ‘—’);
+var gap  = pos === 1 ? ‘LEADER’ : (intv && intv.gap_to_leader ? ‘+’ + intv.gap_to_leader : ‘-’);
 var pc   = pos === 1 ? ‘p1’ : pos === 2 ? ‘p2’ : pos === 3 ? ‘p3’ : ‘’;
 
-```
-html += '<div class="f1-timing-row">'
-  + '<span class="f1-timing-pos ' + pc + '">' + pos + '</span>'
-  + '<span class="f1-timing-team-bar" style="background:' + col + '"></span>'
-  + '<span class="f1-timing-name">' + name + '</span>'
-  + '<span class="f1-timing-gap">' + gap + '</span>'
-  + '</div>';
-```
+html += ‘<div class="f1-timing-row">’
+
+- ‘<span class="f1-timing-pos ' + pc + '">’ + pos + ‘</span>’
+- ‘<span class="f1-timing-team-bar" style="background:' + col + '"></span>’
+- ‘<span class="f1-timing-name">’ + name + ‘</span>’
+- ‘<span class="f1-timing-gap">’ + gap + ‘</span>’
+- ‘</div>’;
 
 });
 
@@ -529,8 +528,8 @@ if (!el || !drivers || drivers.length < 2) return;
 
 var leader = drivers[0];
 var second = drivers[1];
-var leaderName = leader.name || (leader.Driver && leader.Driver.familyName) || ‘—’;
-var secondName = second.name || (second.Driver && second.Driver.familyName) || ‘—’;
+var leaderName = leader.name || (leader.Driver && leader.Driver.familyName) || ‘-’;
+var secondName = second.name || (second.Driver && second.Driver.familyName) || ‘-’;
 var leaderPts  = parseFloat(leader.pts || leader.points) || 0;
 var secondPts  = parseFloat(second.pts || second.points) || 0;
 var gap        = Math.round(leaderPts - secondPts);
@@ -542,13 +541,14 @@ return raceSession && Date.parse(raceSession.time) > now;
 }).length;
 
 el.innerHTML = ‘<div class="f1-context">’
-+ ‘<span class="f1-context-leader">’ + leaderName + ‘</span>’
-+ ’ leads ’
-+ ‘<span class="f1-context-second">’ + secondName + ‘</span>’
-+ ’ by <strong>’ + gap + ‘pts</strong>’
-+ ’ · ’ + remaining + ’ races left’
-+ ‘</div>’;
-}
+
+- ‘<span class="f1-context-leader">’ + leaderName + ‘</span>’
+- ’ leads ’
+- ‘<span class="f1-context-second">’ + secondName + ‘</span>’
+- ’ by <strong>’ + gap + ‘pts</strong>’
+- ’ · ’ + remaining + ’ races left’
+- ‘</div>’;
+  }
 
 // ─────────────────────────────────────────────────────────
 // LAST RACE PODIUM
@@ -565,34 +565,33 @@ var data = await res.json();
 var race = data.MRData && data.MRData.RaceTable && data.MRData.RaceTable.Races[0];
 if (!race || !race.Results) return;
 
-```
 var podium  = race.Results.slice(0, 3);
-var medals  = ['🥇','🥈','🥉'];
+var medals  = [‘🥇’,‘🥈’,‘🥉’];
 
-var html = '<div class="f1-last-race-card">'
-  + '<div class="f1-last-race-title">Last Race · ' + race.raceName + '</div>'
-  + '<div class="f1-podium">';
+var html = ‘<div class="f1-last-race-card">’
+
+- ’<div class="f1-last-race-title">Last Race · ’ + race.raceName + ‘</div>’
+- ‘<div class="f1-podium">’;
 
 podium.forEach(function(r, i) {
-  var name = r.Driver.familyName;
-  var cid  = r.Constructor.constructorId;
-  var col  = TEAM_COLORS[cid] || '#8a8fa8';
-  html += '<div class="f1-podium-item">'
-    + '<span class="f1-podium-medal">' + medals[i] + '</span>'
-    + '<span class="f1-podium-name" style="color:' + col + '">' + name + '</span>'
-    + '<span class="f1-podium-team">' + r.Constructor.name + '</span>'
-    + '</div>';
+var name = r.Driver.familyName;
+var cid  = r.Constructor.constructorId;
+var col  = TEAM_COLORS[cid] || ‘#8a8fa8’;
+html += ‘<div class="f1-podium-item">’
++ ‘<span class="f1-podium-medal">’ + medals[i] + ‘</span>’
++ ‘<span class="f1-podium-name" style="color:' + col + '">’ + name + ‘</span>’
++ ‘<span class="f1-podium-team">’ + r.Constructor.name + ‘</span>’
++ ‘</div>’;
 });
 
-html += '</div></div>';
+html += ‘</div></div>’;
 el.innerHTML = html;
-```
 
 } catch(e) {}
 }
 
 // ─────────────────────────────────────────────────────────
-// WORLD CUP 2026 — openfootball (free, no key)
+// WORLD CUP 2026 - openfootball (free, no key)
 // ─────────────────────────────────────────────────────────
 async function loadWorldCup() {
 var container = document.getElementById(‘worldcup-fixtures’);
@@ -609,24 +608,22 @@ if (!res.ok) throw new Error(‘failed’);
 var data = await res.json();
 var matches = data.matches || [];
 
-```
-var today = new Date().toISOString().split('T')[0];
+var today = new Date().toISOString().split(‘T’)[0];
 var todayMatches = matches.filter(function(m) { return m.date === today; });
 var recentResults = matches.filter(function(m) { return m.score && m.date < today; }).slice(-3);
 var upcoming = matches.filter(function(m) { return m.date > today && !m.score; }).slice(0, 6);
 
-var html = '';
-if (todayMatches.length)                  html += renderWCSection(todayMatches, 'Today');
-if (!todayMatches.length && recentResults.length) html += renderWCSection(recentResults, 'Recent Results');
-if (upcoming.length)                      html += renderWCSection(upcoming, 'Upcoming');
+var html = ‘’;
+if (todayMatches.length)                  html += renderWCSection(todayMatches, ‘Today’);
+if (!todayMatches.length && recentResults.length) html += renderWCSection(recentResults, ‘Recent Results’);
+if (upcoming.length)                      html += renderWCSection(upcoming, ‘Upcoming’);
 
 if (!html) {
-  // tournament not started — show first fixtures
-  html = renderWCSection(matches.slice(0, 6), 'Opening Fixtures — Jun 11, 2026');
+// tournament not started - show first fixtures
+html = renderWCSection(matches.slice(0, 6), ‘Opening Fixtures - Jun 11, 2026’);
 }
 
 container.innerHTML = html;
-```
 
 } catch(e) {
 // hardcoded fallback
@@ -637,7 +634,7 @@ container.innerHTML = renderWCSection([
 { team1:‘Canada’,      team2:‘TBD’,            date:‘2026-06-12’, group:‘Group C’ },
 { team1:‘Brazil’,      team2:‘TBD’,            date:‘2026-06-13’, group:‘Group D’ },
 { team1:‘England’,     team2:‘TBD’,            date:‘2026-06-13’, group:‘Group E’ },
-], ‘Opening Fixtures — Jun 11, 2026’);
+], ‘Opening Fixtures - Jun 11, 2026’);
 }
 }
 
@@ -647,19 +644,20 @@ matches.forEach(function(m) {
 var ftScore = m.score && m.score.ft;
 var hasScore = ftScore && ftScore.length === 2;
 html += ‘<div class="fxt-row">’
-+ ‘<div class="fxt-teams">’
-+ ‘<div class="fxt-team"><span class="fxt-name">’ + (m.team1 || ‘’) + ‘</span></div>’
-+ ‘<div class="fxt-team"><span class="fxt-name">’ + (m.team2 || ‘’) + ‘</span></div>’
-+ ‘</div>’
-+ ‘<div class="fxt-right">’
-+ (hasScore
-? ‘<div class="fxt-score"><span>’ + ftScore[0] + ‘</span><span class="fxt-score-sep">-</span><span>’ + ftScore[1] + ‘</span></div><span class="fxt-status ft">FT</span>’
-: ‘<div class="fxt-upcoming-date">’ + formatWCDate(m.date) + ‘</div><div class="wc-group-label">’ + (m.group || m.round || ‘’) + ‘</div>’)
-+ ‘</div>’
-+ ‘</div>’;
-});
-return html;
-}
+
+- ‘<div class="fxt-teams">’
+- ‘<div class="fxt-team"><span class="fxt-name">’ + (m.team1 || ‘’) + ‘</span></div>’
+- ‘<div class="fxt-team"><span class="fxt-name">’ + (m.team2 || ‘’) + ‘</span></div>’
+- ‘</div>’
+- ‘<div class="fxt-right">’
+- (hasScore
+  ? ‘<div class="fxt-score"><span>’ + ftScore[0] + ‘</span><span class="fxt-score-sep">-</span><span>’ + ftScore[1] + ‘</span></div><span class="fxt-status ft">FT</span>’
+  : ‘<div class="fxt-upcoming-date">’ + formatWCDate(m.date) + ‘</div><div class="wc-group-label">’ + (m.group || m.round || ‘’) + ‘</div>’)
+- ‘</div>’
+- ‘</div>’;
+  });
+  return html;
+  }
 
 function formatWCDate(dateStr) {
 if (!dateStr) return ‘’;
@@ -706,11 +704,12 @@ var hasLive  = fixtures.some(function(f) { return isLive(f.status); });
 if (!fixtures.length && !upcoming.length) return ‘’;
 
 var html = ‘<div class="fxt-league-block">’
-+ ‘<div class="fxt-league-header">’
-+ ‘<span class="fxt-league-flag">’ + league.flag + ‘</span>’
-+ ‘<span class="fxt-league-name">’ + league.label + ‘</span>’
-+ (hasLive ? ‘<span class="fxt-live-badge">LIVE</span>’ : ‘’)
-+ ‘</div>’;
+
+- ‘<div class="fxt-league-header">’
+- ‘<span class="fxt-league-flag">’ + league.flag + ‘</span>’
+- ‘<span class="fxt-league-name">’ + league.label + ‘</span>’
+- (hasLive ? ‘<span class="fxt-live-badge">LIVE</span>’ : ‘’)
+- ‘</div>’;
 
 if (fixtures.length) {
 fixtures.sort(function(a, b) {
@@ -723,29 +722,30 @@ fixtures.forEach(function(f) {
 var live     = isLive(f.status);
 var hasScore = f.homeScore !== null && f.awayScore !== null;
 html += ‘<div class="fxt-row' + (live ? ' fxt-live' : '') + '">’
-+ ‘<div class="fxt-teams">’
-+ ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.homeLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name' + (live && f.homeScore > f.awayScore ? ' fxt-winning' : '') + '">’ + f.home + ‘</span></div>’
-+ ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.awayLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name' + (live && f.awayScore > f.homeScore ? ' fxt-winning' : '') + '">’ + f.away + ‘</span></div>’
-+ ‘</div>’
-+ ‘<div class="fxt-right">’
-+ (hasScore ? ‘<div class="fxt-score' + (live ? ' fxt-score-live' : '') + '"><span>’ + f.homeScore + ‘</span><span class="fxt-score-sep">-</span><span>’ + f.awayScore + ‘</span></div>’ : ‘<div class="fxt-kickoff">’ + formatKickoff(f.time) + ‘</div>’)
-+ statusLabel(f.status, f.elapsed)
-+ ‘</div></div>’;
-});
-} else if (upcoming.length) {
-html += ’<div class="fxt-upcoming-label">Next matches: ’ + formatDate(upcoming[0].time) + ‘</div>’;
-upcoming.forEach(function(f) {
-html += ‘<div class="fxt-row">’
-+ ‘<div class="fxt-teams">’
-+ ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.homeLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name">’ + f.home + ‘</span></div>’
-+ ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.awayLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name">’ + f.away + ‘</span></div>’
-+ ‘</div>’
-+ ‘<div class="fxt-right">’
-+ ‘<div class="fxt-upcoming-date">’ + formatDate(f.time) + ‘</div>’
-+ ‘<div class="fxt-kickoff">’ + formatKickoff(f.time) + ‘</div>’
-+ ‘</div></div>’;
-});
-}
+
+- ‘<div class="fxt-teams">’
+- ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.homeLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name' + (live && f.homeScore > f.awayScore ? ' fxt-winning' : '') + '">’ + f.home + ‘</span></div>’
+- ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.awayLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name' + (live && f.awayScore > f.homeScore ? ' fxt-winning' : '') + '">’ + f.away + ‘</span></div>’
+- ‘</div>’
+- ‘<div class="fxt-right">’
+- (hasScore ? ‘<div class="fxt-score' + (live ? ' fxt-score-live' : '') + '"><span>’ + f.homeScore + ‘</span><span class="fxt-score-sep">-</span><span>’ + f.awayScore + ‘</span></div>’ : ‘<div class="fxt-kickoff">’ + formatKickoff(f.time) + ‘</div>’)
+- statusLabel(f.status, f.elapsed)
+- ‘</div></div>’;
+  });
+  } else if (upcoming.length) {
+  html += ’<div class="fxt-upcoming-label">Next matches: ’ + formatDate(upcoming[0].time) + ‘</div>’;
+  upcoming.forEach(function(f) {
+  html += ‘<div class="fxt-row">’
+- ‘<div class="fxt-teams">’
+- ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.homeLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name">’ + f.home + ‘</span></div>’
+- ‘<div class="fxt-team"><img class="fxt-logo" src="' + f.awayLogo + '" onerror="this.style.display=\'none\'"><span class="fxt-name">’ + f.away + ‘</span></div>’
+- ‘</div>’
+- ‘<div class="fxt-right">’
+- ‘<div class="fxt-upcoming-date">’ + formatDate(f.time) + ‘</div>’
+- ‘<div class="fxt-kickoff">’ + formatKickoff(f.time) + ‘</div>’
+- ‘</div></div>’;
+  });
+  }
 
 html += ‘</div>’;
 return html;
@@ -857,16 +857,17 @@ var col  = TEAM_COLORS[cid] || ‘#8a8fa8’;
 var barW = Math.round((pts / maxPts) * 100);
 var pc   = pos === 1 ? ‘p1’ : pos === 2 ? ‘p2’ : pos === 3 ? ‘p3’ : ‘’;
 html += ‘<div class="f1-std-row">’
-+ ‘<span class="f1-pos ' + pc + '">’ + pos + ‘</span>’
-+ ‘<span class="f1-num" style="background:' + col + '22;color:' + col + '">’ + num + ‘</span>’
-+ ‘<div class="f1-driver-info"><span class="f1-driver-name">’ + name + ‘</span>’
-+ ‘<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>’
-+ ‘<span class="f1-wins">’ + wins + ‘</span>’
-+ ‘<span class="f1-pts">’ + pts + ‘</span></div>’;
-});
-body.innerHTML = html;
-renderChampionshipContext(drivers, round);
-}
+
+- ‘<span class="f1-pos ' + pc + '">’ + pos + ‘</span>’
+- ‘<span class="f1-num" style="background:' + col + '22;color:' + col + '">’ + num + ‘</span>’
+- ‘<div class="f1-driver-info"><span class="f1-driver-name">’ + name + ‘</span>’
+- ‘<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>’
+- ‘<span class="f1-wins">’ + wins + ‘</span>’
+- ‘<span class="f1-pts">’ + pts + ‘</span></div>’;
+  });
+  body.innerHTML = html;
+  renderChampionshipContext(drivers, round);
+  }
 
 function renderConstructorStandings(teams, round) {
 var body    = document.getElementById(‘f1-standings-body’);
@@ -885,16 +886,17 @@ var col  = TEAM_COLORS[cid] || ‘#8a8fa8’;
 var barW = Math.round((pts / maxPts) * 100);
 var pc   = pos === 1 ? ‘p1’ : pos === 2 ? ‘p2’ : pos === 3 ? ‘p3’ : ‘’;
 html += ‘<div class="f1-std-row">’
-+ ‘<span class="f1-pos ' + pc + '">’ + pos + ‘</span>’
-+ ‘<span class="f1-num" style="background:' + col + '22;">’
-+ ‘<div style="width:10px;height:10px;border-radius:2px;background:' + col + '"></div></span>’
-+ ‘<div class="f1-driver-info"><span class="f1-driver-name">’ + name + ‘</span>’
-+ ‘<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>’
-+ ‘<span class="f1-wins">’ + wins + ‘</span>’
-+ ‘<span class="f1-pts">’ + pts + ‘</span></div>’;
-});
-body.innerHTML = html;
-}
+
+- ‘<span class="f1-pos ' + pc + '">’ + pos + ‘</span>’
+- ‘<span class="f1-num" style="background:' + col + '22;">’
+- ‘<div style="width:10px;height:10px;border-radius:2px;background:' + col + '"></div></span>’
+- ‘<div class="f1-driver-info"><span class="f1-driver-name">’ + name + ‘</span>’
+- ‘<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>’
+- ‘<span class="f1-wins">’ + wins + ‘</span>’
+- ‘<span class="f1-pts">’ + pts + ‘</span></div>’;
+  });
+  body.innerHTML = html;
+  }
 
 async function loadLiveDriverStandings() {
 try {
