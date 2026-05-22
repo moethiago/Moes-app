@@ -5,7 +5,6 @@ williams:’#64c4ff’, rb:’#6692ff’, kick_sauber:’#52e252’, haas:’#b6
 cadillac:’#c8102e’
 };
 
-
 // ── F1 2026 FULL SEASON CALENDAR ─────────────────────────
 var F1_CALENDAR = [
 { race:‘Australian Grand Prix’, circuit:‘Albert Park, Melbourne’, round:‘R1’, flag:‘🇦🇺’,
@@ -296,22 +295,29 @@ return ‘<span class="session-pill' + cls + '" title="' + timeStr + ' AST">’
 }).join(’’);
 }
 
-// render weekend card once at startup
-var raceWeekendOnce = getCurrentRaceWeekend();
-if (weekendEl) {
-if (raceWeekendOnce) {
-renderWeekendCard(raceWeekendOnce, weekendEl);
-weekendEl.style.display = ‘block’;
-} else {
-weekendEl.style.display = ‘none’;
-}
-}
+var lastRenderedWeekend = null;
 
 function tick() {
 var live = getCurrentSession();
 var next = live || getNextRaceAndSession();
+var raceWeekend = getCurrentRaceWeekend();
 
 ```
+// only re-render weekend card if it changed
+if (weekendEl) {
+  try {
+    if (raceWeekend) {
+      if (lastRenderedWeekend !== raceWeekend.race) {
+        renderWeekendCard(raceWeekend, weekendEl);
+        lastRenderedWeekend = raceWeekend.race;
+      }
+      weekendEl.style.display = 'block';
+    } else {
+      weekendEl.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
 if (!next) {
   if (trackEl) trackEl.textContent = '2026 Season Complete';
   if (sessEl)  sessEl.textContent  = 'See you in 2027';
