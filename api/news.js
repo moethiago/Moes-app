@@ -1,6 +1,5 @@
 const https = require('https');
 
-
 const RSS_SOURCES = [
   { url:'https://www.formula1.com/en/latest/all.xml',                               cat:'F1' },
   { url:'https://feeds.bbci.co.uk/sport/formula1/rss.xml',                         cat:'F1' },
@@ -41,12 +40,12 @@ const CAT_PROMPTS = {
   F1: `You are the F1 editor. STRICT rules:
 INCLUDE: confirmed signing with role, confirmed penalty, confirmed injury affecting race, confirmed sacking/appointment, race result with championship implication.
 REJECT: driver quotes, denials, rumours with linked/could/might/may, technical updates, vague regulatory news, previews, human interest.
-DUPLICATE RULE: Same event from multiple sources = keep ONLY the single best version.
+DUPLICATE RULE: Same event from multiple sources = keep ONLY the single best version. Zero tolerance for duplicates.
 Select max 6. Return [] if nothing qualifies.`,
 
   FOOTBALL: `You are the Football editor. Top 5 leagues and Champions League ONLY.
 INCLUDE: confirmed transfer with player name, title won, confirmed sacking with manager name, club expelled/banned, major decisive match result.
-REJECT: human interest, awards, police stories, World Cup squad announcements, quotes/interviews/opinions, previews, vague investigations.
+REJECT: human interest, awards, police stories, World Cup squad announcements, quotes/interviews/opinions, previews, vague investigations. "Arteta reveals key meeting" = REJECT. "Arsenal wins title" and "Arsenal clinch title" = SAME STORY keep only one.
 DUPLICATE RULE: Same player/event multiple times = keep ONLY the single clearest version.
 Select max 6. Return [] if nothing qualifies.`,
 
@@ -69,14 +68,32 @@ DUPLICATE RULE: Same data point twice = keep only one.
 Select max 6. Return [] if nothing qualifies.`,
 };
 
-// ── Simple XML parser — no dependencies needed ──
+// ── Fuzzy duplicate detection ──────────────────────────
+// Extracts key words from title for semantic similarity check
+function titleKey(title) {
+  return title.toLowerCase()
+    .replace(/[^a-z0-9 ]/g, '')
+    .split(' ')
+    .filter(w => w.length > 3)
+    .sort()
+    .join(' ');
+}
+
+function isSimilar(titleA, titleB) {
+  const wordsA = new Set(titleA.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 3));
+  const wordsB = new Set(titleB.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 3));
+  if (wordsA.size === 0 || wordsB.size === 0) return false;
+  let shared = 0;
+  wordsA.forEach(w => { if (wordsB.has(w)) shared++; });
+  const similarity = shared / Math.min(wordsA.size, wordsB.size);
+  return similarity > 0.6; // 60% word overlap = duplicate
+}
+
 function extractTags(xml, tag) {
   const results = [];
   const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
   let match;
-  while ((match = regex.exec(xml)) !== null) {
-    results.push(match[1].trim());
-  }
+  while ((match = regex.exec(xml)) !== null) results.push(match[1].trim());
   return results;
 }
 
@@ -96,17 +113,12 @@ function parseRSS(xml, cat) {
   const items = extractTags(xml, 'item');
   const entries = items.length ? items : extractTags(xml, 'entry');
   const results = [];
-
   for (const item of entries.slice(0, 15)) {
     let title = extractTag(item, 'title').replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#039;/g,"'").trim();
     let link  = extractTag(item, 'link') || extractAttr(item, 'link', 'href');
     let pub   = extractTag(item, 'pubDate') || extractTag(item, 'published') || extractTag(item, 'updated');
-
     if (!title || !link) continue;
-
-    // clean Google News titles
     title = title.replace(/\s+-\s+[^-]+$/, '').trim();
-
     let ts = Math.floor(now / 1000);
     if (pub) {
       const d = new Date(pub);
@@ -115,7 +127,6 @@ function parseRSS(xml, cat) {
         ts = Math.floor(d.getTime() / 1000);
       }
     }
-
     results.push({ title, url: link, cat, ts });
   }
   return results;
@@ -140,9 +151,7 @@ function fetchUrl(url) {
       req.on('error', () => resolve(''));
       req.on('timeout', () => { req.destroy(); resolve(''); });
       req.end();
-    } catch(e) {
-      resolve('');
-    }
+    } catch(e) { resolve(''); }
   });
 }
 
@@ -160,24 +169,19 @@ async function fetchRSS(src, seenTitles) {
       results.push({ ...item, source: hostname });
     }
     return results;
-  } catch(e) {
-    return [];
-  }
+  } catch(e) { return []; }
 }
 
 async function callClaude(items, cat) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || !items.length) return [];
-
   const lines = items.map((item, i) => `${i} | ${item.title}`).join('\n');
   const prompt = CAT_PROMPTS[cat] + `\n\nCandidates:\n${lines}\n\nReturn ONLY valid JSON array: [{"idx": 0, "title": "rewritten headline"}]\nReturn [] if nothing qualifies. No explanation.`;
-
   const body = JSON.stringify({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 800,
     messages: [{ role: 'user', content: prompt }],
   });
-
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -187,12 +191,10 @@ async function callClaude(items, cat) {
     },
     body,
   });
-
   const data = await res.json();
   const text = data.content?.[0]?.text || '';
   const match = text.match(/\[[\s\S]*?\]/);
   if (!match) return [];
-
   try {
     const selected = JSON.parse(match[0]);
     return selected.map(s => {
@@ -202,9 +204,7 @@ async function callClaude(items, cat) {
       if (s.title?.trim()) item.title = s.title.trim();
       return item;
     }).filter(Boolean);
-  } catch(e) {
-    return [];
-  }
+  } catch(e) { return []; }
 }
 
 async function getCurrentFeed() {
@@ -234,9 +234,7 @@ async function getCurrentFeed() {
       }
     }
     return { items, sha: data.sha, fullContent: content };
-  } catch(e) {
-    return { items: [], sha: null, fullContent: '' };
-  }
+  } catch(e) { return { items: [], sha: null, fullContent: '' }; }
 }
 
 function jsStr(text) {
@@ -288,24 +286,28 @@ export default async function handler(req, res) {
     const existing = existingItems.filter(i => (now - i.ts) < maxAge);
 
     // Step 2 — fetch all RSS in parallel
+    // seed seenTitles with existing titles to prevent re-fetching same stories
     const seenTitles = new Set(
       existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50))
     );
     const rssResults = await Promise.all(RSS_SOURCES.map(src => fetchRSS(src, seenTitles)));
     const newItems = rssResults.flat();
-    console.log('Fetched ' + newItems.length + ' new items');
 
-    // Step 3 — basic dedup
+    // Step 3 — fuzzy dedup against existing feed
+    const trulyNew = newItems.filter(newItem => {
+      return !existing.some(ex => isSimilar(newItem.title, ex.title));
+    });
+
+    // Step 4 — basic exact dedup within new items
     const seenKeys = new Set();
-    const uniqueNew = newItems.filter(item => {
+    const uniqueNew = trulyNew.filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,60);
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
       return true;
     });
-    console.log('Unique new: ' + uniqueNew.length);
 
-    // Step 4 — Claude editorial review per category
+    // Step 5 — Claude editorial review per category
     const approved = [];
     for (const cat of CATEGORIES) {
       const catItems = uniqueNew
@@ -314,36 +316,35 @@ export default async function handler(req, res) {
       if (!catItems.length) continue;
       try {
         const result = await callClaude(catItems, cat);
-        console.log(cat + ': ' + result.length + ' approved');
         approved.push(...result);
       } catch(e) {
         console.error('Claude failed for ' + cat + ': ' + e.message);
       }
     }
 
-    // Step 5 — merge with existing, top 6 per category
+    // Step 6 — merge existing + approved, sort newest first per category, top 6
     const all = [...existing, ...approved];
-    const seenFinal = new Set();
-    const deduped = [];
+
+    // final fuzzy dedup on merged list
+    const finalDeduped = [];
     for (const item of all) {
-      const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,60);
-      if (!seenFinal.has(key)) { seenFinal.add(key); deduped.push(item); }
+      const isDup = finalDeduped.some(kept => isSimilar(item.title, kept.title) && kept.cat === item.cat);
+      if (!isDup) finalDeduped.push(item);
     }
 
+    // sort each category newest first, take top 6
     const final = [];
     for (const cat of CATEGORIES) {
-      const catItems = deduped
+      const catItems = finalDeduped
         .filter(i => i.cat === cat)
-        .sort((a,b) => b.ts - a.ts)
-        .slice(0,6);
+        .sort((a,b) => b.ts - a.ts) // newest first
+        .slice(0, 6);
       final.push(...catItems);
     }
-    console.log('Final stories: ' + final.length);
 
-    // Step 6 — write back to GitHub
+    // Step 7 — write back to GitHub
     if (sha && fullContent) {
       await writeFeed(final, fullContent, sha);
-      console.log('Feed written to GitHub');
     }
 
     return res.status(200).json({ ok: true, stories: final.length });
