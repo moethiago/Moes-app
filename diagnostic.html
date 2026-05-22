@@ -6,250 +6,111 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Moe's App Diagnostics</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 16px; }
-  h1 { color: #ff3366; font-size: 18px; margin-bottom: 16px; }
-  .test { background: #111; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 4px solid #333; }
-  .test.pass { border-left-color: #00ff88; }
-  .test.fail { border-left-color: #ff3366; }
-  .test.warn { border-left-color: #ffaa00; }
-  .test.running { border-left-color: #4488ff; }
-  .test-name { font-size: 12px; font-weight: bold; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-  .test-result { font-size: 14px; margin-top: 6px; }
-  .pass .test-result { color: #00ff88; }
-  .fail .test-result { color: #ff3366; }
-  .warn .test-result { color: #ffaa00; }
-  .running .test-result { color: #4488ff; }
-  .test-detail { font-size: 11px; color: #666; margin-top: 4px; word-break: break-all; }
-  #summary { background: #111; border-radius: 8px; padding: 16px; margin-bottom: 16px; text-align: center; }
-  #summary h2 { font-size: 24px; }
-  .btn { background: #ff3366; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-family: monospace; font-size: 14px; cursor: pointer; margin-top: 16px; width: 100%; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 16px; font-size: 13px; }
+h1 { color: #ff3366; font-size: 16px; margin-bottom: 12px; }
+.test { border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; border-left: 4px solid #333; background: #111; }
+.pass { border-left-color: #00ff88; }
+.fail { border-left-color: #ff3366; }
+.warn { border-left-color: #ffaa00; }
+.name { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+.result { margin-top: 4px; }
+.pass .result { color: #00ff88; }
+.fail .result { color: #ff3366; }
+.warn .result { color: #ffaa00; }
+.detail { font-size: 10px; color: #555; margin-top: 3px; }
+#summary { text-align: center; padding: 14px; background: #111; border-radius: 8px; margin-bottom: 12px; font-size: 20px; font-weight: bold; }
+.btn { background: #ff3366; color: #fff; border: none; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; cursor: pointer; width: 100%; margin-top: 12px; }
 </style>
 </head>
 <body>
-<h1>🔧 Moe's App — Live Diagnostics</h1>
-<div id="summary"><h2 id="summary-text">Running tests...</h2></div>
-<div id="tests"></div>
-<button class="btn" onclick="runAll()">🔄 Run Again</button>
-
+<h1>Moe's App Diagnostics</h1>
+<div id="summary">Starting...</div>
+<div id="out"></div>
+<button class="btn" onclick="runAll()">Run Again</button>
 <script>
-var passed = 0, failed = 0, warned = 0;
-
-function addTest(name, status, result, detail) {
-  var div = document.createElement('div');
-  div.className = 'test ' + status;
-  div.innerHTML = '<div class="test-name">' + name + '</div>'
-    + '<div class="test-result">' + result + '</div>'
-    + (detail ? '<div class="test-detail">' + detail + '</div>' : '');
-  document.getElementById('tests').appendChild(div);
-  if (status === 'pass') passed++;
-  if (status === 'fail') failed++;
-  if (status === 'warn') warned++;
-  updateSummary();
+var p=0,f=0,w=0;
+function log(name,status,result,detail){
+  var d=document.createElement('div');
+  d.className='test '+status;
+  d.innerHTML='<div class="name">'+name+'</div><div class="result">'+result+'</div>'+(detail?'<div class="detail">'+detail+'</div>':'');
+  document.getElementById('out').appendChild(d);
+  if(status==='pass')p++;
+  if(status==='fail')f++;
+  if(status==='warn')w++;
+  var s=document.getElementById('summary');
+  s.textContent='Pass: '+p+' Fail: '+f+' Warn: '+w;
+  s.style.color=f>0?'#ff3366':w>0?'#ffaa00':'#00ff88';
 }
-
-function updateSummary() {
-  var el = document.getElementById('summary-text');
-  el.textContent = '✅ ' + passed + '  ❌ ' + failed + '  ⚠️ ' + warned;
-  el.style.color = failed > 0 ? '#ff3366' : warned > 0 ? '#ffaa00' : '#00ff88';
+async function api(name,url,fn){
+  try{
+    var r=await fetch(url,{signal:AbortSignal.timeout(10000)});
+    if(!r.ok){log(name,'fail','HTTP '+r.status);return;}
+    fn(await r.json());
+  }catch(e){log(name,'fail',e.name==='TimeoutError'?'TIMEOUT':e.message);}
 }
+async function runAll(){
+  p=0;f=0;w=0;
+  document.getElementById('out').innerHTML='';
+  document.getElementById('summary').textContent='Running...';
+  document.getElementById('summary').style.color='#4488ff';
 
-async function runAll() {
-  passed = 0; failed = 0; warned = 0;
-  document.getElementById('tests').innerHTML = '';
+await api(‘Vercel /api/news’,‘https://moes-app-two.vercel.app/api/news’,function(d){
+if(d.ok)log(‘Vercel /api/news’,‘pass’,d.stories+’ stories written to feed’);
+else log(‘Vercel /api/news’,‘fail’,d.error||‘unknown’);
+});
 
-  // ── TEST 1: Load sports.js ─────────────────────────────
-  try {
-    var r = await fetch('https://moethiago.github.io/Moes-app/js/sports.js');
-    if (r.ok) {
-      var text = await r.text();
-      var lines = text.split('\n').length;
-      addTest('sports.js loads', 'pass', 'OK — ' + lines + ' lines', 'Loaded from GitHub Pages');
+await api(‘Vercel /api/football’,‘https://moes-app-two.vercel.app/api/football?league=epl’,function(d){
+log(‘Vercel /api/football’,‘pass’,(d.fixtures||[]).length+’ today, ‘+(d.upcoming||[]).length+’ upcoming’);
+});
 
-      // ── TEST 2: Check F1_CALENDAR exists ──────────────
-      if (text.includes('var F1_CALENDAR')) {
-        addTest('F1_CALENDAR defined', 'pass', 'Found in sports.js');
-      } else {
-        addTest('F1_CALENDAR defined', 'fail', 'MISSING — old version served');
-      }
+await api(‘Jolpica F1 standings’,‘https://api.jolpi.ca/ergast/f1/current/driverstandings.json?limit=3’,function(d){
+var sl=d.MRData&&d.MRData.StandingsTable&&d.MRData.StandingsTable.StandingsLists[0];
+if(sl&&sl.DriverStandings&&sl.DriverStandings.length)
+log(‘Jolpica F1 standings’,‘pass’,‘R’+sl.round+’ Leader: ‘+sl.DriverStandings[0].Driver.familyName+’ ’+sl.DriverStandings[0].points+‘pts’);
+else log(‘Jolpica F1 standings’,‘warn’,‘No data’);
+});
 
-      // ── TEST 3: Check SESSION_DURATION ────────────────
-      if (text.includes('SESSION_DURATION')) {
-        addTest('SESSION_DURATION defined', 'pass', 'Found');
-      } else {
-        addTest('SESSION_DURATION defined', 'fail', 'MISSING');
-      }
+await api(‘Jolpica last race’,‘https://api.jolpi.ca/ergast/f1/current/last/results.json?limit=3’,function(d){
+var race=d.MRData&&d.MRData.RaceTable&&d.MRData.RaceTable.Races[0];
+if(race)log(‘Jolpica last race’,‘pass’,race.raceName+’ Winner: ’+(race.Results[0].Driver.familyName));
+else log(‘Jolpica last race’,‘warn’,‘No data’);
+});
 
-      // ── TEST 4: Check for emoji flags (can crash) ─────
-      var emojiFlags = text.match(/flag:'[🇦-🇿]{2}'/g);
-      if (emojiFlags && emojiFlags.length > 0) {
-        addTest('Emoji flags in calendar', 'fail', 'FOUND ' + emojiFlags.length + ' emoji flags — can crash iOS Safari', emojiFlags.slice(0,3).join(', '));
-      } else {
-        addTest('Emoji flags in calendar', 'pass', 'No emoji flags — safe');
-      }
+await api(‘OpenF1 API’,‘https://api.openf1.org/v1/sessions?year=2026’,function(d){
+if(d&&d.length){var l=d[d.length-1];log(‘OpenF1 API’,‘pass’,d.length+’ sessions. Latest: ‘+l.session_name+’ at ’+l.circuit_short_name);}
+else log(‘OpenF1 API’,‘warn’,‘No 2026 sessions found’);
+});
 
-      // ── TEST 5: Check try/catch in tick ───────────────
-      if (text.includes('tick error')) {
-        addTest('tick() wrapped in try/catch', 'pass', 'Found — crashes caught');
-      } else {
-        addTest('tick() wrapped in try/catch', 'warn', 'No try/catch — crashes will freeze countdown');
-      }
+await api(‘World Cup data’,‘https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json’,function(d){
+var m=d.matches||[];
+if(m.length)log(‘World Cup data’,‘pass’,m.length+’ matches. First: ‘+m[0].team1+’ vs ‘+m[0].team2+’ on ’+m[0].date);
+else log(‘World Cup data’,‘warn’,‘No matches’);
+});
 
-      // ── TEST 6: Check renderWeekendCard in tick ───────
-      var tickStart = text.indexOf('function tick()');
-      var tickEnd   = text.indexOf('setInterval(tick', tickStart);
-      var tickBody  = text.slice(tickStart, tickEnd);
-      if (tickBody.includes('renderWeekendCard')) {
-        addTest('renderWeekendCard in tick', 'fail', 'renderWeekendCard called every second — FREEZES PAGE');
-      } else {
-        addTest('renderWeekendCard in tick', 'pass', 'Not in tick — renders only when needed');
-      }
-
-      // ── TEST 7: Check loadWorldCup exists ─────────────
-      if (text.includes('function loadWorldCup')) {
-        addTest('loadWorldCup defined', 'pass', 'Found');
-      } else {
-        addTest('loadWorldCup defined', 'warn', 'Missing — World Cup section will be empty');
-      }
-
-      // ── TEST 8: Check loadLastRaceResult exists ───────
-      if (text.includes('function loadLastRaceResult')) {
-        addTest('loadLastRaceResult defined', 'pass', 'Found');
-      } else {
-        addTest('loadLastRaceResult defined', 'warn', 'Missing — podium card will be empty');
-      }
-
-    } else {
-      addTest('sports.js loads', 'fail', 'HTTP ' + r.status, r.url);
-    }
-  } catch(e) {
-    addTest('sports.js loads', 'fail', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 9: Load core.js ───────────────────────────────
-  try {
-    var r2 = await fetch('https://moethiago.github.io/Moes-app/js/core.js');
-    if (r2.ok) {
-      var core = await r2.text();
-      addTest('core.js loads', 'pass', 'OK — ' + core.split('\n').length + ' lines');
-
-      // Check lazy loading
-      if (core.includes('sportsSectionLoaded')) {
-        addTest('Sports tab lazy loading', 'pass', 'Sports APIs only load when tab opened');
-      } else {
-        addTest('Sports tab lazy loading', 'fail', 'All APIs fire on startup — slows page');
-      }
-
-      // Check try/catch on init
-      if (core.includes('try { startCountdown')) {
-        addTest('startCountdown wrapped', 'pass', 'try/catch found');
-      } else {
-        addTest('startCountdown wrapped', 'warn', 'startCountdown not wrapped in try/catch');
-      }
-    } else {
-      addTest('core.js loads', 'fail', 'HTTP ' + r2.status);
-    }
-  } catch(e) {
-    addTest('core.js loads', 'fail', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 10: Vercel news endpoint ──────────────────────
-  try {
-    var r3 = await fetch('https://moes-app-two.vercel.app/api/news', { signal: AbortSignal.timeout(10000) });
-    if (r3.ok) {
-      var news = await r3.json();
-      addTest('Vercel /api/news', 'pass', 'OK — ' + (news.stories || 0) + ' stories');
-    } else {
-      var err = await r3.json().catch(function() { return {}; });
-      addTest('Vercel /api/news', 'fail', 'HTTP ' + r3.status + ' — ' + (err.error || 'unknown'));
-    }
-  } catch(e) {
-    addTest('Vercel /api/news', 'fail', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 11: Vercel football endpoint ──────────────────
-  try {
-    var r4 = await fetch('https://moes-app-two.vercel.app/api/football?league=epl', { signal: AbortSignal.timeout(8000) });
-    if (r4.ok) {
-      var fbl = await r4.json();
-      addTest('Vercel /api/football', 'pass', 'OK — ' + (fbl.fixtures||[]).length + ' fixtures, ' + (fbl.upcoming||[]).length + ' upcoming');
-    } else {
-      addTest('Vercel /api/football', 'fail', 'HTTP ' + r4.status);
-    }
-  } catch(e) {
-    addTest('Vercel /api/football', 'fail', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 12: Jolpica F1 standings ─────────────────────
-  try {
-    var r5 = await fetch('https://api.jolpi.ca/ergast/f1/current/driverstandings.json?limit=3', { signal: AbortSignal.timeout(6000) });
-    if (r5.ok) {
-      var f1 = await r5.json();
-      var sl = f1.MRData && f1.MRData.StandingsTable && f1.MRData.StandingsTable.StandingsLists[0];
-      addTest('Jolpica F1 API', 'pass', 'OK — Round ' + (sl && sl.round || '?') + ', leader: ' + (sl && sl.DriverStandings && sl.DriverStandings[0] && sl.DriverStandings[0].Driver.familyName || '?'));
-    } else {
-      addTest('Jolpica F1 API', 'fail', 'HTTP ' + r5.status);
-    }
-  } catch(e) {
-    addTest('Jolpica F1 API', 'fail', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 13: OpenF1 API ────────────────────────────────
-  try {
-    var r6 = await fetch('https://api.openf1.org/v1/sessions?year=2026', { signal: AbortSignal.timeout(6000) });
-    if (r6.ok) {
-      var sessions = await r6.json();
-      addTest('OpenF1 API', 'pass', 'OK — ' + sessions.length + ' sessions found for 2026');
-    } else {
-      addTest('OpenF1 API', 'warn', 'HTTP ' + r6.status + ' — live timing may not work');
-    }
-  } catch(e) {
-    addTest('OpenF1 API', 'warn', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 14: World Cup JSON ────────────────────────────
-  try {
-    var r7 = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', { signal: AbortSignal.timeout(6000) });
-    if (r7.ok) {
-      var wc = await r7.json();
-      addTest('World Cup 2026 JSON', 'pass', 'OK — ' + (wc.matches||[]).length + ' matches found');
-    } else {
-      addTest('World Cup 2026 JSON', 'warn', 'HTTP ' + r7.status + ' — World Cup section may be empty');
-    }
-  } catch(e) {
-    addTest('World Cup 2026 JSON', 'warn', 'FAILED: ' + e.message);
-  }
-
-  // ── TEST 15: Canadian GP session timing ───────────────
-  var canadianSessions = [
-    { name:'Practice 1',        time:'2026-05-22T16:30:00Z' },
-    { name:'Sprint Qualifying', time:'2026-05-22T20:30:00Z' },
-    { name:'Sprint Race',       time:'2026-05-23T16:00:00Z' },
-    { name:'Qualifying',        time:'2026-05-23T20:00:00Z' },
-    { name:'Race',              time:'2026-05-24T20:00:00Z' },
-  ];
-  var SESSION_DURATION = { 'Practice 1':60,'Sprint Qualifying':60,'Sprint Race':45,'Qualifying':60,'Race':120 };
-  var now = Date.now();
-  var nextSession = null;
-  var liveSession = null;
-  canadianSessions.forEach(function(s) {
-    var start = Date.parse(s.time);
-    var end = start + (SESSION_DURATION[s.name] || 90) * 60 * 1000;
-    if (now >= start && now <= end) liveSession = s;
-    else if (!nextSession && start > now) nextSession = s;
-  });
-  if (liveSession) {
-    addTest('Canadian GP session', 'pass', '🔴 LIVE: ' + liveSession.name);
-  } else if (nextSession) {
-    var diff = Date.parse(nextSession.time) - now;
-    var hrs = Math.floor(diff / 3600000);
-    var mins = Math.floor(diff % 3600000 / 60000);
-    addTest('Canadian GP session', 'pass', 'Next: ' + nextSession.name + ' in ' + hrs + 'h ' + mins + 'm', new Date(Date.parse(nextSession.time)).toLocaleString([], { timeZone:'Asia/Riyadh' }) + ' Riyadh time');
-  } else {
-    addTest('Canadian GP session', 'warn', 'All sessions past');
-  }
+// Canadian GP pure JS timing check
+var sessions=[
+{name:‘Practice 1’,ms:Date.parse(‘2026-05-22T16:30:00Z’),dur:60},
+{name:‘Sprint Qualifying’,ms:Date.parse(‘2026-05-22T20:30:00Z’),dur:60},
+{name:‘Sprint Race’,ms:Date.parse(‘2026-05-23T16:00:00Z’),dur:45},
+{name:‘Qualifying’,ms:Date.parse(‘2026-05-23T20:00:00Z’),dur:60},
+{name:‘Race’,ms:Date.parse(‘2026-05-24T20:00:00Z’),dur:120},
+];
+var now=Date.now();
+var live=sessions.find(function(s){return now>=s.ms&&now<=s.ms+s.dur*60000;});
+var next=sessions.find(function(s){return s.ms>now;});
+if(live){
+log(‘Canadian GP session’,‘pass’,’LIVE NOW: ’+live.name);
+}else if(next){
+var diff=next.ms-now;
+var h=Math.floor(diff/3600000);
+var m=Math.floor(diff%3600000/60000);
+var t=new Date(next.ms).toLocaleString([],{weekday:‘short’,hour:‘2-digit’,minute:‘2-digit’,timeZone:‘Asia/Riyadh’});
+log(‘Canadian GP session’,‘pass’,’Next: ‘+next.name+’ in ’+h+‘h ‘+m+‘m’,t+’ Riyadh’);
+}else{
+log(‘Canadian GP session’,‘warn’,‘All sessions complete’);
 }
-
+}
 runAll();
 </script>
 
