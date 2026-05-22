@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -42,176 +43,189 @@
 
   <div id="scroll-wrap">
 
-    <!-- FEED -->
-    <div class="tab-panel active" id="panel-feed" style="padding:0;">
-      <div class="ticker-wrap">
-        <span class="ticker-label">LIVE</span>
-        <span class="ticker-text" id="ticker"></span>
+```
+<!-- ═══ FEED ═══════════════════════════════════════════ -->
+<div class="tab-panel active" id="panel-feed" style="padding:0;">
+  <div class="ticker-wrap">
+    <span class="ticker-label">LIVE</span>
+    <span class="ticker-text" id="ticker"></span>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;">
+    <p class="section-label" style="padding:0;">Breaking News</p>
+    <button class="btn-refresh" onclick="loadNewsFeed()">REFRESH</button>
+  </div>
+  <div class="filter-row">
+    <span class="fpill active" onclick="setFeedFilter('ALL',this)">All</span>
+    <span class="fpill" onclick="setFeedFilter('F1',this)">🏎 F1</span>
+    <span class="fpill" onclick="setFeedFilter('FOOTBALL',this)">⚽ Football</span>
+    <span class="fpill" onclick="setFeedFilter('BAYERN',this)">🔴 Bayern</span>
+    <span class="fpill" onclick="setFeedFilter('SPL',this)">🇸🇦 Saudi Football</span>
+    <span class="fpill" onclick="setFeedFilter('KSA',this)">📰 Saudi News</span>
+  </div>
+  <div id="critical-posts" style="padding:0 14px 14px;"></div>
+</div>
+
+<!-- ═══ SPORTS ══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-sports">
+
+  <!-- F1 DIVIDER -->
+  <div class="sports-divider" style="padding-top:14px;">
+    <span class="sports-divider-label">🏎 Formula 1</span>
+  </div>
+
+  <!-- F1 COUNTDOWN CARD -->
+  <div style="padding:10px 14px 6px;">
+    <div class="cd-card">
+      <div class="cd-top">
+        <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
+        <div class="cd-title" id="f1-next-session"></div>
+        <div class="cd-session-name" id="f1-session-label">Loading...</div>
+        <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;">
-        <p class="section-label" style="padding:0;">Breaking News</p>
-        <button class="btn-refresh" onclick="loadNewsFeed()">REFRESH</button>
+      <div class="cd-grid" id="f1-cd-grid">
+        <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
+        <div class="cd-seg"><div class="cd-num" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
+        <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
+        <div class="cd-seg"><div class="cd-num" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
       </div>
-      <div class="filter-row">
-        <span class="fpill active" onclick="setFeedFilter('ALL',this)">All</span>
-        <span class="fpill" onclick="setFeedFilter('F1',this)">🏎 F1</span>
-        <span class="fpill" onclick="setFeedFilter('FOOTBALL',this)">⚽ Football</span>
-        <span class="fpill" onclick="setFeedFilter('BAYERN',this)">🔴 Bayern</span>
-        <span class="fpill" onclick="setFeedFilter('SPL',this)">🇸🇦 Saudi Football</span>
-        <span class="fpill" onclick="setFeedFilter('KSA',this)">📰 Saudi News</span>
-      </div>
-      <div id="critical-posts" style="padding:0 14px 14px;"></div>
+      <div class="cd-sessions" id="f1-cd-sub"></div>
     </div>
+  </div>
 
-        <!-- SPORTS -->
-    <div class="tab-panel" id="panel-sports">
+  <!-- RACE WEEKEND SCHEDULE (shown when within 2 days of a race weekend) -->
+  <div id="f1-weekend-card" style="display:none;padding:0 14px 6px;"></div>
 
-      <!-- F1 SECTION LABEL -->
-      <div class="sports-divider" style="padding-top:14px;">
-        <span class="sports-divider-label">🏎 Formula 1</span>
-      </div>
+  <!-- LIVE TIMING (shown during live sessions via OpenF1) -->
+  <div id="f1-live-timing" style="padding:0 14px 6px;"></div>
 
-      <!-- F1 COUNTDOWN -->
-      <div style="padding:10px 14px 10px;">
-        <div class="cd-card">
-          <div class="cd-top">
-            <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
-            <div class="cd-title" id="f1-next-session"></div>
-            <div class="cd-session-name" id="f1-session-label">Loading...</div>
-            <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
-          </div>
-          <div class="cd-grid" id="f1-cd-grid">
-            <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
-            <div class="cd-seg"><div class="cd-num" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
-            <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
-            <div class="cd-seg"><div class="cd-num" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
-          </div>
-          <div class="cd-sessions" id="f1-cd-sub"></div>
-        </div>
-      </div>
+  <!-- LAST RACE PODIUM -->
+  <div id="f1-last-race" style="padding:0 14px 6px;"></div>
 
-      <!-- F1 STANDINGS -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
-        <p class="section-label" style="padding:6px 0 8px;">Championship</p>
-        <div class="standings-toggle">
-          <button id="standings-btn-driver" class="standings-btn active" onclick="switchStandingsView('driver')">Drivers</button>
-          <button id="standings-btn-constructor" class="standings-btn" onclick="switchStandingsView('constructor')">Teams</button>
-        </div>
-      </div>
-      <div style="padding:0 14px 14px;">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">2026 Standings</span>
-            <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
-          </div>
-          <div id="f1-standings-body">
-            <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--f1-red)"></div><span>Loading...</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FOOTBALL DIVIDER -->
-      <div class="sports-divider">
-        <span class="sports-divider-label">⚽ Football</span>
-      </div>
-
-      <!-- WORLD CUP 2026 -->
-      <p class="section-label" style="padding-left:14px;padding-top:10px;">🏆 World Cup 2026</p>
-      <div style="padding:0 14px 10px;">
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div id="worldcup-fixtures" style="min-height:80px;"></div>
-        </div>
-      </div>
-
-      <!-- LIVE FOOTBALL -->
-      <p class="section-label" style="padding-left:14px;">Live Football</p>
-      <div style="padding:0 14px 20px;">
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div id="football-fixtures" style="min-height:120px;"></div>
-        </div>
-      </div>
-
+  <!-- F1 STANDINGS -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
+    <p class="section-label" style="padding:6px 0 8px;">Championship</p>
+    <div class="standings-toggle">
+      <button id="standings-btn-driver" class="standings-btn active" onclick="switchStandingsView('driver')">Drivers</button>
+      <button id="standings-btn-constructor" class="standings-btn" onclick="switchStandingsView('constructor')">Teams</button>
     </div>
+  </div>
 
+  <!-- CHAMPIONSHIP CONTEXT LINE -->
+  <div id="f1-championship-context" style="padding:0 14px 6px;"></div>
 
-    <!-- HEALTH -->
-    <div class="tab-panel" id="panel-health">
-      <p class="section-label" style="padding-left:14px;">Nutrition · Today</p>
-      <div style="padding:0 14px 10px;">
-        <div class="ring-card">
-          <div class="ring-wrap">
-            <div class="ring-outer">
-              <svg viewBox="0 0 100 100">
-                <circle class="ring-track" cx="50" cy="50" r="40"/>
-                <circle id="cal-ring" class="ring-prog" cx="50" cy="50" r="40" stroke="url(#cg)" stroke-dasharray="251" stroke-dashoffset="251"/>
-                <defs>
-                  <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#4f9cf9"/>
-                    <stop offset="100%" stop-color="#a78bfa"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div class="ring-center">
-                <span class="ring-val" id="cal-display">0</span>
-                <span class="ring-sub">/ 2500 kcal</span>
-              </div>
-            </div>
-            <div class="macros-col">
-              <div class="macro-row">
-                <div class="macro-top"><span class="macro-name">Protein</span><span class="macro-val" id="prot-val" style="color:var(--ig-blue)">0g</span></div>
-                <div class="macro-bar"><div class="macro-fill" id="prot-bar" style="width:0%;background:var(--ig-blue)"></div></div>
-              </div>
-              <div class="macro-row">
-                <div class="macro-top"><span class="macro-name">Carbs</span><span class="macro-val" id="carb-val" style="color:var(--epl-green)">0g</span></div>
-                <div class="macro-bar"><div class="macro-fill" id="carb-bar" style="width:0%;background:var(--epl-green)"></div></div>
-              </div>
-              <div class="macro-row">
-                <div class="macro-top"><span class="macro-name">Fat</span><span class="macro-val" id="fat-val" style="color:var(--gold)">0g</span></div>
-                <div class="macro-bar"><div class="macro-fill" id="fat-bar" style="width:0%;background:var(--gold)"></div></div>
-              </div>
-            </div>
+  <div style="padding:0 14px 14px;">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">2026 Standings</span>
+        <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
+      </div>
+      <div id="f1-standings-body">
+        <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--f1-red)"></div><span>Loading...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTBALL DIVIDER -->
+  <div class="sports-divider">
+    <span class="sports-divider-label">⚽ Football</span>
+  </div>
+
+  <!-- WORLD CUP 2026 -->
+  <p class="section-label" style="padding-left:14px;padding-top:10px;">🏆 World Cup 2026</p>
+  <div style="padding:0 14px 10px;">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div id="worldcup-fixtures" style="min-height:80px;"></div>
+    </div>
+  </div>
+
+  <!-- LIVE FOOTBALL -->
+  <p class="section-label" style="padding-left:14px;">Live Football</p>
+  <div style="padding:0 14px 20px;">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div id="football-fixtures" style="min-height:120px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ HEALTH ══════════════════════════════════════════ -->
+<div class="tab-panel" id="panel-health">
+  <p class="section-label" style="padding-left:14px;">Nutrition · Today</p>
+  <div style="padding:0 14px 10px;">
+    <div class="ring-card">
+      <div class="ring-wrap">
+        <div class="ring-outer">
+          <svg viewBox="0 0 100 100">
+            <circle class="ring-track" cx="50" cy="50" r="40"/>
+            <circle id="cal-ring" class="ring-prog" cx="50" cy="50" r="40" stroke="url(#cg)" stroke-dasharray="251" stroke-dashoffset="251"/>
+            <defs>
+              <linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#4f9cf9"/>
+                <stop offset="100%" stop-color="#a78bfa"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="ring-center">
+            <span class="ring-val" id="cal-display">0</span>
+            <span class="ring-sub">/ 2500 kcal</span>
           </div>
         </div>
-      </div>
-      <div style="padding:0 14px 10px;">
-        <div id="food-list"></div>
-        <div class="log-form" style="background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);margin-top:8px;">
-          <input class="log-input" id="food-name" placeholder="Food item...">
-          <div class="log-form-row">
-            <input class="log-input small" id="food-kcal" placeholder="kcal" type="number">
-            <input class="log-input small" id="food-prot" placeholder="P(g)" type="number">
-            <input class="log-input small" id="food-carb" placeholder="C(g)" type="number">
-            <input class="log-input small" id="food-fat"  placeholder="F(g)" type="number">
-            <button class="log-btn" onclick="addFood()">+ Log</button>
+        <div class="macros-col">
+          <div class="macro-row">
+            <div class="macro-top"><span class="macro-name">Protein</span><span class="macro-val" id="prot-val" style="color:var(--ig-blue)">0g</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="prot-bar" style="width:0%;background:var(--ig-blue)"></div></div>
           </div>
-        </div>
-      </div>
-
-      <p class="section-label" style="padding-left:14px;margin-top:8px;">Workout · Today</p>
-      <div style="padding:0 14px 10px;">
-        <div class="workout-stats-row">
-          <div class="wk-stat"><div class="wk-stat-val" id="wk-sets">0</div><div class="wk-stat-lbl">Sets</div></div>
-          <div class="wk-stat"><div class="wk-stat-val" id="wk-vol" style="color:var(--cyan)">0</div><div class="wk-stat-lbl">Vol kg</div></div>
-          <div class="wk-stat"><div class="wk-stat-val" id="wk-exs">0</div><div class="wk-stat-lbl">Exercises</div></div>
-        </div>
-        <div id="set-list" class="set-list"></div>
-        <div class="vol-total"><span>Total Volume</span><strong id="vol-total-val">0 kg</strong></div>
-        <div class="log-form" style="background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);margin-top:8px;">
-          <input class="log-input" id="set-exercise" placeholder="Exercise name...">
-          <div class="log-form-row">
-            <input class="log-input" id="set-weight" placeholder="Weight (kg)" type="number" step="0.5">
-            <input class="log-input" id="set-reps" placeholder="Reps" type="number">
-            <button class="log-btn red" onclick="addSet()">+ Set</button>
+          <div class="macro-row">
+            <div class="macro-top"><span class="macro-name">Carbs</span><span class="macro-val" id="carb-val" style="color:var(--epl-green)">0g</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="carb-bar" style="width:0%;background:var(--epl-green)"></div></div>
+          </div>
+          <div class="macro-row">
+            <div class="macro-top"><span class="macro-name">Fat</span><span class="macro-val" id="fat-val" style="color:var(--gold)">0g</span></div>
+            <div class="macro-bar"><div class="macro-fill" id="fat-bar" style="width:0%;background:var(--gold)"></div></div>
           </div>
         </div>
       </div>
     </div>
+  </div>
+  <div style="padding:0 14px 10px;">
+    <div id="food-list"></div>
+    <div class="log-form" style="background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);margin-top:8px;">
+      <input class="log-input" id="food-name" placeholder="Food item...">
+      <div class="log-form-row">
+        <input class="log-input small" id="food-kcal" placeholder="kcal" type="number">
+        <input class="log-input small" id="food-prot" placeholder="P(g)" type="number">
+        <input class="log-input small" id="food-carb" placeholder="C(g)" type="number">
+        <input class="log-input small" id="food-fat"  placeholder="F(g)" type="number">
+        <button class="log-btn" onclick="addFood()">+ Log</button>
+      </div>
+    </div>
+  </div>
+  <p class="section-label" style="padding-left:14px;margin-top:8px;">Workout · Today</p>
+  <div style="padding:0 14px 10px;">
+    <div class="workout-stats-row">
+      <div class="wk-stat"><div class="wk-stat-val" id="wk-sets">0</div><div class="wk-stat-lbl">Sets</div></div>
+      <div class="wk-stat"><div class="wk-stat-val" id="wk-vol" style="color:var(--cyan)">0</div><div class="wk-stat-lbl">Vol kg</div></div>
+      <div class="wk-stat"><div class="wk-stat-val" id="wk-exs">0</div><div class="wk-stat-lbl">Exercises</div></div>
+    </div>
+    <div id="set-list" class="set-list"></div>
+    <div class="vol-total"><span>Total Volume</span><strong id="vol-total-val">0 kg</strong></div>
+    <div class="log-form" style="background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);margin-top:8px;">
+      <input class="log-input" id="set-exercise" placeholder="Exercise name...">
+      <div class="log-form-row">
+        <input class="log-input" id="set-weight" placeholder="Weight (kg)" type="number" step="0.5">
+        <input class="log-input" id="set-reps" placeholder="Reps" type="number">
+        <button class="log-btn red" onclick="addSet()">+ Set</button>
+      </div>
+    </div>
+  </div>
+</div>
+```
 
   </div>
 </div>
 
 <div id="toast"></div>
-<script src="js/feed.js?v=1779442222"></script>
+<script src="js/feed.js?v=1779435617"></script>
 <script src="js/sports.js"></script>
 <script src="js/health.js"></script>
 <script src="js/core.js"></script>
