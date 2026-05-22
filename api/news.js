@@ -60,12 +60,24 @@ const GOOGLE_NEWS_SOURCES = [
 ];
 
 const WEB_SEARCH_QUERIES = [
-  { query:'Formula 1 breaking news confirmed today 2026',                           cat:'F1' },
-  { query:'Premier League La Liga Serie A transfer confirmed sacking injury today', cat:'FOOTBALL' },
-  { query:'Bayern Munich confirmed news today',                                     cat:'BAYERN' },
-  { query:'Al Hilal Al Nassr Saudi Pro League news today',                          cat:'SPL' },
-  { query:'Saudi Arabia economy investment deal billion today',                     cat:'KSA' },
+  // F1
+  { query:'site:twitter.com OR site:x.com @F1 OR @SkySportsF1 OR @autosport breaking news today 2026', cat:'F1' },
+  { query:'Formula 1 breaking news confirmed today 2026', cat:'F1' },
+  // Football
+  { query:'site:twitter.com OR site:x.com @FabrizioRomano confirmed transfer today', cat:'FOOTBALL' },
+  { query:'site:twitter.com OR site:x.com @David_Ornstein OR @SkySportsNews transfer sacking injury today', cat:'FOOTBALL' },
+  { query:'Premier League La Liga Serie A confirmed transfer sacking injury today', cat:'FOOTBALL' },
+  // Bayern
+  { query:'site:twitter.com OR site:x.com @iMiaSanMia OR @MiaSanMia Bayern Munich news today', cat:'BAYERN' },
+  { query:'Bayern Munich confirmed news today', cat:'BAYERN' },
+  // SPL
+  { query:'site:twitter.com OR site:x.com @SPL_EN Al Hilal Al Nassr news today', cat:'SPL' },
+  { query:'Al Hilal Al Nassr Saudi Pro League news today', cat:'SPL' },
+  // KSA
+  { query:'site:twitter.com OR site:x.com @arabnews Saudi Arabia economy billion today', cat:'KSA' },
+  { query:'Saudi Arabia economy investment deal billion today', cat:'KSA' },
 ];
+
 
 const CAT_PROMPTS = {
   F1: `You are the F1 editor for a breaking news app.
