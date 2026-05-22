@@ -7,7 +7,7 @@ cadillac:’#c8102e’
 
 // ── F1 2026 FULL SEASON CALENDAR ─────────────────────────
 var F1_CALENDAR = [
-{ race:‘Australian Grand Prix’, circuit:‘Albert Park, Melbourne’, round:‘R1’, flag:‘🇦🇺’,
+{ race:‘Australian Grand Prix’, circuit:‘Albert Park, Melbourne’, round:‘R1’, flag:‘AUS’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-03-13T01:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-03-13T05:00:00Z’ },
@@ -16,7 +16,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-03-15T05:00:00Z’ },
 ]
 },
-{ race:‘Chinese Grand Prix’, circuit:‘Shanghai International Circuit’, round:‘R2’, flag:‘🇨🇳’,
+{ race:‘Chinese Grand Prix’, circuit:‘Shanghai International Circuit’, round:‘R2’, flag:‘CHN’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-03-20T03:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-03-20T07:30:00Z’ },
@@ -25,7 +25,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-03-22T07:00:00Z’ },
 ]
 },
-{ race:‘Japanese Grand Prix’, circuit:‘Suzuka Circuit’, round:‘R3’, flag:‘🇯🇵’,
+{ race:‘Japanese Grand Prix’, circuit:‘Suzuka Circuit’, round:‘R3’, flag:‘JPN’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-04-03T02:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-04-03T06:00:00Z’ },
@@ -34,7 +34,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-04-05T05:00:00Z’ },
 ]
 },
-{ race:‘Bahrain Grand Prix’, circuit:‘Bahrain International Circuit’, round:‘R4’, flag:‘🇧🇭’,
+{ race:‘Bahrain Grand Prix’, circuit:‘Bahrain International Circuit’, round:‘R4’, flag:‘BHR’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-04-17T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-04-17T15:00:00Z’ },
@@ -43,7 +43,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-04-19T15:00:00Z’ },
 ]
 },
-{ race:‘Miami Grand Prix’, circuit:‘Miami International Autodrome’, round:‘R5 · Sprint’, flag:‘🇺🇸’,
+{ race:‘Miami Grand Prix’, circuit:‘Miami International Autodrome’, round:‘R5 · Sprint’, flag:‘USA’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-05-02T16:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-05-02T20:30:00Z’ },
@@ -52,7 +52,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-05-04T20:00:00Z’ },
 ]
 },
-{ race:‘Canadian Grand Prix’, circuit:‘Circuit Gilles Villeneuve, Montreal’, round:‘R6 · Sprint’, flag:‘🇨🇦’,
+{ race:‘Canadian Grand Prix’, circuit:‘Circuit Gilles Villeneuve, Montreal’, round:‘R6 · Sprint’, flag:‘CAN’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-05-22T16:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-05-22T20:30:00Z’ },
@@ -61,7 +61,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-05-24T20:00:00Z’ },
 ]
 },
-{ race:‘Spanish Grand Prix’, circuit:‘Circuit de Barcelona-Catalunya’, round:‘R7’, flag:‘🇪🇸’,
+{ race:‘Spanish Grand Prix’, circuit:‘Circuit de Barcelona-Catalunya’, round:‘R7’, flag:‘ESP’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-05-29T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-05-29T15:00:00Z’ },
@@ -70,7 +70,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-05-31T13:00:00Z’ },
 ]
 },
-{ race:‘Austrian Grand Prix’, circuit:‘Red Bull Ring, Spielberg’, round:‘R8 · Sprint’, flag:‘🇦🇹’,
+{ race:‘Austrian Grand Prix’, circuit:‘Red Bull Ring, Spielberg’, round:‘R8 · Sprint’, flag:‘AUT’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-06-26T10:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-06-26T14:30:00Z’ },
@@ -79,7 +79,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-06-28T13:00:00Z’ },
 ]
 },
-{ race:‘British Grand Prix’, circuit:‘Silverstone Circuit’, round:‘R9’, flag:‘🇬🇧’,
+{ race:‘British Grand Prix’, circuit:‘Silverstone Circuit’, round:‘R9’, flag:‘GBR’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-07-03T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-07-03T15:00:00Z’ },
@@ -88,7 +88,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-07-05T14:00:00Z’ },
 ]
 },
-{ race:‘Belgian Grand Prix’, circuit:‘Circuit de Spa-Francorchamps’, round:‘R10’, flag:‘🇧🇪’,
+{ race:‘Belgian Grand Prix’, circuit:‘Circuit de Spa-Francorchamps’, round:‘R10’, flag:‘BEL’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-07-24T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-07-24T15:00:00Z’ },
@@ -97,7 +97,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-07-26T13:00:00Z’ },
 ]
 },
-{ race:‘Hungarian Grand Prix’, circuit:‘Hungaroring, Budapest’, round:‘R11’, flag:‘🇭🇺’,
+{ race:‘Hungarian Grand Prix’, circuit:‘Hungaroring, Budapest’, round:‘R11’, flag:‘HUN’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-07-31T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-07-31T15:00:00Z’ },
@@ -106,7 +106,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-08-02T13:00:00Z’ },
 ]
 },
-{ race:‘Dutch Grand Prix’, circuit:‘Circuit Zandvoort’, round:‘R12’, flag:‘🇳🇱’,
+{ race:‘Dutch Grand Prix’, circuit:‘Circuit Zandvoort’, round:‘R12’, flag:‘NED’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-08-28T10:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-08-28T14:00:00Z’ },
@@ -115,7 +115,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-08-30T13:00:00Z’ },
 ]
 },
-{ race:‘Italian Grand Prix’, circuit:‘Autodromo Nazionale Monza’, round:‘R13’, flag:‘🇮🇹’,
+{ race:‘Italian Grand Prix’, circuit:‘Autodromo Nazionale Monza’, round:‘R13’, flag:‘ITA’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-09-04T11:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-09-04T15:00:00Z’ },
@@ -124,7 +124,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-09-06T13:00:00Z’ },
 ]
 },
-{ race:‘Azerbaijan Grand Prix’, circuit:‘Baku City Circuit’, round:‘R14’, flag:‘🇦🇿’,
+{ race:‘Azerbaijan Grand Prix’, circuit:‘Baku City Circuit’, round:‘R14’, flag:‘AZE’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-09-18T09:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-09-18T13:00:00Z’ },
@@ -133,7 +133,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-09-20T11:00:00Z’ },
 ]
 },
-{ race:‘Singapore Grand Prix’, circuit:‘Marina Bay Street Circuit’, round:‘R15’, flag:‘🇸🇬’,
+{ race:‘Singapore Grand Prix’, circuit:‘Marina Bay Street Circuit’, round:‘R15’, flag:‘SGP’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-10-02T09:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-10-02T13:00:00Z’ },
@@ -142,7 +142,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-10-04T12:00:00Z’ },
 ]
 },
-{ race:‘United States Grand Prix’, circuit:‘Circuit of the Americas, Austin’, round:‘R16 · Sprint’, flag:‘🇺🇸’,
+{ race:‘United States Grand Prix’, circuit:‘Circuit of the Americas, Austin’, round:‘R16 · Sprint’, flag:‘USA’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-10-16T17:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-10-16T21:30:00Z’ },
@@ -151,7 +151,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-10-18T19:00:00Z’ },
 ]
 },
-{ race:‘Mexico City Grand Prix’, circuit:‘Autodromo Hermanos Rodriguez’, round:‘R17’, flag:‘🇲🇽’,
+{ race:‘Mexico City Grand Prix’, circuit:‘Autodromo Hermanos Rodriguez’, round:‘R17’, flag:‘MEX’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-10-23T18:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-10-23T22:00:00Z’ },
@@ -160,7 +160,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-10-25T20:00:00Z’ },
 ]
 },
-{ race:‘Sao Paulo Grand Prix’, circuit:‘Autodromo Jose Carlos Pace’, round:‘R18 · Sprint’, flag:‘🇧🇷’,
+{ race:‘Sao Paulo Grand Prix’, circuit:‘Autodromo Jose Carlos Pace’, round:‘R18 · Sprint’, flag:‘BRA’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-11-06T14:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-11-06T18:30:00Z’ },
@@ -169,7 +169,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-11-08T17:00:00Z’ },
 ]
 },
-{ race:‘Las Vegas Grand Prix’, circuit:‘Las Vegas Street Circuit’, round:‘R19’, flag:‘🇺🇸’,
+{ race:‘Las Vegas Grand Prix’, circuit:‘Las Vegas Street Circuit’, round:‘R19’, flag:‘USA’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-11-19T04:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-11-19T08:00:00Z’ },
@@ -178,7 +178,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-11-21T06:00:00Z’ },
 ]
 },
-{ race:‘Qatar Grand Prix’, circuit:‘Lusail International Circuit’, round:‘R20 · Sprint’, flag:‘🇶🇦’,
+{ race:‘Qatar Grand Prix’, circuit:‘Lusail International Circuit’, round:‘R20 · Sprint’, flag:‘QAT’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-11-27T13:30:00Z’ },
 { name:‘Sprint Qualifying’, time:‘2026-11-27T17:30:00Z’ },
@@ -187,7 +187,7 @@ sessions:[
 { name:‘Race’,              time:‘2026-11-29T17:00:00Z’ },
 ]
 },
-{ race:‘Abu Dhabi Grand Prix’, circuit:‘Yas Marina Circuit’, round:‘R21 · Finale’, flag:‘🇦🇪’,
+{ race:‘Abu Dhabi Grand Prix’, circuit:‘Yas Marina Circuit’, round:‘R21 · Finale’, flag:‘UAE’,
 sessions:[
 { name:‘Practice 1’,        time:‘2026-12-04T09:30:00Z’ },
 { name:‘Practice 2’,        time:‘2026-12-04T13:00:00Z’ },
@@ -209,8 +209,8 @@ var BACKEND_URL = ‘https://moes-app-two.vercel.app/api/football’;
 
 var FOOTBALL_LEAGUES = [
 { key:‘epl’,        label:‘Premier League’,  flag:‘🏴󠁧󠁢󠁥󠁮󠁧󠁿’ },
-{ key:‘laliga’,     label:‘La Liga’,          flag:‘🇪🇸’ },
-{ key:‘seriea’,     label:‘Serie A’,          flag:‘🇮🇹’ },
+{ key:‘laliga’,     label:‘La Liga’,          flag:‘ESP’ },
+{ key:‘seriea’,     label:‘Serie A’,          flag:‘ITA’ },
 { key:‘bundesliga’, label:‘Bundesliga’,       flag:‘🇩🇪’ },
 { key:‘ligue1’,     label:‘Ligue 1’,          flag:‘🇫🇷’ },
 { key:‘ucl’,        label:‘Champions League’, flag:‘🏆’ },
@@ -298,6 +298,7 @@ return ‘<span class="session-pill' + cls + '" title="' + timeStr + ' AST">’
 var lastRenderedWeekend = null;
 
 function tick() {
+try {
 var live = getCurrentSession();
 var next = live || getNextRaceAndSession();
 var raceWeekend = getCurrentRaceWeekend();
@@ -363,6 +364,7 @@ if (live) {
 }
 
 renderPills(next.race);
+} catch(e) { console.error('tick error:', e); }
 ```
 
 }
