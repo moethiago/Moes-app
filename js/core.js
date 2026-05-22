@@ -3,17 +3,14 @@ document.addEventListener('DOMContentLoaded', function() {
   try { window.setLog  = JSON.parse(localStorage.getItem('m_sets') || '[]'); } catch(e) { window.setLog  = []; }
 
   startClock();
-  try { renderFood();         } catch(e) { console.warn('health:food', e); }
-  try { renderSets();         } catch(e) { console.warn('health:sets', e); }
-  try { startCountdown();     } catch(e) { console.warn('sports:countdown', e); }
-  try { renderNewsFeed();     } catch(e) { console.warn('feed:render', e); }
-  try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
-  try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
-  try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) { console.warn('sports:lastrace', e); }
-  try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) { console.warn('sports:worldcup', e); }
+  try { renderFood();     } catch(e) { console.warn('health:food', e); }
+  try { renderSets();     } catch(e) { console.warn('health:sets', e); }
+  try { startCountdown(); } catch(e) { console.warn('sports:countdown', e); }
+  try { renderNewsFeed(); } catch(e) { console.warn('feed:render', e); }
+
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
-  }, 500);
+  }, 300);
 });
 
 function startClock() {
@@ -25,6 +22,8 @@ function startClock() {
   tick();
   setInterval(tick, 10000);
 }
+
+var sportsSectionLoaded = false;
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(function(panel) {
@@ -38,4 +37,13 @@ function switchTab(tab) {
   if (activePanel) activePanel.classList.add('active');
   if (activeBtn)   activeBtn.classList.add('active');
   document.getElementById('scroll-wrap').scrollTop = 0;
+
+  // lazy load sports only when sports tab is opened
+  if (tab === 'sports' && !sportsSectionLoaded) {
+    sportsSectionLoaded = true;
+    try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
+    try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
+    try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
+    try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) {}
+  }
 }
