@@ -1,5 +1,21 @@
 const https = require('https');
 
+// ── PRE-FILTER — blocks obvious bad stories before Claude ──
+const REJECT_PHRASES = [
+  'discusses','talking about','addresses','opens up','speaks out',
+  'hopes to','aims to','targets','dreams of','wants to',
+  'predicted lineup','predicted line-up','player ratings','five things',
+  'how to watch','watch live','stream live','betting odds','betting tips',
+  'fantasy','power ranking','talking points','gallery','quiz',
+  'round-up','roundup','in numbers','by numbers',
+  'preview','prediction','look ahead',
+];
+
+function preFilter(title) {
+  var lower = title.toLowerCase();
+  return !REJECT_PHRASES.some(function(phrase) { return lower.indexOf(phrase) !== -1; });
+}
+
 const RSS_SOURCES = [
   { url:'https://www.formula1.com/en/latest/all.xml',                               cat:'F1' },
   { url:'https://feeds.bbci.co.uk/sport/formula1/rss.xml',                         cat:'F1' },
@@ -45,7 +61,7 @@ Select max 6. Return [] if nothing qualifies.`,
 
   FOOTBALL: `You are the Football editor. Top 5 leagues and Champions League ONLY.
 INCLUDE: confirmed transfer with player name, title won, confirmed sacking with manager name, club expelled/banned, major decisive match result.
-REJECT: human interest, awards, police stories, World Cup squad announcements, quotes/interviews/opinions, previews, vague investigations. "Arteta reveals key meeting" = REJECT. "Arsenal wins title" and "Arsenal clinch title" = SAME STORY keep only one.
+REJECT: human interest, awards, police stories, World Cup squad announcements, quotes/interviews/opinions, previews, vague investigations.
 DUPLICATE RULE: Same player/event multiple times = keep ONLY the single clearest version.
 Select max 6. Return [] if nothing qualifies.`,
 
@@ -74,8 +90,7 @@ function isSimilar(titleA, titleB) {
   if (wordsA.size === 0 || wordsB.size === 0) return false;
   let shared = 0;
   wordsA.forEach(w => { if (wordsB.has(w)) shared++; });
-  const similarity = shared / Math.min(wordsA.size, wordsB.size);
-  return similarity > 0.5;
+  return (shared / Math.min(wordsA.size, wordsB.size)) > 0.5;
 }
 
 function extractTags(xml, tag) {
@@ -108,6 +123,10 @@ function parseRSS(xml, cat) {
     let pub   = extractTag(item, 'pubDate') || extractTag(item, 'published') || extractTag(item, 'updated');
     if (!title || !link) continue;
     title = title.replace(/\s+-\s+[^-]+$/, '').trim();
+
+    // pre-filter before Claude
+    if (!preFilter(title)) continue;
+
     let ts = Math.floor(now / 1000);
     if (pub) {
       const d = new Date(pub);
@@ -279,7 +298,6 @@ export default async function handler(req, res) {
     const rssResults = await Promise.all(RSS_SOURCES.map(src => fetchRSS(src, seenTitles)));
     const newItems = rssResults.flat();
 
-    // fuzzy dedup against existing — blocks similar stories from re-entering
     const trulyNew = newItems.filter(newItem => {
       return !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title));
     });
@@ -294,9 +312,7 @@ export default async function handler(req, res) {
 
     const approved = [];
     for (const cat of CATEGORIES) {
-      const catItems = uniqueNew
-        .filter(i => i.cat === cat)
-        .sort((a,b) => b.ts - a.ts);
+      const catItems = uniqueNew.filter(i => i.cat === cat).sort((a,b) => b.ts - a.ts);
       if (!catItems.length) continue;
       try {
         const result = await callClaude(catItems, cat);
@@ -307,8 +323,6 @@ export default async function handler(req, res) {
     }
 
     const all = [...existing, ...approved];
-
-    // final fuzzy dedup on merged list per category
     const finalDeduped = [];
     for (const item of all) {
       const isDup = finalDeduped.some(kept =>
@@ -317,7 +331,6 @@ export default async function handler(req, res) {
       if (!isDup) finalDeduped.push(item);
     }
 
-    // sort newest first per category, top 6
     const final = [];
     for (const cat of CATEGORIES) {
       const catItems = finalDeduped
@@ -327,9 +340,7 @@ export default async function handler(req, res) {
       final.push(...catItems);
     }
 
-    if (sha && fullContent) {
-      await writeFeed(final, fullContent, sha);
-    }
+    if (sha && fullContent) await writeFeed(final, fullContent, sha);
 
     return res.status(200).json({ ok: true, stories: final.length });
   } catch(e) {
