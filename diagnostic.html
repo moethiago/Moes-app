@@ -1,118 +1,558 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moe's App Diagnostics</title>
+<title>Moe's App — Diagnostic v3</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 16px; font-size: 13px; }
-h1 { color: #ff3366; font-size: 16px; margin-bottom: 12px; }
-.test { border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; border-left: 4px solid #333; background: #111; }
-.pass { border-left-color: #00ff88; }
-.fail { border-left-color: #ff3366; }
-.warn { border-left-color: #ffaa00; }
-.name { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-.result { margin-top: 4px; }
-.pass .result { color: #00ff88; }
-.fail .result { color: #ff3366; }
-.warn .result { color: #ffaa00; }
-.detail { font-size: 10px; color: #555; margin-top: 3px; }
-#summary { text-align: center; padding: 14px; background: #111; border-radius: 8px; margin-bottom: 12px; font-size: 20px; font-weight: bold; }
-.btn { background: #ff3366; color: #fff; border: none; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; cursor: pointer; width: 100%; margin-top: 12px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0a0a0f; color: #e8e8f0;
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 14px; font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { color: #ff3366; font-size: 18px; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 11px; margin-bottom: 14px; }
+  #verdict {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    background: #15151c;
+    border: 2px solid #333;
+    text-align: center;
+  }
+  #verdict.green { border-color: #00ff88; background: rgba(0,255,136,0.06); }
+  #verdict.red   { border-color: #ff3366; background: rgba(255,51,102,0.06); }
+  #verdict.amber { border-color: #ffaa00; background: rgba(255,170,0,0.06); }
+  #verdict h2 { font-size: 16px; margin-bottom: 6px; }
+  #verdict .big { font-size: 28px; margin-bottom: 6px; }
+  #verdict .what { font-size: 13px; color: #ddd; margin-top: 8px; }
+  #verdict .fix { font-size: 12px; color: #aaf; margin-top: 8px; padding-top: 8px; border-top: 1px solid #333; text-align: left; }
+  .stats { display: flex; gap: 6px; margin-bottom: 14px; }
+  .stat { flex: 1; padding: 10px; border-radius: 8px; background: #15151c; text-align: center; }
+  .stat .n { font-size: 22px; font-weight: bold; }
+  .stat .l { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .stat.pass .n { color: #00ff88; }
+  .stat.fail .n { color: #ff3366; }
+  .stat.warn .n { color: #ffaa00; }
+  .test {
+    border-radius: 10px; padding: 11px 13px; margin-bottom: 7px;
+    border-left: 4px solid #333; background: #13131a;
+  }
+  .test.pass { border-left-color: #00ff88; }
+  .test.fail { border-left-color: #ff3366; }
+  .test.warn { border-left-color: #ffaa00; }
+  .test .name { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .test .result { font-size: 13px; font-weight: 500; }
+  .test.pass .result { color: #00ff88; }
+  .test.fail .result { color: #ff3366; }
+  .test.warn .result { color: #ffaa00; }
+  .test .detail { font-size: 10px; color: #888; margin-top: 6px; font-family: ui-monospace, monospace; word-break: break-all; }
+  .test .fix { font-size: 11px; color: #88aaff; margin-top: 6px; }
+  .btn {
+    background: #ff3366; color: #fff; border: none;
+    padding: 13px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    width: 100%; margin-top: 10px;
+  }
+  .btn.alt { background: #2a2a3a; }
+  .btn.go { background: #00aa55; }
+  details { background: #13131a; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 12px; }
+  details summary { cursor: pointer; color: #aaf; font-weight: 600; }
+  pre { white-space: pre-wrap; word-break: break-all; color: #aaa; font-size: 10px; margin-top: 8px; font-family: ui-monospace, monospace; max-height: 300px; overflow-y: auto; }
 </style>
 </head>
 <body>
-<h1>Moe's App Diagnostics</h1>
-<div id="summary">Starting...</div>
+
+<h1>Moe's App — Full Diagnostic</h1>
+<div class="sub" id="ts">Initializing...</div>
+
+<div id="verdict">
+  <div class="big">.</div>
+  <div>Running tests...</div>
+</div>
+
+<div class="stats">
+  <div class="stat pass"><div class="n" id="np">0</div><div class="l">Pass</div></div>
+  <div class="stat fail"><div class="n" id="nf">0</div><div class="l">Fail</div></div>
+  <div class="stat warn"><div class="n" id="nw">0</div><div class="l">Warn</div></div>
+</div>
+
 <div id="out"></div>
-<button class="btn" onclick="runAll()">Run Again</button>
+
+<button class="btn" onclick="location.reload()">Run Again</button>
+<button class="btn alt" onclick="copyReport()">Copy Full Report</button>
+<button class="btn go" id="trigger-btn">Trigger /api/news Now</button>
+
+<details>
+  <summary>Raw log</summary>
+  <pre id="raw"></pre>
+</details>
+
 <script>
-var p=0,f=0,w=0;
-function log(name,status,result,detail){
-  var d=document.createElement('div');
-  d.className='test '+status;
-  d.innerHTML='<div class="name">'+name+'</div><div class="result">'+result+'</div>'+(detail?'<div class="detail">'+detail+'</div>':'');
-  document.getElementById('out').appendChild(d);
-  if(status==='pass')p++;
-  if(status==='fail')f++;
-  if(status==='warn')w++;
-  var s=document.getElementById('summary');
-  s.textContent='Pass: '+p+' Fail: '+f+' Warn: '+w;
-  s.style.color=f>0?'#ff3366':w>0?'#ffaa00':'#00ff88';
+// ==================================================================
+// DIAGNOSTIC v3 - built to actually work on iOS Safari
+// No smart quotes, no AbortSignal.timeout, no script-tag loading hacks
+// ==================================================================
+
+var REPO_BASE = 'https://moethiago.github.io/Moes-app';
+var VERCEL    = 'https://moes-app-two.vercel.app';
+
+var results = [];
+var rawLog  = [];
+var p = 0, f = 0, w = 0;
+
+function logRaw(msg) {
+  rawLog.push('[' + new Date().toISOString() + '] ' + msg);
+  document.getElementById('raw').textContent = rawLog.join('\n');
 }
-async function api(name,url,fn){
-  try{
-    var r=await fetch(url,{signal:AbortSignal.timeout(10000)});
-    if(!r.ok){log(name,'fail','HTTP '+r.status);return;}
-    fn(await r.json());
-  }catch(e){log(name,'fail',e.name==='TimeoutError'?'TIMEOUT':e.message);}
+
+function record(name, status, result, detail, fix) {
+  results.push({ name: name, status: status, result: result, detail: detail || '', fix: fix || '' });
+  if (status === 'pass') p++;
+  if (status === 'fail') f++;
+  if (status === 'warn') w++;
+  document.getElementById('np').textContent = p;
+  document.getElementById('nf').textContent = f;
+  document.getElementById('nw').textContent = w;
+  render();
+  logRaw(name + ' :: ' + status.toUpperCase() + ' :: ' + result + (detail ? ' :: ' + detail : ''));
 }
-async function runAll(){
-  p=0;f=0;w=0;
-  document.getElementById('out').innerHTML='';
-  document.getElementById('summary').textContent='Running...';
-  document.getElementById('summary').style.color='#4488ff';
 
-await api(‘Vercel /api/news’,‘https://moes-app-two.vercel.app/api/news’,function(d){
-if(d.ok)log(‘Vercel /api/news’,‘pass’,d.stories+’ stories written to feed’);
-else log(‘Vercel /api/news’,‘fail’,d.error||‘unknown’);
-});
-
-await api(‘Vercel /api/football’,‘https://moes-app-two.vercel.app/api/football?league=epl’,function(d){
-log(‘Vercel /api/football’,‘pass’,(d.fixtures||[]).length+’ today, ‘+(d.upcoming||[]).length+’ upcoming’);
-});
-
-await api(‘Jolpica F1 standings’,‘https://api.jolpi.ca/ergast/f1/current/driverstandings.json?limit=3’,function(d){
-var sl=d.MRData&&d.MRData.StandingsTable&&d.MRData.StandingsTable.StandingsLists[0];
-if(sl&&sl.DriverStandings&&sl.DriverStandings.length)
-log(‘Jolpica F1 standings’,‘pass’,‘R’+sl.round+’ Leader: ‘+sl.DriverStandings[0].Driver.familyName+’ ’+sl.DriverStandings[0].points+‘pts’);
-else log(‘Jolpica F1 standings’,‘warn’,‘No data’);
-});
-
-await api(‘Jolpica last race’,‘https://api.jolpi.ca/ergast/f1/current/last/results.json?limit=3’,function(d){
-var race=d.MRData&&d.MRData.RaceTable&&d.MRData.RaceTable.Races[0];
-if(race)log(‘Jolpica last race’,‘pass’,race.raceName+’ Winner: ’+(race.Results[0].Driver.familyName));
-else log(‘Jolpica last race’,‘warn’,‘No data’);
-});
-
-await api(‘OpenF1 API’,‘https://api.openf1.org/v1/sessions?year=2026’,function(d){
-if(d&&d.length){var l=d[d.length-1];log(‘OpenF1 API’,‘pass’,d.length+’ sessions. Latest: ‘+l.session_name+’ at ’+l.circuit_short_name);}
-else log(‘OpenF1 API’,‘warn’,‘No 2026 sessions found’);
-});
-
-await api(‘World Cup data’,‘https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json’,function(d){
-var m=d.matches||[];
-if(m.length)log(‘World Cup data’,‘pass’,m.length+’ matches. First: ‘+m[0].team1+’ vs ‘+m[0].team2+’ on ’+m[0].date);
-else log(‘World Cup data’,‘warn’,‘No matches’);
-});
-
-// Canadian GP pure JS timing check
-var sessions=[
-{name:‘Practice 1’,ms:Date.parse(‘2026-05-22T16:30:00Z’),dur:60},
-{name:‘Sprint Qualifying’,ms:Date.parse(‘2026-05-22T20:30:00Z’),dur:60},
-{name:‘Sprint Race’,ms:Date.parse(‘2026-05-23T16:00:00Z’),dur:45},
-{name:‘Qualifying’,ms:Date.parse(‘2026-05-23T20:00:00Z’),dur:60},
-{name:‘Race’,ms:Date.parse(‘2026-05-24T20:00:00Z’),dur:120},
-];
-var now=Date.now();
-var live=sessions.find(function(s){return now>=s.ms&&now<=s.ms+s.dur*60000;});
-var next=sessions.find(function(s){return s.ms>now;});
-if(live){
-log(‘Canadian GP session’,‘pass’,’LIVE NOW: ’+live.name);
-}else if(next){
-var diff=next.ms-now;
-var h=Math.floor(diff/3600000);
-var m=Math.floor(diff%3600000/60000);
-var t=new Date(next.ms).toLocaleString([],{weekday:‘short’,hour:‘2-digit’,minute:‘2-digit’,timeZone:‘Asia/Riyadh’});
-log(‘Canadian GP session’,‘pass’,’Next: ‘+next.name+’ in ’+h+‘h ‘+m+‘m’,t+’ Riyadh’);
-}else{
-log(‘Canadian GP session’,‘warn’,‘All sessions complete’);
+function render() {
+  var html = '';
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    html += '<div class="test ' + r.status + '">';
+    html += '<div class="name">' + esc(r.name) + '</div>';
+    html += '<div class="result">' + esc(r.result) + '</div>';
+    if (r.detail) html += '<div class="detail">' + esc(r.detail) + '</div>';
+    if (r.fix)    html += '<div class="fix">FIX: ' + esc(r.fix) + '</div>';
+    html += '</div>';
+  }
+  document.getElementById('out').innerHTML = html;
 }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+  });
 }
+
+// Cross-browser timeout wrapper (avoids AbortSignal.timeout which Safari handles poorly)
+function fetchWithTimeout(url, ms) {
+  return new Promise(function(resolve) {
+    var done = false;
+    var timer = setTimeout(function() {
+      if (done) return;
+      done = true;
+      resolve({ ok: false, error: 'TIMEOUT after ' + ms + 'ms' });
+    }, ms || 10000);
+
+    fetch(url, { cache: 'no-store' }).then(function(r) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      r.text().then(function(text) {
+        resolve({ ok: r.ok, status: r.status, text: text });
+      }).catch(function(e) {
+        resolve({ ok: false, error: 'Read failed: ' + e.message });
+      });
+    }).catch(function(e) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve({ ok: false, error: e.message || 'Network error' });
+    });
+  });
+}
+
+function bust(url) {
+  return url + (url.indexOf('?') > -1 ? '&' : '?') + '_=' + Date.now();
+}
+
+function fetchJSON(url, ms) {
+  return fetchWithTimeout(url, ms).then(function(res) {
+    if (!res.ok) return res;
+    try {
+      return { ok: true, status: res.status, data: JSON.parse(res.text) };
+    } catch (e) {
+      return { ok: false, error: 'BAD JSON: ' + res.text.slice(0, 80) };
+    }
+  });
+}
+
+// ==================================================================
+// FILE INTEGRITY (text-based, does NOT execute the file)
+// ==================================================================
+function checkFile(name, path, requiredKeywords) {
+  return fetchWithTimeout(bust(REPO_BASE + path), 8000).then(function(res) {
+    if (!res.ok) {
+      record(name, 'fail', 'Cannot fetch file: ' + (res.error || 'HTTP ' + res.status),
+        path, 'Check GitHub Pages deployment.');
+      return;
+    }
+    var text = res.text;
+    var size = Math.round(text.length / 1024);
+
+    var smartSingle = (text.match(/[\u2018\u2019]/g) || []).length;
+    var smartDouble = (text.match(/[\u201C\u201D]/g) || []).length;
+
+    if (smartSingle + smartDouble > 0) {
+      record(name, 'fail',
+        'CORRUPT: ' + (smartSingle + smartDouble) + ' smart quote characters',
+        smartSingle + ' curly singles + ' + smartDouble + ' curly doubles. Browser cannot parse this as JavaScript.',
+        'Replace with the clean ASCII version. Do NOT edit JS files in Notes, Pages, or TextEdit (rich text).');
+      return;
+    }
+
+    var fences = (text.match(/^```/gm) || []).length;
+    if (fences > 0) {
+      record(name, 'fail',
+        'CORRUPT: ' + fences + ' markdown fence lines embedded in file',
+        null,
+        'Remove every line containing only triple backticks.');
+      return;
+    }
+
+    if (requiredKeywords && requiredKeywords.length) {
+      var missing = [];
+      for (var i = 0; i < requiredKeywords.length; i++) {
+        if (text.indexOf(requiredKeywords[i]) === -1) missing.push(requiredKeywords[i]);
+      }
+      if (missing.length) {
+        record(name, 'warn',
+          'File loaded but missing expected symbols: ' + missing.join(', '),
+          'File is ' + size + ' KB',
+          'File may be incomplete or truncated.');
+        return;
+      }
+    }
+
+    record(name, 'pass', 'Clean - ' + size + ' KB, no corruption detected', null, null);
+  });
+}
+
+// ==================================================================
+// MAIN TESTS
+// ==================================================================
+function runAll() {
+  document.getElementById('ts').textContent = 'Started ' + new Date().toLocaleString();
+  logRaw('Diagnostic v3 started. UA: ' + navigator.userAgent.slice(0, 80));
+
+  var chain = Promise.resolve()
+
+  // FILE INTEGRITY
+  .then(function() { return checkFile('sports.js integrity', '/js/sports.js',
+    ['F1_CALENDAR', 'startCountdown', 'loadF1Data', 'loadFootballScores']); })
+  .then(function() { return checkFile('feed.js integrity',   '/js/feed.js',
+    ['renderNewsFeed', 'loadNewsFeed', 'FALLBACK_NEWS']); })
+  .then(function() { return checkFile('health.js integrity', '/js/health.js',
+    ['renderFood', 'renderSets']); })
+  .then(function() { return checkFile('core.js integrity',   '/js/core.js',
+    ['switchTab', 'startClock']); })
+  .then(function() { return checkFile('index.html exists',   '/index.html',
+    ['Moe', 'panel-feed', 'panel-sports', 'panel-health']); })
+
+  // FEED CONTENT
+  .then(function() {
+    return fetchWithTimeout(bust(REPO_BASE + '/js/feed.js'), 8000).then(function(res) {
+      if (!res.ok) return;
+      var text = res.text;
+      var startMarker = 'var FALLBACK_NEWS = [';
+      var startIdx = text.indexOf(startMarker);
+      if (startIdx === -1) {
+        record('Feed content', 'fail', 'FALLBACK_NEWS array not found in feed.js', null,
+          'news.js pipeline may have corrupted feed.js. Restore from backup.');
+        return;
+      }
+      var endIdx = text.indexOf('];', startIdx);
+      var block  = text.slice(startIdx, endIdx);
+      var itemMatches = block.match(/\{title:'/g) || [];
+      var tsMatches   = block.match(/ts:(\d+)/g) || [];
+
+      var ages = tsMatches.map(function(m) {
+        var ts = parseInt(m.replace('ts:', ''));
+        return (Date.now() / 1000 - ts) / 3600;
+      });
+      var youngest = ages.length ? Math.min.apply(null, ages) : Infinity;
+      var oldest   = ages.length ? Math.max.apply(null, ages) : 0;
+      var avg      = ages.length ? ages.reduce(function(a,b){return a+b;}, 0) / ages.length : 0;
+
+      if (itemMatches.length === 0) {
+        record('Feed content', 'fail', 'FALLBACK_NEWS is empty', null,
+          'No stories - pipeline never wrote anything successfully.');
+        return;
+      }
+
+      var detail = 'Youngest: ' + youngest.toFixed(1) + 'h | Oldest: ' + oldest.toFixed(1) + 'h | Avg: ' + avg.toFixed(1) + 'h';
+      if (youngest > 6) {
+        record('Feed content', 'warn',
+          itemMatches.length + ' stories - but FRESHEST is ' + youngest.toFixed(1) + 'h old',
+          detail,
+          'Pipeline has not pushed fresh news in over 6 hours. Check cron-job.org is still pinging /api/news.');
+      } else if (oldest > 48) {
+        record('Feed content', 'warn',
+          itemMatches.length + ' stories - but OLDEST is ' + oldest.toFixed(1) + 'h (stale)',
+          detail,
+          'Old stories accumulate. Consider shorter retention window in news.js.');
+      } else {
+        record('Feed content', 'pass',
+          itemMatches.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago',
+          detail, null);
+      }
+
+      // duplicate detection
+      var titles = block.match(/title:'([^']+)'/g) || [];
+      var titleMap = {};
+      var dupes = 0;
+      titles.forEach(function(t) {
+        var key = t.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40);
+        titleMap[key] = (titleMap[key] || 0) + 1;
+        if (titleMap[key] === 2) dupes++;
+      });
+      if (dupes > 0) {
+        record('Feed deduplication', 'warn',
+          dupes + ' near-duplicate story title(s) detected',
+          null,
+          'Strengthen isSimilar() threshold in news.js or extend title-key length.');
+      } else {
+        record('Feed deduplication', 'pass', 'No obvious duplicates in current feed', null, null);
+      }
+    });
+  })
+
+  // VERCEL BACKEND
+  .then(function() {
+    return fetchJSON(VERCEL + '/api/football?league=epl', 12000).then(function(res) {
+      if (!res.ok) {
+        record('Vercel /api/football', 'fail', res.error || 'HTTP ' + res.status,
+          VERCEL + '/api/football?league=epl',
+          'Vercel function may have crashed. Check Vercel logs.');
+        return;
+      }
+      var fx = (res.data.fixtures || []).length;
+      var up = (res.data.upcoming || []).length;
+      record('Vercel /api/football', 'pass', fx + ' live fixtures, ' + up + ' upcoming', null, null);
+    });
+  })
+
+  // EXTERNAL APIs
+  .then(function() {
+    return fetchJSON('https://api.jolpi.ca/ergast/f1/current/driverstandings.json?limit=3', 10000).then(function(res) {
+      if (!res.ok) { record('Jolpica F1 standings', 'fail', res.error, null, 'API may be down; app falls back to hardcoded standings.'); return; }
+      var d = res.data;
+      var sl = d && d.MRData && d.MRData.StandingsTable && d.MRData.StandingsTable.StandingsLists[0];
+      if (sl && sl.DriverStandings && sl.DriverStandings.length) {
+        var p1 = sl.DriverStandings[0];
+        record('Jolpica F1 standings', 'pass', 'R' + sl.round + ' Leader: ' + p1.Driver.familyName + ' (' + p1.points + 'pts)', null, null);
+      } else {
+        record('Jolpica F1 standings', 'warn', 'No standings returned', null, null);
+      }
+    });
+  })
+
+  .then(function() {
+    return fetchJSON('https://api.jolpi.ca/ergast/f1/current/last/results.json?limit=3', 10000).then(function(res) {
+      if (!res.ok) { record('Jolpica last race', 'fail', res.error, null, null); return; }
+      var race = res.data && res.data.MRData && res.data.MRData.RaceTable && res.data.MRData.RaceTable.Races[0];
+      if (race && race.Results) {
+        record('Jolpica last race', 'pass', race.raceName + ' - Winner: ' + race.Results[0].Driver.familyName, null, null);
+      } else {
+        record('Jolpica last race', 'warn', 'No race data', null, null);
+      }
+    });
+  })
+
+  .then(function() {
+    return fetchJSON('https://api.openf1.org/v1/sessions?year=2026', 12000).then(function(res) {
+      if (!res.ok) { record('OpenF1 live timing', 'warn', res.error, null, 'Used only during live sessions.'); return; }
+      if (Array.isArray(res.data) && res.data.length) {
+        var l = res.data[res.data.length - 1];
+        record('OpenF1 live timing', 'pass', res.data.length + ' sessions; latest: ' + l.session_name, null, null);
+      } else {
+        record('OpenF1 live timing', 'warn', 'No 2026 sessions', null, null);
+      }
+    });
+  })
+
+  .then(function() {
+    return fetchJSON('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', 10000).then(function(res) {
+      if (!res.ok) { record('World Cup 2026 data', 'warn', res.error, null, null); return; }
+      var m = (res.data && res.data.matches) || [];
+      if (m.length) {
+        record('World Cup 2026 data', 'pass', m.length + ' matches loaded', null, null);
+      } else {
+        record('World Cup 2026 data', 'warn', 'No matches yet (tournament starts Jun 11)', null, null);
+      }
+    });
+  })
+
+  // F1 CALENDAR LOGIC (computed locally)
+  .then(function() {
+    var sessions = [
+      {race:'Canadian GP', name:'Practice 1',         ms:Date.parse('2026-05-22T16:30:00Z')},
+      {race:'Canadian GP', name:'Sprint Qualifying',  ms:Date.parse('2026-05-22T20:30:00Z')},
+      {race:'Canadian GP', name:'Sprint Race',        ms:Date.parse('2026-05-23T16:00:00Z')},
+      {race:'Canadian GP', name:'Qualifying',         ms:Date.parse('2026-05-23T20:00:00Z')},
+      {race:'Canadian GP', name:'Race',               ms:Date.parse('2026-05-24T20:00:00Z')},
+      {race:'Spanish GP',  name:'Practice 1',         ms:Date.parse('2026-05-29T11:30:00Z')},
+      {race:'Spanish GP',  name:'Race',               ms:Date.parse('2026-05-31T13:00:00Z')},
+    ];
+    var now = Date.now();
+    var live = null;
+    var next = null;
+    for (var i = 0; i < sessions.length; i++) {
+      var s = sessions[i];
+      var dur = (s.name === 'Race' ? 2 : 1.5) * 3600 * 1000;
+      if (now >= s.ms && now <= s.ms + dur) live = s;
+      if (s.ms > now && !next) next = s;
+    }
+    if (live) {
+      record('F1 timing calc', 'pass', 'LIVE NOW: ' + live.race + ' - ' + live.name, null, null);
+    } else if (next) {
+      var diff = next.ms - now;
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor(diff % 3600000 / 60000);
+      var riyadhTime = new Date(next.ms).toLocaleString('en-US', {
+        weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh'
+      });
+      record('F1 timing calc', 'pass',
+        next.race + ' ' + next.name + ' in ' + h + 'h ' + m + 'm',
+        'Local Riyadh time: ' + riyadhTime, null);
+    } else {
+      record('F1 timing calc', 'warn', 'No upcoming sessions in checked range', null, null);
+    }
+  })
+
+  // VERDICT
+  .then(function() {
+    showVerdict();
+    logRaw('Complete: pass=' + p + ' fail=' + f + ' warn=' + w);
+  });
+
+  return chain;
+}
+
+// ==================================================================
+// VERDICT
+// ==================================================================
+function showVerdict() {
+  var v = document.getElementById('verdict');
+  var color, head, summary, fix, emoji;
+
+  var fileFails = results.filter(function(r) {
+    return r.status === 'fail' && r.name.indexOf('integrity') > -1;
+  });
+  var contentIssues = results.filter(function(r) {
+    return (r.status === 'fail' || r.status === 'warn') && (r.name === 'Feed content' || r.name === 'Feed deduplication');
+  });
+  var apiFails = results.filter(function(r) {
+    return r.status === 'fail' && r.name.indexOf('integrity') === -1 && r.name.indexOf('Feed') === -1;
+  });
+
+  if (fileFails.length > 0) {
+    color = 'red'; emoji = 'X';
+    head  = 'JavaScript file corruption';
+    var names = fileFails.map(function(r) { return r.name.replace(' integrity', ''); });
+    summary = 'These files cannot run in the browser: ' + names.join(', ') + '. Affected tabs will not work until you replace the corrupted file(s).';
+    fix = '1. Replace the broken file with the clean version. 2. Commit and push to GitHub. 3. Hard refresh to reload.';
+  } else if (apiFails.length > 0) {
+    color = 'amber'; emoji = '!';
+    head  = 'Files OK but APIs failing';
+    summary = apiFails.length + ' API(s) failed: ' + apiFails.map(function(r) { return r.name; }).join(', ') + '.';
+    fix = 'Check Vercel logs and confirm env vars (ANTHROPIC_API_KEY, GITHUB_TOKEN, API_FOOTBALL_KEY) are set.';
+  } else if (contentIssues.length > 0) {
+    color = 'amber'; emoji = '!';
+    head  = 'App works but news feed is stale or duplicated';
+    summary = contentIssues.map(function(r) { return r.name + ': ' + r.result; }).join(' / ');
+    fix = 'Tap "Trigger /api/news Now" below to force a refresh. Also confirm cron-job.org is still scheduled to call it every 10 minutes.';
+  } else if (w > 0) {
+    color = 'amber'; emoji = 'OK';
+    head  = 'Mostly OK';
+    summary = 'All critical systems working. ' + w + ' minor warning(s).';
+    fix = 'Warnings are usually safe (pre-season data sources, etc).';
+  } else {
+    color = 'green'; emoji = 'OK';
+    head  = 'All systems operational';
+    summary = 'Every file is clean, every API responded, content is fresh.';
+    fix = 'If the app still misbehaves, the issue is in render logic. Open Safari Web Inspector (Mac required) for runtime errors.';
+  }
+
+  v.className = color;
+  v.innerHTML =
+    '<div class="big">' + emoji + '</div>' +
+    '<h2>' + head + '</h2>' +
+    '<div class="what">' + summary + '</div>' +
+    '<div class="fix"><strong>WHAT TO DO:</strong><br>' + fix + '</div>';
+}
+
+// ==================================================================
+// TRIGGER /api/news MANUALLY
+// ==================================================================
+document.getElementById('trigger-btn').addEventListener('click', function() {
+  var btn = this;
+  btn.textContent = 'Calling /api/news (may take 30-60s)...';
+  btn.disabled = true;
+  fetchWithTimeout(VERCEL + '/api/news', 90000).then(function(res) {
+    btn.disabled = false;
+    btn.textContent = 'Trigger /api/news Now';
+    if (!res.ok) {
+      alert('FAIL: ' + (res.error || 'HTTP ' + res.status));
+      return;
+    }
+    try {
+      var d = JSON.parse(res.text);
+      if (d.ok) alert('SUCCESS: ' + d.stories + ' stories written.\n\nReload the diagnostic to see freshness updated.');
+      else      alert('ERROR returned: ' + (d.error || 'unknown'));
+    } catch (e) {
+      alert('Got response but it was not JSON: ' + res.text.slice(0, 200));
+    }
+  });
+});
+
+// ==================================================================
+// COPY REPORT
+// ==================================================================
+function copyReport() {
+  var lines = ["MOE'S APP DIAGNOSTIC REPORT"];
+  lines.push('Time: ' + new Date().toISOString());
+  lines.push('UA:   ' + navigator.userAgent);
+  lines.push('Tally: pass=' + p + ' fail=' + f + ' warn=' + w);
+  lines.push('');
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    lines.push('[' + r.status.toUpperCase() + '] ' + r.name);
+    lines.push('  ' + r.result);
+    if (r.detail) lines.push('  detail: ' + r.detail);
+    if (r.fix)    lines.push('  fix:    ' + r.fix);
+    lines.push('');
+  }
+  var text = lines.join('\n');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      alert('Report copied. Paste it to Claude.');
+    }, function() { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); alert('Report copied.'); }
+  catch (e) { alert('Copy failed. Use the raw log below.'); }
+  document.body.removeChild(ta);
+}
+
+// Go
 runAll();
 </script>
-
 </body>
 </html>
