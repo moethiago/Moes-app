@@ -1,5 +1,4 @@
 const https = require('https');
-const xml2js = require('xml2js');
 
 const RSS_SOURCES = [
   { url:'https://www.formula1.com/en/latest/all.xml',                               cat:'F1' },
@@ -39,68 +38,110 @@ const RSS_SOURCES = [
 
 const CAT_PROMPTS = {
   F1: `You are the F1 editor. STRICT rules:
-
-INCLUDE: confirmed signing with role, confirmed penalty with consequence, confirmed injury affecting race, confirmed sacking/appointment, race result with championship implication.
-
-REJECT — NO EXCEPTIONS: driver/team quotes, denials of rumours, rumours with "linked/could/might/may", technical development updates, vague regulatory news, previews, predictions, human interest.
-
-DUPLICATE RULE: Same event from multiple sources = keep ONLY the single best version. Zero tolerance for duplicates.
-
+INCLUDE: confirmed signing with role, confirmed penalty, confirmed injury affecting race, confirmed sacking/appointment, race result with championship implication.
+REJECT: driver quotes, denials, rumours with linked/could/might/may, technical updates, vague regulatory news, previews, human interest.
+DUPLICATE RULE: Same event from multiple sources = keep ONLY the single best version.
 Select max 6. Return [] if nothing qualifies.`,
 
   FOOTBALL: `You are the Football editor. Top 5 leagues and Champions League ONLY.
-
-INCLUDE: confirmed transfer with player name, title won, confirmed sacking with manager name, club expelled/banned, major match result deciding something significant.
-
-REJECT: human interest/feel-good, awards, police/security stories, World Cup squad announcements, quotes/interviews/opinions, previews, "hero/star/ace" without naming player, vague investigations, players "addressing/responding/discussing".
-
+INCLUDE: confirmed transfer with player name, title won, confirmed sacking with manager name, club expelled/banned, major decisive match result.
+REJECT: human interest, awards, police stories, World Cup squad announcements, quotes/interviews/opinions, previews, vague investigations.
 DUPLICATE RULE: Same player/event multiple times = keep ONLY the single clearest version.
-
 Select max 6. Return [] if nothing qualifies.`,
 
   BAYERN: `You are the Bayern Munich editor.
-
-INCLUDE: confirmed Bayern player transfer with fee/contract, confirmed manager sacked/appointed, confirmed injury with timeline, match result with major title/cup implication.
-
-REJECT: interviews where player discusses/talks/hopes, player quotes, women's team (Bayern Frauen), youth/reserve team, Germany national team stories, rumours with linked/monitored/interested, previews.
-
+INCLUDE: confirmed Bayern transfer with fee/contract, confirmed manager sacked/appointed, confirmed injury with timeline, match result with major implication.
+REJECT: player interviews/quotes/hopes, women's team, youth/reserve team, Germany national team stories, rumours, previews.
 DUPLICATE RULE: Same event = keep only best one.
-
 Select max 6. Return [] if nothing qualifies.`,
 
   SPL: `You are the Saudi Pro League editor.
-
-INCLUDE: match result with title race implication naming specific teams, confirmed transfer with player name, title clinched with specific details.
-
-REJECT: manager quotes about targets, match previews, stories not naming Al Hilal/Al Nassr/Al Ittihad/Al Ahli.
-
-DUPLICATE RULE: "Al Nassr win title" + "Ronaldo wins Saudi title" = SAME EVENT. Keep only the most informative version.
-
+INCLUDE: match result with title implication naming specific teams, confirmed transfer with player name, title clinched with specific details.
+REJECT: manager quotes, match previews, stories not naming Al Hilal/Al Nassr/Al Ittihad/Al Ahli.
+DUPLICATE RULE: Same event multiple times = keep only the most informative version.
 Select max 6. Return [] if nothing qualifies.`,
 
   KSA: `You are the Saudi Arabia News editor.
-
-INCLUDE: specific economic data with figures, confirmed billion-dollar deals, PIF announcements with figures, Vision 2030 milestones confirmed, real estate/banking data with specific numbers.
-
-REJECT: diplomatic meetings without major outcome, crowd management showcases, Gaza/foreign aid, UK/GCC trade deals, Hajj/religious ceremonies, tourism promotion, anything without specific confirmed figures.
-
+INCLUDE: specific economic data with figures, confirmed billion-dollar deals, PIF announcements with figures, Vision 2030 milestones, real estate/banking data with specific numbers.
+REJECT: diplomatic meetings without major outcome, crowd management, Gaza/foreign aid, Hajj/religious ceremonies, tourism, anything without specific confirmed figures.
 DUPLICATE RULE: Same data point twice = keep only one.
-
 Select max 6. Return [] if nothing qualifies.`,
 };
 
+// ── Simple XML parser — no dependencies needed ──
+function extractTags(xml, tag) {
+  const results = [];
+  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
+  let match;
+  while ((match = regex.exec(xml)) !== null) {
+    results.push(match[1].trim());
+  }
+  return results;
+}
+
+function extractTag(xml, tag) {
+  const match = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+  return match ? match[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim() : '';
+}
+
+function extractAttr(xml, tag, attr) {
+  const match = xml.match(new RegExp(`<${tag}[^>]*${attr}="([^"]*)"`, 'i'));
+  return match ? match[1].trim() : '';
+}
+
+function parseRSS(xml, cat) {
+  const now = Date.now();
+  const maxAge = 48 * 3600 * 1000;
+  const items = extractTags(xml, 'item');
+  const entries = items.length ? items : extractTags(xml, 'entry');
+  const results = [];
+
+  for (const item of entries.slice(0, 15)) {
+    let title = extractTag(item, 'title').replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#039;/g,"'").trim();
+    let link  = extractTag(item, 'link') || extractAttr(item, 'link', 'href');
+    let pub   = extractTag(item, 'pubDate') || extractTag(item, 'published') || extractTag(item, 'updated');
+
+    if (!title || !link) continue;
+
+    // clean Google News titles
+    title = title.replace(/\s+-\s+[^-]+$/, '').trim();
+
+    let ts = Math.floor(now / 1000);
+    if (pub) {
+      const d = new Date(pub);
+      if (!isNaN(d.getTime())) {
+        if (now - d.getTime() > maxAge) continue;
+        ts = Math.floor(d.getTime() / 1000);
+      }
+    }
+
+    results.push({ title, url: link, cat, ts });
+  }
+  return results;
+}
+
 function fetchUrl(url) {
   return new Promise((resolve) => {
-    const req = https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsBot/1.0)' },
-      timeout: 8000,
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(data));
-    });
-    req.on('error', () => resolve(''));
-    req.on('timeout', () => { req.destroy(); resolve(''); });
+    try {
+      const urlObj = new URL(url);
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsBot/1.0)' },
+        timeout: 8000,
+      };
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', () => resolve(''));
+      req.on('timeout', () => { req.destroy(); resolve(''); });
+      req.end();
+    } catch(e) {
+      resolve('');
+    }
   });
 }
 
@@ -108,31 +149,14 @@ async function fetchRSS(src, seenTitles) {
   try {
     const raw = await fetchUrl(src.url);
     if (!raw) return [];
-    const parsed = await xml2js.parseStringPromise(raw, { explicitArray: false });
-    const channel = parsed.rss?.channel || parsed.feed;
-    if (!channel) return [];
-    const items = channel.item || channel.entry || [];
-    const arr = Array.isArray(items) ? items : [items];
+    const items = parseRSS(raw, src.cat);
     const results = [];
-    const now = Date.now();
-    const maxAge = 48 * 3600 * 1000;
-    for (const item of arr.slice(0, 15)) {
-      const title = (item.title?._ || item.title || '').trim();
-      const link  = (item.link?.$?.href || item.link || item.guid?._ || item.guid || '').trim();
-      const pub   = (item.pubDate || item.updated || item.published || '').trim();
-      if (!title || !link) continue;
-      const key = title.toLowerCase().replace(/\W+/g,'').slice(0,50);
+    for (const item of items) {
+      const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,50);
       if (seenTitles.has(key)) continue;
-      let ts = Math.floor(now / 1000);
-      if (pub) {
-        const d = new Date(pub);
-        if (!isNaN(d.getTime())) {
-          if (now - d.getTime() > maxAge) continue;
-          ts = Math.floor(d.getTime() / 1000);
-        }
-      }
       seenTitles.add(key);
-      results.push({ title, url: link, source: new URL(src.url).hostname.replace('www.',''), cat: src.cat, ts });
+      const hostname = new URL(src.url).hostname.replace('www.','');
+      results.push({ ...item, source: hostname });
     }
     return results;
   } catch(e) {
@@ -142,8 +166,7 @@ async function fetchRSS(src, seenTitles) {
 
 async function callClaude(items, cat) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return [];
-  if (!items.length) return [];
+  if (!apiKey || !items.length) return [];
 
   const lines = items.map((item, i) => `${i} | ${item.title}`).join('\n');
   const prompt = CAT_PROMPTS[cat] + `\n\nCandidates:\n${lines}\n\nReturn ONLY valid JSON array: [{"idx": 0, "title": "rewritten headline"}]\nReturn [] if nothing qualifies. No explanation.`;
@@ -166,12 +189,15 @@ async function callClaude(items, cat) {
 
   const data = await res.json();
   const text = data.content?.[0]?.text || '';
-  const match = text.match(/\[.*?\]/s);
+  const match = text.match(/\[[\s\S]*?\]/);
   if (!match) return [];
+
   try {
     const selected = JSON.parse(match[0]);
     return selected.map(s => {
-      const item = { ...items[parseInt(s.idx)] };
+      const idx = parseInt(s.idx);
+      if (isNaN(idx) || !items[idx]) return null;
+      const item = { ...items[idx] };
       if (s.title?.trim()) item.title = s.title.trim();
       return item;
     }).filter(Boolean);
@@ -192,18 +218,19 @@ async function getCurrentFeed() {
     const data = await res.json();
     const content = Buffer.from(data.content, 'base64').toString('utf8');
     const match = content.match(/\/\/ DO NOT EDIT BELOW THIS LINE\nvar FALLBACK_NEWS = (\[.*?\]);\n\/\/ DO NOT EDIT ABOVE THIS LINE/s);
-    if (!match) return { items: [], sha: data.sha, fullContent: content };
-    const pattern = /\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',ts:(\d+)\}/g;
     const items = [];
-    let m;
-    while ((m = pattern.exec(match[1])) !== null) {
-      items.push({
-        title:  m[1].replace(/\\'/g, "'"),
-        source: m[2].replace(/\\'/g, "'"),
-        cat:    m[3],
-        url:    m[4].replace(/\\'/g, "'"),
-        ts:     parseInt(m[5]),
-      });
+    if (match) {
+      const pattern = /\{title:'((?:[^'\\]|\\.)*)',src:'((?:[^'\\]|\\.)*)',cat:'([^']*)',link:'((?:[^'\\]|\\.)*)',ts:(\d+)\}/g;
+      let m;
+      while ((m = pattern.exec(match[1])) !== null) {
+        items.push({
+          title:  m[1].replace(/\\'/g, "'"),
+          source: m[2].replace(/\\'/g, "'"),
+          cat:    m[3],
+          url:    m[4].replace(/\\'/g, "'"),
+          ts:     parseInt(m[5]),
+        });
+      }
     }
     return { items, sha: data.sha, fullContent: content };
   } catch(e) {
@@ -212,7 +239,7 @@ async function getCurrentFeed() {
 }
 
 function jsStr(text) {
-  return text
+  return (text || '')
     .replace(/&amp;/g,'&').replace(/&quot;/g,'"')
     .replace(/&#039;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>')
     .replace(/[^\x00-\x7F]/g, '')
@@ -260,9 +287,12 @@ export default async function handler(req, res) {
     const existing = existingItems.filter(i => (now - i.ts) < maxAge);
 
     // Step 2 — fetch all RSS in parallel
-    const seenTitles = new Set(existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50)));
+    const seenTitles = new Set(
+      existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50))
+    );
     const rssResults = await Promise.all(RSS_SOURCES.map(src => fetchRSS(src, seenTitles)));
     const newItems = rssResults.flat();
+    console.log('Fetched ' + newItems.length + ' new items');
 
     // Step 3 — basic dedup
     const seenKeys = new Set();
@@ -272,24 +302,28 @@ export default async function handler(req, res) {
       seenKeys.add(key);
       return true;
     });
+    console.log('Unique new: ' + uniqueNew.length);
 
     // Step 4 — Claude editorial review per category
     const approved = [];
     for (const cat of CATEGORIES) {
-      const catItems = uniqueNew.filter(i => i.cat === cat).sort((a,b) => b.ts - a.ts);
+      const catItems = uniqueNew
+        .filter(i => i.cat === cat)
+        .sort((a,b) => b.ts - a.ts);
       if (!catItems.length) continue;
       try {
         const result = await callClaude(catItems, cat);
+        console.log(cat + ': ' + result.length + ' approved');
         approved.push(...result);
       } catch(e) {
-        console.error('Claude failed for ' + cat, e);
+        console.error('Claude failed for ' + cat + ': ' + e.message);
       }
     }
 
     // Step 5 — merge with existing, top 6 per category
     const all = [...existing, ...approved];
-    const deduped = [];
     const seenFinal = new Set();
+    const deduped = [];
     for (const item of all) {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,60);
       if (!seenFinal.has(key)) { seenFinal.add(key); deduped.push(item); }
@@ -297,17 +331,23 @@ export default async function handler(req, res) {
 
     const final = [];
     for (const cat of CATEGORIES) {
-      const catItems = deduped.filter(i => i.cat === cat).sort((a,b) => b.ts - a.ts).slice(0,6);
+      const catItems = deduped
+        .filter(i => i.cat === cat)
+        .sort((a,b) => b.ts - a.ts)
+        .slice(0,6);
       final.push(...catItems);
     }
+    console.log('Final stories: ' + final.length);
 
     // Step 6 — write back to GitHub
     if (sha && fullContent) {
       await writeFeed(final, fullContent, sha);
+      console.log('Feed written to GitHub');
     }
 
     return res.status(200).json({ ok: true, stories: final.length });
   } catch(e) {
+    console.error('Handler error: ' + e.message);
     return res.status(500).json({ error: e.message });
   }
 }
