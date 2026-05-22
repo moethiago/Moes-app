@@ -60,11 +60,11 @@ const GOOGLE_NEWS_SOURCES = [
 ];
 
 const WEB_SEARCH_QUERIES = [
-  { query:'Formula 1 breaking news confirmed today 2026',                              cat:'F1' },
-  { query:'Premier League La Liga Serie A transfer confirmed sacking injury today',    cat:'FOOTBALL' },
-  { query:'Bayern Munich confirmed news today',                                        cat:'BAYERN' },
-  { query:'Al Hilal Al Nassr Saudi Pro League news today',                             cat:'SPL' },
-  { query:'Saudi Arabia economy investment deal billion today',                        cat:'KSA' },
+  { query:'Formula 1 breaking news confirmed today 2026',                           cat:'F1' },
+  { query:'Premier League La Liga Serie A transfer confirmed sacking injury today', cat:'FOOTBALL' },
+  { query:'Bayern Munich confirmed news today',                                     cat:'BAYERN' },
+  { query:'Al Hilal Al Nassr Saudi Pro League news today',                          cat:'SPL' },
+  { query:'Saudi Arabia economy investment deal billion today',                     cat:'KSA' },
 ];
 
 const CAT_PROMPTS = {
@@ -82,7 +82,7 @@ Select max 6. Return [] if nothing qualifies.`,
 
   BAYERN: `You are the Bayern Munich editor. Must be directly about FC Bayern Munich club.
 INCLUDE only: confirmed Bayern transfer in or out, confirmed manager sacked or appointed, confirmed player injury with timeline, Bayern match result with major title or cup implication.
-REJECT always: player interviews/quotes/hopes/feelings, Bayern Frauen (women's team), youth or reserve team, Germany national team stories, rumours with linked/monitored/interested, previews.
+REJECT always: player interviews/quotes/hopes/feelings, Bayern Frauen (women's team), youth or reserve team, Germany national team stories, rumours with linked/monitored/interested, previews, cup final previews.
 DUPLICATE RULE: Same event = keep only best version.
 Select max 6. Return [] if nothing qualifies.`,
 
@@ -301,7 +301,7 @@ async function writeFeed(items, currentContent, sha) {
   );
 
   // write feed.js
-  const feedRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
+  await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/js/feed.js', {
     method: 'PUT',
     headers: {
       'Authorization': `token ${token}`,
@@ -315,7 +315,7 @@ async function writeFeed(items, currentContent, sha) {
     }),
   });
 
-  // update index.html version number so browser cache busts
+  // update index.html version number to bust browser cache
   const version = Math.floor(Date.now() / 1000);
   const indexRes = await fetch('https://api.github.com/repos/moethiago/Moes-app/contents/index.html', {
     headers: {
@@ -344,7 +344,6 @@ async function writeFeed(items, currentContent, sha) {
   });
 }
 
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -360,13 +359,13 @@ export default async function handler(req, res) {
     const existing = existingItems.filter(i => (now - i.ts) < maxAge);
     const seenTitles = new Set(existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50)));
 
-    // Fetch all RSS + Google News in parallel
+    // Stream 1+2: RSS + Google News in parallel
     const allSources = [...RSS_SOURCES, ...GOOGLE_NEWS_SOURCES];
     const rssResults = await Promise.all(allSources.map(src => fetchRSS(src, seenTitles)));
     const rssItems = rssResults.flat();
     console.log('RSS + Google News: ' + rssItems.length + ' items');
 
-    // Claude web search in parallel for all categories
+    // Stream 3: Claude web search in parallel
     const webSearchResults = await Promise.all(
       WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey))
     );
@@ -378,7 +377,7 @@ export default async function handler(req, res) {
     });
     console.log('Web search: ' + webItems.length + ' items');
 
-    // Combine and deduplicate
+    // Combine and deduplicate against existing
     const allNew = [...rssItems, ...webItems];
     const trulyNew = allNew.filter(newItem =>
       !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title))
@@ -403,6 +402,10 @@ export default async function handler(req, res) {
       })
     );
     const approved = approvedArrays.flat();
+
+    // ── KEY CHANGE: stamp approved stories with NOW not publish time ──
+    const feedAddedAt = Math.floor(Date.now() / 1000);
+    approved.forEach(item => { item.ts = feedAddedAt; });
 
     // Merge with existing, final dedup, sort newest first, top 6 per category
     const all = [...existing, ...approved];
