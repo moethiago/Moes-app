@@ -66,9 +66,13 @@
     <!-- SPORTS -->
     <div class="tab-panel" id="panel-sports">
 
+      <!-- F1 SECTION LABEL -->
+      <div class="sports-divider" style="padding-top:14px;">
+        <span class="sports-divider-label">🏎 Formula 1</span>
+      </div>
+
       <!-- F1 COUNTDOWN -->
-      <p class="section-label" style="padding-left:14px;">Formula 1</p>
-      <div style="padding:0 14px 10px;">
+      <div style="padding:10px 14px 10px;">
         <div class="cd-card">
           <div class="cd-top">
             <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
@@ -87,13 +91,13 @@
 
       <!-- F1 STANDINGS -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
-        <p class="section-label" style="padding:14px 0 8px;">F1 2026 Standings</p>
+        <p class="section-label" style="padding:6px 0 8px;">Driver Championship</p>
         <button class="btn-refresh" onclick="loadF1Data()">REFRESH</button>
       </div>
-      <div style="padding:0 14px 10px;">
+      <div style="padding:0 14px 14px;">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Driver Championship</span>
+            <span class="card-title">2026 Standings</span>
             <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
           </div>
           <div id="f1-standings-body">
@@ -102,8 +106,13 @@
         </div>
       </div>
 
+      <!-- FOOTBALL DIVIDER -->
+      <div class="sports-divider">
+        <span class="sports-divider-label">⚽ Football</span>
+      </div>
+
       <!-- WORLD CUP 2026 -->
-      <p class="section-label" style="padding-left:14px;">🏆 World Cup 2026</p>
+      <p class="section-label" style="padding-left:14px;padding-top:10px;">🏆 World Cup 2026</p>
       <div style="padding:0 14px 10px;">
         <div class="card" style="padding:0;overflow:hidden;">
           <div id="worldcup-fixtures" style="min-height:80px;"></div>
