@@ -403,36 +403,50 @@ el.innerHTML = html;
 // ─────────────────────────────────────────────────────────
 // OPENF1 LIVE TIMING
 // ─────────────────────────────────────────────────────────
+// Safari-safe fetch with manual timeout (AbortSignal.timeout broken on iOS)
+function fetchWithTimeout(url, ms) {
+  return new Promise(function(resolve) {
+    var done = false;
+    var timer = setTimeout(function() {
+      if (!done) { done = true; resolve(null); }
+    }, ms);
+    fetch(url).then(function(r) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (!r.ok) { resolve(null); return; }
+      r.json().then(function(d) { resolve(d); }).catch(function() { resolve(null); });
+    }).catch(function() {
+      if (!done) { done = true; clearTimeout(timer); resolve(null); }
+    });
+  });
+}
+
 async function fetchOpenF1Live() {
 try {
-// get current session key
-var sessRes = await fetch('https://api.openf1.org/v1/sessions?year=2026', {
-signal: AbortSignal.timeout(6000)
-});
-if (!sessRes.ok) return null;
-var sessions = await sessRes.json();
-if (!sessions.length) return null;
+var sessions = await fetchWithTimeout('https://api.openf1.org/v1/sessions?year=2026', 8000);
+if (!sessions || !sessions.length) return null;
 
-// find most recent session
 var latest = sessions.reduce(function(a, b) {
   return (a.session_key > b.session_key) ? a : b;
 });
 var sessionKey = latest.session_key;
 
-// fetch positions, intervals, drivers in parallel
 var results = await Promise.all([
-  fetch('https://api.openf1.org/v1/position?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/intervals?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/drivers?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
-  fetch('https://api.openf1.org/v1/laps?session_key=' + sessionKey, { signal: AbortSignal.timeout(5000) }),
+  fetchWithTimeout('https://api.openf1.org/v1/position?session_key=' + sessionKey, 6000),
+  fetchWithTimeout('https://api.openf1.org/v1/intervals?session_key=' + sessionKey, 6000),
+  fetchWithTimeout('https://api.openf1.org/v1/drivers?session_key=' + sessionKey, 6000),
+  fetchWithTimeout('https://api.openf1.org/v1/laps?session_key=' + sessionKey, 6000),
 ]);
 
-var positions = results[0].ok ? await results[0].json() : [];
-var intervals = results[1].ok ? await results[1].json() : [];
-var drivers   = results[2].ok ? await results[2].json() : [];
-var laps      = results[3].ok ? await results[3].json() : [];
+var positions = results[0] || [];
+var intervals = results[1] || [];
+var drivers   = results[2] || [];
+var laps      = results[3] || [];
 
-return { sessionKey, positions, intervals, drivers, laps, sessionName: latest.session_name };
+if (!positions.length && !drivers.length) return null;
+
+return { sessionKey: sessionKey, positions: positions, intervals: intervals, drivers: drivers, laps: laps, sessionName: latest.session_name };
 
 } catch(e) {
 return null;
@@ -551,9 +565,7 @@ async function loadLastRaceResult() {
 var el = document.getElementById('f1-last-race');
 if (!el) return;
 try {
-var res = await fetch('https://api.jolpi.ca/ergast/f1/current/last/results.json?limit=3', {
-signal: AbortSignal.timeout(5000)
-});
+var res = await fetch('https://api.jolpi.ca/ergast/f1/current/last/results.json?limit=3');
 if (!res.ok) return;
 var data = await res.json();
 var race = data.MRData && data.MRData.RaceTable && data.MRData.RaceTable.Races[0];
@@ -594,8 +606,7 @@ container.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><s
 
 try {
 var res = await fetch(
-'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json',
-{ signal: AbortSignal.timeout(8000) }
+'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
 );
 if (!res.ok) throw new Error('failed');
 var data = await res.json();
