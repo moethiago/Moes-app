@@ -32,7 +32,6 @@ var FOOTBALL_LEAGUES = [
   { key:'nations',    label:'Nations League',   flag:'🌍' },
 ];
 
-var footballCache = {};
 var footballTimer = null;
 
 // ── F1 COUNTDOWN ─────────────────────────────────────────
@@ -113,11 +112,9 @@ function isLive(status) {
   return ['LIVE','1H','2H','HT','ET','P'].indexOf(status) !== -1;
 }
 
-function renderFixtures(fixtures, container) {
-  if (!fixtures || !fixtures.length) {
-    container.innerHTML = '<div class="fxt-empty">No matches today</div>';
-    return;
-  }
+function renderLeagueBlock(league, fixtures) {
+  // only render leagues that have matches
+  if (!fixtures || !fixtures.length) return '';
 
   fixtures.sort(function(a, b) {
     var aLive = isLive(a.status) ? 0 : 1;
@@ -126,7 +123,12 @@ function renderFixtures(fixtures, container) {
     return new Date(a.time) - new Date(b.time);
   });
 
-  var html = '';
+  var html = '<div class="fxt-league-block">'
+    + '<div class="fxt-league-header">'
+    + '<span class="fxt-league-flag">' + league.flag + '</span>'
+    + '<span class="fxt-league-name">' + league.label + '</span>'
+    + '</div>';
+
   fixtures.forEach(function(f) {
     var live     = isLive(f.status);
     var hasScore = f.homeScore !== null && f.awayScore !== null;
@@ -155,66 +157,62 @@ function renderFixtures(fixtures, container) {
       + '</div>';
   });
 
-  container.innerHTML = html;
+  html += '</div>';
+  return html;
 }
 
-async function loadLeagueFixtures(leagueKey) {
-  var container = document.getElementById('football-fixtures');
-  if (!container) return;
-
-  if (footballCache[leagueKey]) {
-    renderFixtures(footballCache[leagueKey], container);
-  } else {
-    container.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Loading...</span></div>';
-  }
-
+async function fetchLeague(leagueKey) {
   try {
     var controller = new AbortController();
     var timer = setTimeout(function() { controller.abort(); }, 8000);
     var res = await fetch(BACKEND_URL + '?league=' + leagueKey, { signal: controller.signal });
     clearTimeout(timer);
-    if (!res.ok) throw new Error('Backend error');
+    if (!res.ok) return { key: leagueKey, fixtures: [] };
     var data = await res.json();
-    if (data.fixtures) {
-      footballCache[leagueKey] = data.fixtures;
-      renderFixtures(data.fixtures, container);
-    }
+    return { key: leagueKey, fixtures: data.fixtures || [] };
   } catch(e) {
-    if (!footballCache[leagueKey]) {
-      container.innerHTML = '<div class="fxt-empty">Could not load fixtures</div>';
-    }
+    return { key: leagueKey, fixtures: [] };
   }
 }
 
-function switchFootballLeague(key, el) {
-  document.querySelectorAll('.fleague-tab').forEach(function(t) { t.classList.remove('active'); });
-  if (el) el.classList.add('active');
-  loadLeagueFixtures(key);
+async function loadAllFootball() {
+  var container = document.getElementById('football-fixtures');
+  if (!container) return;
+
+  container.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Loading fixtures...</span></div>';
+
+  // fetch all leagues in parallel
+  var results = await Promise.all(
+    FOOTBALL_LEAGUES.map(function(l) { return fetchLeague(l.key); })
+  );
+
+  var html = '';
+  var totalMatches = 0;
+
+  FOOTBALL_LEAGUES.forEach(function(league, i) {
+    var fixtures = results[i].fixtures;
+    totalMatches += fixtures.length;
+    html += renderLeagueBlock(league, fixtures);
+  });
+
+  if (totalMatches === 0) {
+    container.innerHTML = '<div class="fxt-empty" style="padding:32px 16px;">No matches today across all leagues</div>';
+    return;
+  }
+
+  container.innerHTML = html;
 }
 
 function buildFootballSection() {
+  // remove tabs container if it exists
   var tabsEl = document.getElementById('football-tabs');
-  if (!tabsEl) return;
-  var html = '';
-  FOOTBALL_LEAGUES.forEach(function(l, i) {
-    html += '<button class="fleague-tab' + (i === 0 ? ' active' : '') + '" '
-      + 'onclick="switchFootballLeague(\'' + l.key + '\',this)">'
-      + l.flag + ' ' + l.label
-      + '</button>';
-  });
-  tabsEl.innerHTML = html;
-  loadLeagueFixtures(FOOTBALL_LEAGUES[0].key);
+  if (tabsEl) tabsEl.style.display = 'none';
 
+  loadAllFootball();
+
+  // auto-refresh every 60s
   if (footballTimer) clearInterval(footballTimer);
-  footballTimer = setInterval(function() {
-    var activeTab = document.querySelector('.fleague-tab.active');
-    if (!activeTab) return;
-    FOOTBALL_LEAGUES.forEach(function(l) {
-      if (activeTab.textContent.indexOf(l.label) !== -1) {
-        loadLeagueFixtures(l.key);
-      }
-    });
-  }, 60000);
+  footballTimer = setInterval(loadAllFootball, 60000);
 }
 
 // ── F1 STANDINGS ─────────────────────────────────────────
