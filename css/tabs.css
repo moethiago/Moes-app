@@ -127,3 +127,11 @@
 .wk-stat-lbl{font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
 .vol-total{padding:10px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--txt-secondary)}
 .vol-total strong{color:var(--txt-primary);font-family:'Rajdhani',sans-serif;font-size:18px}
+
+/* ── STANDINGS TOGGLE ───────────────────────────────────── */
+.standings-toggle{display:flex;gap:4px;background:var(--bg-raised);border-radius:8px;padding:3px;border:1px solid var(--border)}
+.standings-btn{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--txt-muted);cursor:pointer;letter-spacing:0.5px}
+.standings-btn.active{background:var(--f1-red);color:#fff}
+
+/* ── LIVE SESSION PILL ──────────────────────────────────── */
+.session-pill.live-now{border-color:rgba(232,0,45,0.6);background:rgba(232,0,45,0.15);color:var(--f1-red);font-weight:800}
