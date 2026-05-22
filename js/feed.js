@@ -5,7 +5,6 @@ var tickerIndex  = 0;
 var tickerTimer  = null;
 
 function timeAgo(ts) {
-  // ts is unix timestamp in seconds
   var diffMs  = Date.now() - (ts * 1000);
   var diffMin = Math.floor(diffMs / 60000);
   var diffHr  = Math.floor(diffMs / 3600000);
@@ -78,8 +77,11 @@ function renderNewsFeed() {
 
   var source   = parsedStoriesCache.length ? parsedStoriesCache : FALLBACK_NEWS;
   var filtered = currentFilter === 'ALL'
-    ? source
+    ? source.slice()
     : source.filter(function(s) { return s.cat === currentFilter; });
+
+  // always sort newest first
+  filtered.sort(function(a, b) { return b.ts - a.ts; });
 
   var shown = filtered.slice(0, 30);
   if (!shown.length) {
@@ -100,7 +102,7 @@ function loadNewsFeed() {
   renderNewsFeed();
 }
 
-// ── FALLBACK_NEWS - updated automatically by GitHub Action ──
+// ── FALLBACK_NEWS - updated automatically by Vercel ──
 // DO NOT EDIT BELOW THIS LINE
 var FALLBACK_NEWS = [
   {title:'Williams recruits McLaren COO Piers Thynne for leadership role',src:'formula1.com',cat:'F1',link:'https://www.formula1.com/en/latest/article/piers-thynne-joins-williams-from-mclaren-as-chief-optimisation-and-planning-officer-amid-raft-of-senior-recruits.10NtETBHXamqiyhB0FTodE',ts:1779411136},
@@ -111,7 +113,6 @@ var FALLBACK_NEWS = [
   {title:'Aston Villa wins Europa League final',src:'transfermarkt.co.uk',cat:'FOOTBALL',link:'https://www.transfermarkt.co.uk/aston-villa-win-europa-league-emery-joins-most-successful-coaches-with-5th-european-trophy/view/news/479762',ts:1779311428},
   {title:'Bayern Munich set asking price for Alexander Nbel',src:'google.news',cat:'BAYERN',link:'https://news.google.com/rss/articles/CBMihgFBVV95cUxPSDRkVGI1OTVuVG1yU2xzc1d4LTA3VFdqNS1xRjQyVFpxV01ydmxwMGItMzlXT1lZT0gwVS1rc1ZlVnhfdzg5OHJQQ1RJbFByQ3R1b0c0SkNtcWVVTXZuN1kzSmc3OURHSXdOQUwzclZpbTFxdzBxYXBMdXpxVjhSdzFZZVhaZw?oc=5',ts:1779411600},
   {title:'Ronaldo scores twice as Al Nassr clinch Saudi Pro League title',src:'google.news',cat:'SPL',link:'https://news.google.com/rss/articles/CBMirwFBVV95cUxOYjM4d2huMU5NempSMHJoRUtLQ3pCMVY5c0VBRUZUZ2tGaUx2Wi0xV2VHMlZWOU1QWHRHOHR2NmhfWXgyTU10aXY3cTFWRDVoX3NzSndXSlp2d28wZlF1ay1BOW95OGV0aFI3aHJ0VnpLNnNhSEZubklpSThjUXU3bFc3Y1ltQndSWi03X3BhdEcxc21CLWhDNXNxS0REcHZWX0lVRkxTOVo2eS1pM3JR0gG0AUFVX3lxTE5aY2NDR0lrMUhhLThIVU9PMDFBNUpoaFZHbGppeGRfazhpbmppamJ6RjVFRTJRYWxsVkJhMlBGcDBWVGlHMWlmVUpBSjkxQ3ZlUDRRR184c09iRE4tOU0yUGVESUlmQnRNSFlyOERYRU5aZU41MEZzSzIwTE9YZzBUOUhZOTZZTTFoMy1IMXlhLTRhV0diaVFRUzZ2U3QyMXNsS0RmQVhBQkFES1JFYjFIbmxnQw?oc=5',ts:1779398137},
-  {title:'Al Nassr crowned Saudi Pro League champions with Ronaldo in squad',src:'google.news',cat:'SPL',link:'https://news.google.com/rss/articles/CBMi3AFBVV95cUxPMHNIREZ3TWZvTW8tVi1PVlYxRlVoT1RHOWxjNzF2NGloQ0hnM0JhUjlYWmJCVlVmTWxXSlFFUUVwaDd2QWR2enNpNzRkc1o5TmpBeWRiSUd5RmhwdmJ4ZVZtUE5KRGVZdHNRUFpkck1lOFRyVEVpNmd4Q3VwSC1Ed0JlNnlPWWEzNXNqdlNySk1CRlNmWWN1QlFrdDJhaGpZanpKMWVVdnRHLTRXaGtQYndlczU0VFdsUEl5VncwZXBhaFN5cUVUODNzZ1dsSDFCaUZjdGdHN1JFQ2Zn0gHgAUFVX3lxTFB3anNBcDlqUWk3b0JPR3dUdkwzQl9MQ1V4NnZxcXhhc0dXaktPblRuNkpKSF84SzVYcklnN0hSQmZNN2VOR1BBaGRtRTRzZ1cxNmExcVRfcTVXc096c1JiWXBNMlFqQ2FWQVBtYjAwbUFZSE1CMENfd3Bub3l5aF9hRXpQZl9xWGhvdzB4UVVNQkcwVjg2N3RValUxbGVOb0FIZjNsTGFmbW5FT21sNjlWNG50aHNzeW1Lc2JkMk5OTERtazY1RDVHdXVMY2NETzBSV0QwbDRwSXFnSWloRXFr?oc=5',ts:1779394397},
   {title:'OVG Middle East to operate Global Sports Tower in Riyadh',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661488/saudi-arabia/sports-boulevard-appoints-ovg-middle-east-to-operate-global-sports-tower-in-riyadh',ts:1779307095},
   {title:'Saudi non-oil trade surplus with GCC reaches SR4.47 billion in February',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661486/saudi-arabia/saudi-arabias-non-oil-trade-surplus-with-gcc-countries-reaches-sr447-billion-in-february',ts:1779297428},
   {title:'Saudi operating revenue index rises 10.2% in March',src:'saudigazette.com.sa',cat:'KSA',link:'https://saudigazette.com.sa/article/661481/saudi-arabia/gastat-102-rise-in-saudi-operating-revenue-index-in-march',ts:1779287918},
