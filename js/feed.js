@@ -33,13 +33,13 @@ function boldEntities(text) {
   return text;
 }
 
-function makeWireItem(title, ts, link) {
+function makeWireItem(title, displayTs, link) {
   return '<div class="wire-item" onclick="window.open(\'' + link + '\',\'_blank\')">'
     + '<span class="wire-bullet">•</span>'
     + '<div class="wire-content">'
     +   '<p class="wire-headline">' + boldEntities(title) + '</p>'
     +   '<div class="wire-meta">'
-    +     '<span class="wire-time">' + timeAgo(ts) + '</span>'
+    +     '<span class="wire-time">' + timeAgo(displayTs) + '</span>'
     +   '</div>'
     + '</div>'
     + '</div>';
@@ -80,8 +80,12 @@ function renderNewsFeed() {
     ? source.slice()
     : source.filter(function(s) { return s.cat === currentFilter; });
 
-  // always sort newest first
-  filtered.sort(function(a, b) { return b.ts - a.ts; });
+  // always sort newest first by ORIGINAL publish time (pubTs), fallback to ts
+  filtered.sort(function(a, b) {
+    var aT = a.pubTs || a.ts;
+    var bT = b.pubTs || b.ts;
+    return bT - aT;
+  });
 
   var shown = filtered.slice(0, 30);
   if (!shown.length) {
@@ -92,7 +96,7 @@ function renderNewsFeed() {
 
   var html = '';
   shown.forEach(function(s) {
-    html += makeWireItem(s.title, s.ts, s.link);
+    html += makeWireItem(s.title, s.pubTs || s.ts, s.link);
   });
   container.innerHTML = html;
   setTickerContent(shown.map(function(s) { return s.title; }));
