@@ -68,17 +68,6 @@ DUPLICATE RULE: Same data point twice = keep only one.
 Select max 6. Return [] if nothing qualifies.`,
 };
 
-// ── Fuzzy duplicate detection ──────────────────────────
-// Extracts key words from title for semantic similarity check
-function titleKey(title) {
-  return title.toLowerCase()
-    .replace(/[^a-z0-9 ]/g, '')
-    .split(' ')
-    .filter(w => w.length > 3)
-    .sort()
-    .join(' ');
-}
-
 function isSimilar(titleA, titleB) {
   const wordsA = new Set(titleA.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 3));
   const wordsB = new Set(titleB.toLowerCase().replace(/[^a-z0-9 ]/g,'').split(' ').filter(w => w.length > 3));
@@ -86,7 +75,7 @@ function isSimilar(titleA, titleB) {
   let shared = 0;
   wordsA.forEach(w => { if (wordsB.has(w)) shared++; });
   const similarity = shared / Math.min(wordsA.size, wordsB.size);
-  return similarity > 0.6; // 60% word overlap = duplicate
+  return similarity > 0.5;
 }
 
 function extractTags(xml, tag) {
@@ -109,7 +98,7 @@ function extractAttr(xml, tag, attr) {
 
 function parseRSS(xml, cat) {
   const now = Date.now();
-  const maxAge = 48 * 3600 * 1000;
+  const maxAge = 72 * 3600 * 1000;
   const items = extractTags(xml, 'item');
   const entries = items.length ? items : extractTags(xml, 'entry');
   const results = [];
@@ -277,28 +266,24 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const now = Math.floor(Date.now() / 1000);
-  const maxAge = 48 * 3600;
+  const maxAge = 72 * 3600;
   const CATEGORIES = ['F1','FOOTBALL','BAYERN','SPL','KSA'];
 
   try {
-    // Step 1 — get current feed from GitHub
     const { items: existingItems, sha, fullContent } = await getCurrentFeed();
     const existing = existingItems.filter(i => (now - i.ts) < maxAge);
 
-    // Step 2 — fetch all RSS in parallel
-    // seed seenTitles with existing titles to prevent re-fetching same stories
     const seenTitles = new Set(
       existing.map(i => i.title.toLowerCase().replace(/\W+/g,'').slice(0,50))
     );
     const rssResults = await Promise.all(RSS_SOURCES.map(src => fetchRSS(src, seenTitles)));
     const newItems = rssResults.flat();
 
-    // Step 3 — fuzzy dedup against existing feed
+    // fuzzy dedup against existing — blocks similar stories from re-entering
     const trulyNew = newItems.filter(newItem => {
-      return !existing.some(ex => isSimilar(newItem.title, ex.title));
+      return !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title));
     });
 
-    // Step 4 — basic exact dedup within new items
     const seenKeys = new Set();
     const uniqueNew = trulyNew.filter(item => {
       const key = item.title.toLowerCase().replace(/\W+/g,'').slice(0,60);
@@ -307,7 +292,6 @@ export default async function handler(req, res) {
       return true;
     });
 
-    // Step 5 — Claude editorial review per category
     const approved = [];
     for (const cat of CATEGORIES) {
       const catItems = uniqueNew
@@ -322,27 +306,27 @@ export default async function handler(req, res) {
       }
     }
 
-    // Step 6 — merge existing + approved, sort newest first per category, top 6
     const all = [...existing, ...approved];
 
-    // final fuzzy dedup on merged list
+    // final fuzzy dedup on merged list per category
     const finalDeduped = [];
     for (const item of all) {
-      const isDup = finalDeduped.some(kept => isSimilar(item.title, kept.title) && kept.cat === item.cat);
+      const isDup = finalDeduped.some(kept =>
+        kept.cat === item.cat && isSimilar(item.title, kept.title)
+      );
       if (!isDup) finalDeduped.push(item);
     }
 
-    // sort each category newest first, take top 6
+    // sort newest first per category, top 6
     const final = [];
     for (const cat of CATEGORIES) {
       const catItems = finalDeduped
         .filter(i => i.cat === cat)
-        .sort((a,b) => b.ts - a.ts) // newest first
+        .sort((a,b) => b.ts - a.ts)
         .slice(0, 6);
       final.push(...catItems);
     }
 
-    // Step 7 — write back to GitHub
     if (sha && fullContent) {
       await writeFeed(final, fullContent, sha);
     }
