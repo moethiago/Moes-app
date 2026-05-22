@@ -1,0 +1,7 @@
+{
+  "name": "moes-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "xml2js": "^0.6.2"
+  }
+}
