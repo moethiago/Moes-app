@@ -295,22 +295,22 @@ return ‘<span class="session-pill' + cls + '" title="' + timeStr + ' AST">’
 }).join(’’);
 }
 
+// render weekend card once at startup
+var raceWeekendOnce = getCurrentRaceWeekend();
+if (weekendEl) {
+if (raceWeekendOnce) {
+renderWeekendCard(raceWeekendOnce, weekendEl);
+weekendEl.style.display = ‘block’;
+} else {
+weekendEl.style.display = ‘none’;
+}
+}
+
 function tick() {
 var live = getCurrentSession();
 var next = live || getNextRaceAndSession();
-var raceWeekend = getCurrentRaceWeekend();
 
 ```
-// race weekend full schedule card
-if (weekendEl) {
-  if (raceWeekend) {
-    renderWeekendCard(raceWeekend, weekendEl);
-    weekendEl.style.display = 'block';
-  } else {
-    weekendEl.style.display = 'none';
-  }
-}
-
 if (!next) {
   if (trackEl) trackEl.textContent = '2026 Season Complete';
   if (sessEl)  sessEl.textContent  = 'See you in 2027';
