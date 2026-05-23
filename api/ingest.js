@@ -5,7 +5,7 @@
 
 import { TRUSTED_SOURCES, CATEGORIES, assignCategory } from './lib/sources.js';
 import { fetchSource, storyId } from './lib/ingest-core.js';
-import { kvReady, kvGet, kvSet, call } from './lib/kv.js';
+import { kvReady, kvGet, kvSet } from './lib/kv.js';
 
 const INGEST_MAX_AGE_H = 18;
 const STORY_TTL        = 48 * 3600; // 48h TTL on each story
