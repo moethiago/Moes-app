@@ -166,3 +166,139 @@
 /* ── WORLD CUP ──────────────────────────────────────────── */
 .wc-section-label{padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
 .wc-group-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt-muted)}
+
+/* ── F1 SESSION RESULTS ──────────────────────────────── */
+.f1-sess-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--txt-muted);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.f1-sess-count { color: var(--txt-muted); font-weight: 400; }
+.f1-sess-list { padding: 4px 0; }
+.f1-sess-row {
+  display: grid;
+  grid-template-columns: 28px 32px 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px;
+}
+.f1-sess-row:last-child { border-bottom: none; }
+.f1-sess-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.f1-sess-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--txt-muted);
+  white-space: nowrap;
+}
+.f1-sess-gap {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--txt-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.f1-sess-gap.pole { color: #ff3366; font-weight: 700; }
+.f1-sess-pts {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #00ff88;
+}
+.f1-session-empty {
+  padding: 20px 14px;
+  font-size: 13px;
+  color: var(--txt-muted);
+  text-align: center;
+}
+.fl-badge {
+  display: inline-block;
+  background: #a855f7;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ── F1 RACE GRID (visual two-column) ────────────────── */
+.f1-grid-header {
+  padding: 10px 14px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--txt-muted);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.f1-grid-container { padding: 6px 10px 10px; }
+.f1-grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.f1-grid-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 44px;
+}
+.f1-grid-slot.top3 { background: rgba(255,255,255,0.07); }
+.f1-grid-slot.empty { background: transparent; }
+.f1-grid-pos {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt-muted);
+  min-width: 18px;
+  text-align: center;
+}
+.f1-grid-slot.top3 .f1-grid-pos { color: var(--txt-primary); }
+.f1-grid-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.f1-grid-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.f1-grid-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--txt-muted);
+}
+.f1-grid-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+}
