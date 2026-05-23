@@ -97,8 +97,20 @@
   <!-- LIVE TIMING (shown during live sessions via OpenF1) -->
   <div id="f1-live-timing" style="padding:0 14px 6px;"></div>
 
-  <!-- LAST RACE PODIUM -->
-  <div id="f1-last-race" style="padding:0 14px 6px;"></div>
+  <!-- LAST SESSION RESULTS -->
+  <div style="padding:0 14px 6px;">
+    <div class="card" id="f1-session-results" style="padding:0;overflow:hidden;min-height:48px;">
+      <div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading session results...</span></div>
+    </div>
+  </div>
+
+  <!-- NEXT GRID (shown after qualifying) -->
+  <div id="f1-next-grid" style="padding:0 14px 6px;display:none;">
+    <div class="card" style="padding:0;overflow:hidden;"></div>
+  </div>
+
+  <!-- LAST RACE PODIUM (legacy small podium, hidden now) -->
+  <div id="f1-last-race" style="display:none;"></div>
 
   <!-- F1 STANDINGS -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
@@ -224,11 +236,12 @@
 
 <div id="toast"></div>
 <!-- F1 -->
-<script src="js/f1/f1-data.js?v=1779486556"></script>
-<script src="js/f1/f1-weekend.js?v=1779486556"></script>
-<script src="js/f1/f1-livetiming.js?v=1779486556"></script>
-<script src="js/f1/f1-timing.js?v=1779486556"></script>
-<script src="js/f1/f1-standings.js?v=1779486556"></script>
+<script src="js/f1/f1-data.js?v=1779547126"></script>
+<script src="js/f1/f1-weekend.js?v=1779547126"></script>
+<script src="js/f1/f1-livetiming.js?v=1779547126"></script>
+<script src="js/f1/f1-timing.js?v=1779547126"></script>
+<script src="js/f1/f1-standings.js?v=1779547126"></script>
+<script src="js/f1/f1-session.js?v=1779547126"></script>
 <!-- Football -->
 <script src="js/football/football-config.js?v=1779486556"></script>
 <script src="js/football/football-render.js?v=1779486556"></script>
