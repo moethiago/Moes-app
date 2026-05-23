@@ -1,13 +1,14 @@
 // ============================================================
-// api/ingest.js — pulls trusted RSS, writes new stories to KV.
-// NO Claude calls. Cheap. Safe to run every 30 minutes.
+// api/ingest.js — pulls trusted RSS, writes new stories to KV
+// NO Claude calls. Safe to run every 30 minutes.
 // ============================================================
 
 import { TRUSTED_SOURCES, CATEGORIES, assignCategory } from './lib/sources.js';
 import { fetchSource, storyId } from './lib/ingest-core.js';
-import { kvReady, kvPipeline, lpush, ltrim } from './lib/kv.js';
+import { kvReady, kvGet, kvSet, call } from './lib/kv.js';
 
 const INGEST_MAX_AGE_H = 18;
+const STORY_TTL        = 48 * 3600; // 48h TTL on each story
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,6 +21,10 @@ export default async function handler(req, res) {
     const allItems = (
       await Promise.all(TRUSTED_SOURCES.map(s => fetchSource(s, INGEST_MAX_AGE_H)))
     ).flat();
+
+    if (!allItems.length) {
+      return res.status(200).json({ ok: true, phase: 'ingest', ingested: 0, candidates: 0 });
+    }
 
     // 2. Re-categorise (e.g. bundesliga story about Bayern -> BAYERN)
     const categorised = allItems
@@ -37,72 +42,108 @@ export default async function handler(req, res) {
     }
     const batch = Array.from(seen.values());
 
-    // 4. Check which IDs are already in KV (single pipeline)
-    const existsResults = await kvPipeline(batch.map(it => ['EXISTS', 'story:' + it.id]));
-    const trulyNew = batch.filter((_, i) => existsResults[i] === 0);
+    console.log('Total candidates after dedup:', batch.length);
 
-    if (!trulyNew.length) {
-      await logRun({ phase: 'ingest', ingested: 0, candidates: allItems.length, durationMs: Date.now() - started });
-      return res.status(200).json({ ok: true, phase: 'ingest', ingested: 0, candidates: allItems.length });
-    }
-
-    // 5. Write new stories + index by category (one pipeline call)
+    // 4. Check each story individually — is it already in KV?
     const now = Math.floor(Date.now() / 1000);
-    const writes = [];
-    for (const it of trulyNew) {
+    let ingested = 0;
+    const ingestedPerCat = {};
+
+    for (const it of batch) {
+      const key = 'story:' + it.id;
+      const existing = await kvGet(key);
+
+      if (existing !== null) {
+        // Already in KV — skip
+        continue;
+      }
+
+      // New story — write it
       const storyObj = {
-        id: it.id,
-        title: it.title,
-        url: it.url,
-        sourceUrl: it.sourceUrl,
-        cat: it.cat,
+        id:          it.id,
+        title:       it.title,
+        url:         it.url,
+        sourceUrl:   it.sourceUrl,
+        cat:         it.cat,
         publishedAt: it.publishedAt,
         firstSeenAt: now,
-        score: null,        // unscored
-        rewritten: null,    // will be set by score worker
+        score:       null,    // unscored
+        rewritten:   null,
       };
-      writes.push(['SET', 'story:' + it.id, JSON.stringify(storyObj), 'EX', String(48 * 3600)]);
-      // sorted set by publishedAt for "latest" queries
-      writes.push(['ZADD', 'cat:' + it.cat, String(it.publishedAt), it.id]);
-      // queue for scoring
-      writes.push(['SADD', 'unscored:' + it.cat, it.id]);
+
+      // Write the story
+      await kvSet(key, storyObj, STORY_TTL);
+
+      // Add to category sorted set (score = publishedAt for time ordering)
+      await kvCall(['ZADD', 'cat:' + it.cat, String(it.publishedAt), it.id]);
+
+      // Add to unscored set for the score worker
+      await kvCall(['SADD', 'unscored:' + it.cat, it.id]);
+
+      ingested++;
+      ingestedPerCat[it.cat] = (ingestedPerCat[it.cat] || 0) + 1;
     }
-    // Trim sorted sets to recent only (keep 50 per cat, expire score < 24h ago)
+
+    // 5. Trim old stories from sorted sets (older than 24h)
     const cutoff = now - 24 * 3600;
     for (const cat of CATEGORIES) {
-      writes.push(['ZREMRANGEBYSCORE', 'cat:' + cat, '-inf', String(cutoff)]);
+      await kvCall(['ZREMRANGEBYSCORE', 'cat:' + cat, '-inf', String(cutoff)]);
     }
-    await kvPipeline(writes);
 
-    const ingestedPerCat = {};
-    trulyNew.forEach(it => { ingestedPerCat[it.cat] = (ingestedPerCat[it.cat] || 0) + 1; });
-
+    // 6. Log the run
     await logRun({
-      phase: 'ingest',
-      ingested: trulyNew.length,
-      candidates: allItems.length,
-      perCat: ingestedPerCat,
+      phase:      'ingest',
+      ingested,
+      candidates: batch.length,
+      perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
     });
 
     return res.status(200).json({
-      ok: true,
-      phase: 'ingest',
-      ingested: trulyNew.length,
-      candidates: allItems.length,
-      perCat: ingestedPerCat,
+      ok:         true,
+      phase:      'ingest',
+      ingested,
+      candidates: batch.length,
+      perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
     });
+
   } catch (e) {
-    console.error('ingest error:', e.message);
+    console.error('ingest error:', e.message, e.stack);
     return res.status(500).json({ error: e.message });
   }
 }
 
+// Direct KV call (bypasses the pipeline wrapper)
+async function kvCall(command) {
+  const URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+  const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!URL || !TOKEN) throw new Error('KV not configured');
+  const res = await fetch(URL, {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body:    JSON.stringify(command),
+  });
+  if (!res.ok) throw new Error('KV error ' + res.status);
+  const data = await res.json();
+  return data.result;
+}
+
 async function logRun(entry) {
   try {
+    const URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+    const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!URL || !TOKEN) return;
     entry.ts = Math.floor(Date.now() / 1000);
-    await lpush('runs', entry);
-    await ltrim('runs', 0, 99);   // keep last 100
+    await fetch(URL, {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(['LPUSH', 'runs', JSON.stringify(entry)]),
+    });
+    await fetch(URL, {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(['LTRIM', 'runs', '0', '99']),
+    });
   } catch (e) {}
 }
