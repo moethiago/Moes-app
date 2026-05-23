@@ -98,31 +98,38 @@ async function fetchSessionResults(sess, weekend) {
 }
 
 async function getSessionKey(weekend, sess) {
-  // Match by session name against OpenF1 sessions for the current year
+  // Match by date proximity ONLY — OpenF1 session names vary and cannot be trusted
+  // e.g. "Sprint Qualifying" may be stored as "Sprint Shootout" or "Qualifying"
   var cacheKey = 'sesskey:' + weekend.round + ':' + sess.name;
   if (sessionCache[cacheKey] && sessionCache[cacheKey].data) return sessionCache[cacheKey].data;
 
   var sessions = await openf1('/sessions?year=2026', 10000);
   if (!sessions || !sessions.length) return null;
 
-  // Find the matching session by name and date proximity
   var sessStart = Date.parse(sess.time);
-  var match = sessions.find(function(s) {
-    var openf1Name = s.session_name || '';
+  var TOLERANCE = 12 * 3600 * 1000; // 12 hours — same day match
+
+  // Find the OpenF1 session whose start date is closest to our calendar time
+  var best = null;
+  var bestDiff = Infinity;
+  sessions.forEach(function(s) {
+    if (!s.date_start) return;
     var sDate = new Date(s.date_start).getTime();
-    var nameMatch = openf1Name.toLowerCase().includes(sess.name.toLowerCase()) ||
-                    sess.name.toLowerCase().includes(openf1Name.toLowerCase());
-    var dateClose = Math.abs(sDate - sessStart) < 24 * 3600 * 1000;
-    return nameMatch && dateClose;
+    var diff  = Math.abs(sDate - sessStart);
+    if (diff < TOLERANCE && diff < bestDiff) {
+      best     = s;
+      bestDiff = diff;
+    }
   });
 
-  if (!match) {
-    // Fallback: just use the most recent session
-    match = sessions[sessions.length - 1];
+  if (!best) {
+    console.warn('getSessionKey: no match for', sess.name, 'at', sess.time);
+    return null;
   }
 
-  sessionCache[cacheKey] = { data: match.session_key };
-  return match.session_key;
+  console.log('getSessionKey: matched', sess.name, '->', best.session_name, 'key:', best.session_key);
+  sessionCache[cacheKey] = { data: best.session_key };
+  return best.session_key;
 }
 
 // ── PRACTICE RESULTS ─────────────────────────────────────────────────────────
