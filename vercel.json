@@ -1,8 +1,23 @@
 {
   "functions": {
-    "api/news.js": {
+    "api/ingest.js": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "api/lib/**"
+    },
+    "api/score.js": {
       "memory": 1024,
       "maxDuration": 60,
+      "includeFiles": "api/lib/**"
+    },
+    "api/feed.js": {
+      "memory": 256,
+      "maxDuration": 10,
+      "includeFiles": "api/lib/**"
+    },
+    "api/stats.js": {
+      "memory": 256,
+      "maxDuration": 10,
       "includeFiles": "api/lib/**"
     },
     "api/football.js": {
