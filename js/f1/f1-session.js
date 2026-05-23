@@ -332,16 +332,15 @@ async function loadLastRaceFullResults() {
   }
 }
 
-// ── GRID DISPLAY (official FIA starting grid from OpenF1) ────────────────────
-// Uses /starting_grid endpoint which reflects official positions AFTER
-// FIA confirmation — including penalties, pit lane starts, disqualifications.
-// Only available after FIA releases the grid (usually 1-3h after qualifying).
+// ── GRID DISPLAY (derived from qualifying lap times) ─────────────────────────
+// Uses qualifying session laps to determine grid order.
+// Position number = finishing position in qualifying (index + 1).
 
 async function fetchGrid(sess, label) {
   var el = document.getElementById('f1-next-grid');
   if (!el) return;
   el.style.display = 'block';
-  el.innerHTML = '<div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading official ' + label + '...</span></div>';
+  el.innerHTML = '<div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading ' + label + '...</span></div>';
 
   try {
     var weekend = getCurrentRaceWeekend();
@@ -350,65 +349,49 @@ async function fetchGrid(sess, label) {
     var sessKey = await getSessionKey(weekend, sess);
     if (!sessKey) { hideGrid(); return; }
 
-    // Fetch official grid + driver info in parallel
     var results = await Promise.all([
-      openf1('/starting_grid?session_key=' + sessKey, 10000),
+      openf1('/laps?session_key=' + sessKey + '&is_pit_out_lap=false', 10000),
       openf1('/drivers?session_key=' + sessKey, 8000),
     ]);
 
-    var grid    = results[0];
+    var laps    = results[0];
     var drivers = results[1];
 
-    // Grid not released yet — FIA hasn't confirmed positions
-    if (!grid || !grid.length) {
-      var wrapper = document.getElementById('f1-next-grid');
-      if (wrapper) {
-        wrapper.style.display = 'block';
-        wrapper.innerHTML = '<div class="card" style="padding:14px;text-align:center;">'
-          + '<div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">' + label + '</div>'
-          + '<div style="font-size:13px;color:#aaa;">Official grid not yet published</div>'
-          + '<div style="font-size:11px;color:#666;margin-top:4px;">FIA releases grid 1-3h after qualifying ends</div>'
-          + '</div>';
-      }
-      return;
-    }
+    if (!laps || !drivers) { hideGrid(); return; }
 
     var driverMap = {};
-    if (drivers) {
-      drivers.forEach(function(d) { driverMap[d.driver_number] = d; });
-    }
+    drivers.forEach(function(d) { driverMap[d.driver_number] = d; });
 
-    // Sort by grid position (official FIA order)
-    var sorted = grid.slice().sort(function(a, b) {
-      return (a.grid_position || 99) - (b.grid_position || 99);
+    var bestLaps = {};
+    laps.forEach(function(l) {
+      var n = l.driver_number;
+      if (!l.lap_duration || l.lap_duration <= 0) return;
+      if (!bestLaps[n] || l.lap_duration < bestLaps[n].lap_duration) bestLaps[n] = l;
     });
-    // Assign fallback positions for any null grid_position entries
-    sorted.forEach(function(entry, i) {
-      if (!entry.grid_position) entry.grid_position = i + 1;
+
+    var sorted = Object.values(bestLaps).sort(function(a, b) {
+      return a.lap_duration - b.lap_duration;
     });
+
+    if (!sorted.length) { hideGrid(); return; }
 
     renderGridGraphic(el, sorted, driverMap, label);
 
   } catch (e) {
-    var wrapper = document.getElementById('f1-next-grid');
-    if (wrapper) {
-      wrapper.innerHTML = '<div class="card" style="padding:14px;text-align:center;color:#888;font-size:13px;">Could not load ' + label + '</div>';
-    }
+    hideGrid();
   }
 }
 
 function renderGridGraphic(el, sorted, driverMap, label) {
   var html = '<div class="f1-grid-header">' + label + '</div>';
-  html += '<div class="f1-grid-note">Official FIA grid</div>';
   html += '<div class="f1-grid-container">';
 
-  // Real F1 grid: P1 front-left, P2 front-right, P3 back-left, P4 back-right
   for (var i = 0; i < sorted.length; i += 2) {
     var left  = sorted[i];
     var right = sorted[i + 1];
     html += '<div class="f1-grid-row">';
-    html += renderGridSlot(left, driverMap, 'left');
-    html += right ? renderGridSlot(right, driverMap, 'right') : '<div class="f1-grid-slot empty"></div>';
+    html += renderGridSlot(left, i + 1, driverMap, 'left');
+    html += right ? renderGridSlot(right, i + 2, driverMap, 'right') : '<div class="f1-grid-slot empty"></div>';
     html += '</div>';
   }
 
@@ -416,22 +399,16 @@ function renderGridGraphic(el, sorted, driverMap, label) {
   el.innerHTML = html;
 }
 
-function renderGridSlot(entry, driverMap, side) {
-  // entry from /starting_grid: { grid_position, driver_number, ... }
-  var pos  = entry.grid_position;
-  var num  = entry.driver_number;
+function renderGridSlot(lapData, pos, driverMap, side) {
+  var num  = lapData.driver_number;
   var drv  = driverMap[num] || {};
   var name = drv.last_name || ('Car ' + num);
   var team = (drv.team_name || '').toLowerCase().replace(/\s+/g,'_').replace(/-/g,'_');
   var col  = TEAM_COLORS[team] || '#8a8fa8';
   var pc   = pos <= 3 ? 'top3' : '';
 
-  // Flag any penalty-related position changes with a marker
-  // OpenF1 may include a note when position differs from qualifying
-  var penaltyNote = entry.grid_penalty ? '<span class="f1-grid-penalty">P</span>' : '';
-
   return '<div class="f1-grid-slot ' + side + ' ' + pc + '" style="border-left:3px solid ' + col + '">'
-    + '<span class="f1-grid-pos">' + pos + penaltyNote + '</span>'
+    + '<span class="f1-grid-pos">' + pos + '</span>'
     + '<div class="f1-grid-info">'
     + '<span class="f1-grid-name">' + name + '</span>'
     + '<span class="f1-grid-team">' + (drv.team_name || '') + '</span>'
