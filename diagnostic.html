@@ -261,9 +261,7 @@ function runAll() {
   .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
     ['loadWorldCup', 'renderWCSection']); })
   .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
-    ['renderNewsFeed', 'loadNewsFeed']); })
-  .then(function() { return checkFile('feed-data.js',       '/js/feed/feed-data.js',
-    ['FALLBACK_NEWS']); })
+    ['renderNewsFeed', 'loadNewsFeed', 'FEED_URL']); })
   .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
     ['TARGETS', 'loadFoodLog']); })
   .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
@@ -273,71 +271,41 @@ function runAll() {
   .then(function() { return checkFile('index.html',         '/index.html',
     ['f1/f1-data.js', 'feed/feed-render.js', 'football/worldcup.js']); })
 
-  // FEED CONTENT
+  // FEED CONTENT (via /api/feed)
   .then(function() {
-    return fetchWithTimeout(bust(REPO_BASE + '/js/feed/feed-data.js'), 8000).then(function(res) {
-      if (!res.ok) return;
-      var text = res.text;
-      var startMarker = 'var FALLBACK_NEWS = [';
-      var startIdx = text.indexOf(startMarker);
-      if (startIdx === -1) {
-        record('Feed content', 'fail', 'FALLBACK_NEWS array not found in feed.js', null,
-          'news.js pipeline may have corrupted feed.js. Restore from backup.');
+    return fetchJSON(VERCEL + '/api/feed', 12000).then(function(res) {
+      if (!res.ok) {
+        record('Feed content (API)', 'fail', res.error || 'unreachable', null, 'Check Vercel deployment of /api/feed.');
         return;
       }
-      var endIdx = text.indexOf('];', startIdx);
-      var block  = text.slice(startIdx, endIdx);
-      var itemMatches = block.match(/\{title:'/g) || [];
-      var tsMatches   = block.match(/ts:(\d+)/g) || [];
-
-      var ages = tsMatches.map(function(m) {
-        var ts = parseInt(m.replace('ts:', ''));
-        return (Date.now() / 1000 - ts) / 3600;
-      });
-      var youngest = ages.length ? Math.min.apply(null, ages) : Infinity;
-      var oldest   = ages.length ? Math.max.apply(null, ages) : 0;
-      var avg      = ages.length ? ages.reduce(function(a,b){return a+b;}, 0) / ages.length : 0;
-
-      if (itemMatches.length === 0) {
-        record('Feed content', 'fail', 'FALLBACK_NEWS is empty', null,
-          'No stories - pipeline never wrote anything successfully.');
+      var stories = (res.data && res.data.stories) || [];
+      if (!stories.length) {
+        record('Feed content (API)', 'warn', '0 stories returned from /api/feed', null,
+          'Pipeline has not approved any stories yet. Trigger /api/ingest then /api/score below.');
         return;
       }
-
-      var detail = 'Youngest: ' + youngest.toFixed(1) + 'h | Oldest: ' + oldest.toFixed(1) + 'h | Avg: ' + avg.toFixed(1) + 'h';
+      var now = Math.floor(Date.now() / 1000);
+      var ages = stories.map(function(s) { return (now - (s.pubTs || 0)) / 3600; });
+      var youngest = Math.min.apply(null, ages);
+      var oldest   = Math.max.apply(null, ages);
+      var detail = 'Youngest: ' + youngest.toFixed(1) + 'h | Oldest: ' + oldest.toFixed(1) + 'h | Per cat: ' + JSON.stringify(res.data.perCat);
       if (youngest > 6) {
-        record('Feed content', 'warn',
-          itemMatches.length + ' stories - but FRESHEST is ' + youngest.toFixed(1) + 'h old',
-          detail,
-          'Pipeline has not pushed fresh news in over 6 hours. Check cron-job.org is still pinging /api/news.');
-      } else if (oldest > 48) {
-        record('Feed content', 'warn',
-          itemMatches.length + ' stories - but OLDEST is ' + oldest.toFixed(1) + 'h (stale)',
-          detail,
-          'Old stories accumulate. Consider shorter retention window in news.js.');
+        record('Feed content (API)', 'warn', stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h old', detail, 'Pipeline may not be running. Check cron-job.org.');
       } else {
-        record('Feed content', 'pass',
-          itemMatches.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago',
-          detail, null);
+        record('Feed content (API)', 'pass', stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago', detail, null);
       }
-
-      // duplicate detection
-      var titles = block.match(/title:'([^']+)'/g) || [];
-      var titleMap = {};
-      var dupes = 0;
-      titles.forEach(function(t) {
-        var key = t.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 40);
-        titleMap[key] = (titleMap[key] || 0) + 1;
-        if (titleMap[key] === 2) dupes++;
-      });
-      if (dupes > 0) {
-        record('Feed deduplication', 'warn',
-          dupes + ' near-duplicate story title(s) detected',
-          null,
-          'Strengthen isSimilar() threshold in news.js or extend title-key length.');
-      } else {
-        record('Feed deduplication', 'pass', 'No obvious duplicates in current feed', null, null);
+    });
+  })
+  .then(function() {
+    return fetchJSON(VERCEL + '/api/stats', 8000).then(function(res) {
+      if (!res.ok) {
+        record('Pipeline stats', 'warn', res.error || 'unreachable', null, null);
+        return;
       }
+      var s = res.data.summary || {};
+      record('Pipeline stats', 'pass',
+        '$' + (s.cost24h || 0).toFixed(4) + ' / 24h | ' + (s.ingest24h || 0) + ' ingested | ' + (s.approved24h || 0) + ' approved',
+        'Per cat: ' + JSON.stringify(s.catCounts || {}), null);
     });
   })
 
@@ -511,18 +479,31 @@ function showVerdict() {
 // ==================================================================
 document.getElementById('trigger-btn').addEventListener('click', function() {
   var btn = this;
-  btn.textContent = 'Calling /api/news (may take 30-60s)...';
+  btn.textContent = 'Calling /api/ingest...';
   btn.disabled = true;
-  fetchWithTimeout(VERCEL + '/api/news', 90000).then(function(res) {
+  fetchWithTimeout(VERCEL + '/api/ingest', 60000).then(function(res) {
     btn.disabled = false;
-    btn.textContent = 'Trigger /api/news Now';
+    btn.textContent = 'Trigger Ingest + Score Now';
     if (!res.ok) {
       alert('FAIL: ' + (res.error || 'HTTP ' + res.status));
       return;
     }
     try {
       var d = JSON.parse(res.text);
-      if (d.ok) alert('SUCCESS: ' + d.stories + ' stories written.\n\nReload the diagnostic to see freshness updated.');
+      if (d.ok) {
+        // Chain: after ingest, run score
+        btn.textContent = 'Scoring...';
+        btn.disabled = true;
+        fetchWithTimeout(VERCEL + '/api/score', 90000).then(function(r2) {
+          btn.disabled = false;
+          btn.textContent = 'Trigger Ingest + Score Now';
+          if (!r2.ok) { alert('Ingest OK (' + d.ingested + ' new), but score FAILED: ' + (r2.error || 'unknown')); return; }
+          try {
+            var d2 = JSON.parse(r2.text);
+            alert('Ingest: ' + d.ingested + ' new\nScore: ' + d2.approved + ' approved\nCost: $' + (d2.cost || 0).toFixed(4) + '\n\nReload diagnostic.');
+          } catch(e) { alert('Score response not JSON'); }
+        });
+      } else alert('Ingest ERROR: ' + (d.error || 'unknown'));
       else      alert('ERROR returned: ' + (d.error || 'unknown'));
     } catch (e) {
       alert('Got response but it was not JSON: ' + res.text.slice(0, 200));
