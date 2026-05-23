@@ -80,7 +80,7 @@ function renderLiveTiming(data) {
   if (maxLap) html += '<span class="f1-lt-lap">Lap ' + maxLap + '</span>';
   html += '</div><div class="f1-lt-list">';
 
-  sorted.slice(0, 20).forEach(function(p) {
+  sorted.slice(0, 22).forEach(function(p) {
     var num    = p.driver_number;
     var driver = driverMap[num] || {};
     var name   = driver.last_name || ('Car ' + num);

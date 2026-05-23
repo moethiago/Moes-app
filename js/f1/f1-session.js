@@ -375,6 +375,10 @@ async function fetchGrid(sess, label) {
     var sorted = grid.slice().sort(function(a, b) {
       return (a.grid_position || 99) - (b.grid_position || 99);
     });
+    // Assign fallback positions for any null grid_position entries
+    sorted.forEach(function(entry, i) {
+      if (!entry.grid_position) entry.grid_position = i + 1;
+    });
 
     renderGridGraphic(el, sorted, driverMap, label);
 
@@ -407,7 +411,7 @@ function renderGridGraphic(el, sorted, driverMap, label) {
 
 function renderGridSlot(entry, driverMap, side) {
   // entry from /starting_grid: { grid_position, driver_number, ... }
-  var pos  = entry.grid_position || '?';
+  var pos  = entry.grid_position;
   var num  = entry.driver_number;
   var drv  = driverMap[num] || {};
   var name = drv.last_name || ('Car ' + num);
