@@ -244,20 +244,38 @@ function runAll() {
   var chain = Promise.resolve()
 
   // FILE INTEGRITY
-  .then(function() { return checkFile('sports.js integrity', '/js/sports.js',
-    ['F1_CALENDAR', 'startCountdown', 'loadF1Data', 'loadFootballScores']); })
-  .then(function() { return checkFile('feed.js integrity',   '/js/feed.js',
-    ['renderNewsFeed', 'loadNewsFeed', 'FALLBACK_NEWS']); })
-  .then(function() { return checkFile('health.js integrity', '/js/health.js',
+  .then(function() { return checkFile('f1-data.js',         '/js/f1/f1-data.js',
+    ['F1_CALENDAR', 'SESSION_DURATION', 'TEAM_COLORS']); })
+  .then(function() { return checkFile('f1-timing.js',       '/js/f1/f1-timing.js',
+    ['startCountdown', 'getCurrentSession', 'getNextRaceAndSession']); })
+  .then(function() { return checkFile('f1-livetiming.js',   '/js/f1/f1-livetiming.js',
+    ['fetchOpenF1Live', 'renderLiveTiming', 'startLiveTiming']); })
+  .then(function() { return checkFile('f1-standings.js',    '/js/f1/f1-standings.js',
+    ['renderDriverStandings', 'loadF1Data']); })
+  .then(function() { return checkFile('f1-weekend.js',      '/js/f1/f1-weekend.js',
+    ['renderWeekendCard', 'loadLastRaceResult']); })
+  .then(function() { return checkFile('football-config.js', '/js/football/football-config.js',
+    ['FOOTBALL_LEAGUES', 'BACKEND_URL']); })
+  .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',
+    ['buildFootballSection', 'loadAllFootball']); })
+  .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
+    ['loadWorldCup', 'renderWCSection']); })
+  .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
+    ['renderNewsFeed', 'loadNewsFeed']); })
+  .then(function() { return checkFile('feed-data.js',       '/js/feed/feed-data.js',
+    ['FALLBACK_NEWS']); })
+  .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
+    ['TARGETS', 'loadFoodLog']); })
+  .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
     ['renderFood', 'renderSets']); })
-  .then(function() { return checkFile('core.js integrity',   '/js/core.js',
+  .then(function() { return checkFile('core.js',            '/js/core.js',
     ['switchTab', 'startClock']); })
-  .then(function() { return checkFile('index.html exists',   '/index.html',
-    ['Moe', 'panel-feed', 'panel-sports', 'panel-health']); })
+  .then(function() { return checkFile('index.html',         '/index.html',
+    ['f1/f1-data.js', 'feed/feed-render.js', 'football/worldcup.js']); })
 
   // FEED CONTENT
   .then(function() {
-    return fetchWithTimeout(bust(REPO_BASE + '/js/feed.js'), 8000).then(function(res) {
+    return fetchWithTimeout(bust(REPO_BASE + '/js/feed/feed-data.js'), 8000).then(function(res) {
       if (!res.ok) return;
       var text = res.text;
       var startMarker = 'var FALLBACK_NEWS = [';
