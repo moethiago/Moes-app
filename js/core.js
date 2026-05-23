@@ -45,5 +45,6 @@ function switchTab(tab) {
     try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
     try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
     try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) {}
+    try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('sports:session', e); }
   }
 }
