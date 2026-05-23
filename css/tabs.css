@@ -302,3 +302,31 @@
   font-weight: 700;
   opacity: 0.8;
 }
+
+.f1-grid-note {
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+  padding: 0 0 8px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.f1-grid-team {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.f1-grid-penalty {
+  display: inline-block;
+  background: #ff8800;
+  color: #000;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin-left: 3px;
+  vertical-align: middle;
+}
