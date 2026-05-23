@@ -261,7 +261,9 @@ function runAll() {
   .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
     ['loadWorldCup', 'renderWCSection']); })
   .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
-    ['renderNewsFeed', 'loadNewsFeed', 'FEED_URL']); })
+    ['renderNewsFeed', 'loadNewsFeed']); })
+  .then(function() { return checkFile('feed-data.js',       '/js/feed/feed-data.js',
+    ['FALLBACK_NEWS']); })
   .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
     ['TARGETS', 'loadFoodLog']); })
   .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
@@ -271,29 +273,30 @@ function runAll() {
   .then(function() { return checkFile('index.html',         '/index.html',
     ['f1/f1-data.js', 'feed/feed-render.js', 'football/worldcup.js']); })
 
-  // FEED CONTENT (via /api/feed)
+  // FEED CONTENT + PIPELINE STATS
   .then(function() {
     return fetchJSON(VERCEL + '/api/feed', 12000).then(function(res) {
       if (!res.ok) {
-        record('Feed content (API)', 'fail', res.error || 'unreachable', null, 'Check Vercel deployment of /api/feed.');
+        record('Feed API (/api/feed)', 'fail', res.error || 'HTTP ' + res.status, null,
+          'Check Vercel deployment. Open ' + VERCEL + '/api/feed in Safari.');
         return;
       }
       var stories = (res.data && res.data.stories) || [];
+      var perCat  = (res.data && res.data.perCat)  || {};
       if (!stories.length) {
-        record('Feed content (API)', 'warn', '0 stories returned from /api/feed', null,
-          'Pipeline has not approved any stories yet. Trigger /api/ingest then /api/score below.');
+        record('Feed API (/api/feed)', 'warn', '0 stories returned', JSON.stringify(perCat),
+          'Run /api/ingest then /api/score to populate. Use Trigger button below.');
         return;
       }
-      var now = Math.floor(Date.now() / 1000);
-      var ages = stories.map(function(s) { return (now - (s.pubTs || 0)) / 3600; });
+      var now  = Math.floor(Date.now() / 1000);
+      var ages = stories.map(function(s) { return (now - (s.pubTs || now)) / 3600; });
       var youngest = Math.min.apply(null, ages);
       var oldest   = Math.max.apply(null, ages);
-      var detail = 'Youngest: ' + youngest.toFixed(1) + 'h | Oldest: ' + oldest.toFixed(1) + 'h | Per cat: ' + JSON.stringify(res.data.perCat);
-      if (youngest > 6) {
-        record('Feed content (API)', 'warn', stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h old', detail, 'Pipeline may not be running. Check cron-job.org.');
-      } else {
-        record('Feed content (API)', 'pass', stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago', detail, null);
-      }
+      var status   = youngest > 6 ? 'warn' : 'pass';
+      var msg      = stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago';
+      var detail   = 'Oldest: ' + oldest.toFixed(1) + 'h | Per cat: ' + JSON.stringify(perCat);
+      var fix      = status === 'warn' ? 'Cron may not be running. Use Trigger button below.' : null;
+      record('Feed API (/api/feed)', status, msg, detail, fix);
     });
   })
   .then(function() {
@@ -302,9 +305,10 @@ function runAll() {
         record('Pipeline stats', 'warn', res.error || 'unreachable', null, null);
         return;
       }
-      var s = res.data.summary || {};
+      var s = (res.data && res.data.summary) || {};
       record('Pipeline stats', 'pass',
-        '$' + (s.cost24h || 0).toFixed(4) + ' / 24h | ' + (s.ingest24h || 0) + ' ingested | ' + (s.approved24h || 0) + ' approved',
+        '$' + ((s.cost24h || 0).toFixed(4)) + ' last 24h | ' +
+        (s.ingest24h || 0) + ' ingested | ' + (s.approved24h || 0) + ' approved',
         'Per cat: ' + JSON.stringify(s.catCounts || {}), null);
     });
   })
@@ -479,11 +483,11 @@ function showVerdict() {
 // ==================================================================
 document.getElementById('trigger-btn').addEventListener('click', function() {
   var btn = this;
-  btn.textContent = 'Calling /api/ingest...';
+  btn.textContent = 'Running ingest...';
   btn.disabled = true;
   fetchWithTimeout(VERCEL + '/api/ingest', 60000).then(function(res) {
     btn.disabled = false;
-    btn.textContent = 'Trigger Ingest + Score Now';
+    btn.textContent = 'Trigger Ingest + Score';
     if (!res.ok) {
       alert('FAIL: ' + (res.error || 'HTTP ' + res.status));
       return;
@@ -491,20 +495,16 @@ document.getElementById('trigger-btn').addEventListener('click', function() {
     try {
       var d = JSON.parse(res.text);
       if (d.ok) {
-        // Chain: after ingest, run score
         btn.textContent = 'Scoring...';
-        btn.disabled = true;
         fetchWithTimeout(VERCEL + '/api/score', 90000).then(function(r2) {
           btn.disabled = false;
-          btn.textContent = 'Trigger Ingest + Score Now';
-          if (!r2.ok) { alert('Ingest OK (' + d.ingested + ' new), but score FAILED: ' + (r2.error || 'unknown')); return; }
+          btn.textContent = 'Trigger Ingest + Score';
           try {
             var d2 = JSON.parse(r2.text);
-            alert('Ingest: ' + d.ingested + ' new\nScore: ' + d2.approved + ' approved\nCost: $' + (d2.cost || 0).toFixed(4) + '\n\nReload diagnostic.');
-          } catch(e) { alert('Score response not JSON'); }
+            alert('Ingest: ' + (d.ingested||0) + ' new\nScore: ' + (d2.approved||0) + ' approved\nCost: $' + ((d2.cost||0).toFixed(4)) + '\n\nReload diagnostic to see updated feed.');
+          } catch(e) { alert('Done. Reload diagnostic.'); }
         });
-      } else alert('Ingest ERROR: ' + (d.error || 'unknown'));
-      else      alert('ERROR returned: ' + (d.error || 'unknown'));
+      } else alert('Ingest error: ' + (d.error || 'unknown'));
     } catch (e) {
       alert('Got response but it was not JSON: ' + res.text.slice(0, 200));
     }
