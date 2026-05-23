@@ -71,39 +71,71 @@ function showTickerItem() {
   tickerIndex = (tickerIndex + 1) % tickerTitles.length;
 }
 
+var FEED_URL    = 'https://moes-app-two.vercel.app/api/feed';
+var FEED_CACHE_KEY = 'feedCache_v1';
+var FEED_CACHE_TTL = 5 * 60 * 1000; // 5 min
+
 function renderNewsFeed() {
   var container = document.getElementById('critical-posts');
   if (!container) return;
 
-  var source   = parsedStoriesCache.length ? parsedStoriesCache : FALLBACK_NEWS;
+  var source   = parsedStoriesCache.slice();
   var filtered = currentFilter === 'ALL'
-    ? source.slice()
+    ? source
     : source.filter(function(s) { return s.cat === currentFilter; });
 
-  // always sort newest first by ORIGINAL publish time (pubTs), fallback to ts
-  filtered.sort(function(a, b) {
-    var aT = a.pubTs || a.ts;
-    var bT = b.pubTs || b.ts;
-    return bT - aT;
-  });
+  filtered.sort(function(a, b) { return (b.pubTs || 0) - (a.pubTs || 0); });
 
   var shown = filtered.slice(0, 30);
   if (!shown.length) {
     container.innerHTML = '<div class="empty-state">No stories in this category yet</div>';
-    setTickerContent(source.slice(0,10).map(function(s){ return s.title; }));
+    setTickerContent(source.slice(0,10).map(function(s) { return s.title; }));
     return;
   }
 
   var html = '';
   shown.forEach(function(s) {
-    html += makeWireItem(s.title, s.pubTs || s.ts, s.link);
+    html += makeWireItem(s.title, s.pubTs, s.url);
   });
   container.innerHTML = html;
   setTickerContent(shown.map(function(s) { return s.title; }));
 }
 
+function loadFromCache() {
+  try {
+    var raw = localStorage.getItem(FEED_CACHE_KEY);
+    if (!raw) return false;
+    var obj = JSON.parse(raw);
+    if (!obj.ts || Date.now() - obj.ts > FEED_CACHE_TTL) return false;
+    parsedStoriesCache = obj.stories || [];
+    return parsedStoriesCache.length > 0;
+  } catch (e) { return false; }
+}
+
+function saveToCache(stories) {
+  try {
+    localStorage.setItem(FEED_CACHE_KEY, JSON.stringify({ ts: Date.now(), stories: stories }));
+  } catch (e) {}
+}
+
 function loadNewsFeed() {
-  renderNewsFeed();
+  // 1. Render from cache instantly if we have one
+  if (loadFromCache()) renderNewsFeed();
+
+  // 2. Fetch fresh from API in background
+  fetch(FEED_URL).then(function(r) {
+    if (!r.ok) throw new Error('feed http ' + r.status);
+    return r.json();
+  }).then(function(data) {
+    if (!data || !data.stories) return;
+    parsedStoriesCache = data.stories;
+    saveToCache(data.stories);
+    renderNewsFeed();
+  }).catch(function(e) {
+    console.error('Feed fetch failed:', e.message);
+    // Keep showing cached/empty state — no fallback to bundled data
+    renderNewsFeed();
+  });
 }
 
 // ── FALLBACK_NEWS - updated automatically by Vercel ──
