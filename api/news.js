@@ -1,76 +1,80 @@
 // ============================================================
-// news.js — Vercel handler (entry point)
+// news.js — Vercel handler
+// COST SAFE: zero Claude web search calls. Claude used ONLY
+// for scoring headlines from free RSS/GDELT/NewsData sources.
+// Estimated cost: ~$0.01 per day at 30min intervals.
 // ============================================================
 
-import { REJECT_PHRASES, preFilter, RSS_SOURCES, GOOGLE_NEWS_SOURCES, GDELT_QUERIES, NEWSDATA_QUERIES, TWITTER_QUERIES, WEB_SEARCH_QUERIES, CAT_PROMPTS } from './lib/news-sources.js';
-import { isSimilar, dedupKey, fetchRSS, fetchGDELT, fetchNewsData, claudeWebSearch, callClaudeScorer } from './lib/news-helpers.js';
+import { preFilter, RSS_SOURCES, GOOGLE_NEWS_SOURCES, GDELT_QUERIES, NEWSDATA_QUERIES, CAT_PROMPTS } from './lib/news-sources.js';
+import { isSimilar, dedupKey, fetchRSS, fetchGDELT, fetchNewsData, callClaudeScorer } from './lib/news-helpers.js';
 import { getCurrentFeed, writeFeed } from './lib/news-github.js';
 
-// ===== MAIN HANDLER ============================================
+const CATEGORIES        = ['F1','FOOTBALL','BAYERN','SPL','KSA'];
+const FEED_RETENTION_H  = 24;   // drop stories older than 24h
+const INGEST_MAX_AGE_H  = 18;   // only ingest stories published in last 18h
+const MAX_PER_CAT       = 6;    // max stories shown per category
+const MAX_CANDIDATES    = 25;   // max candidates sent to Claude per category
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const apiKey      = process.env.ANTHROPIC_API_KEY;
   const newsDataKey = process.env.NEWSDATA_API_KEY;
+
+  // Fail immediately if no API key — don't burn credits on a broken run
   if (!apiKey) return res.status(500).json({ error: 'No Anthropic API key' });
 
   const now = Math.floor(Date.now() / 1000);
 
-  // ---- KEY CHANGE: separate retention windows ----
-  // Retain stories in feed for 24h MAX (was 72h). Old news is bad news.
-  const FEED_RETENTION_HOURS = 24;
-  // Only INGEST stories published in the last 18h.
-  const INGEST_MAX_AGE_HOURS = 18;
-
-  const CATEGORIES = ['F1','FOOTBALL','BAYERN','SPL','KSA'];
-
   try {
+    // 1. Load existing feed from GitHub
     const { items: existingItems, sha, fullContent } = await getCurrentFeed();
+    if (!sha || !fullContent) {
+      return res.status(500).json({ error: 'Could not read feed from GitHub' });
+    }
 
-    // 1. Drop existing items older than retention window (by PUBLISH time, not add time)
-    const existing = existingItems.filter(i => (now - (i.pubTs || i.ts)) < FEED_RETENTION_HOURS * 3600);
-
-    // 2. Build dedup set from existing
-    const seenTitles = new Set(existing.map(i => dedupKey(i.title)));
-
-    // 3. Fetch all streams in parallel
-    const [rssResults, gdeltResults, newsdataResults, twitterResults, webResults] = await Promise.all([
-      Promise.all([...RSS_SOURCES, ...GOOGLE_NEWS_SOURCES].map(src => fetchRSS(src, seenTitles, INGEST_MAX_AGE_HOURS))),
-      Promise.all(GDELT_QUERIES.map(q => fetchGDELT(q, seenTitles))),
-      Promise.all(NEWSDATA_QUERIES.map(q => fetchNewsData(q, newsDataKey, seenTitles))),
-      Promise.all(TWITTER_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, true))),
-      Promise.all(WEB_SEARCH_QUERIES.map(q => claudeWebSearch(q.query, q.cat, apiKey, false))),
-    ]);
-
-    const rssItems      = rssResults.flat();
-    const gdeltItems    = gdeltResults.flat();
-    const newsdataItems = newsdataResults.flat();
-    const twitterItems  = twitterResults.flat().filter(item => {
-      if (!preFilter(item.title)) return false;
-      const k = dedupKey(item.title);
-      if (seenTitles.has(k)) return false;
-      seenTitles.add(k);
-      return true;
-    });
-    const webItems = webResults.flat().filter(item => {
-      if (!preFilter(item.title)) return false;
-      const k = dedupKey(item.title);
-      if (seenTitles.has(k)) return false;
-      seenTitles.add(k);
-      return true;
-    });
-
-    console.log('Ingested: RSS=' + rssItems.length + ' GDELT=' + gdeltItems.length +
-                ' NewsData=' + newsdataItems.length + ' Twitter=' + twitterItems.length + ' Web=' + webItems.length);
-
-    const allNew = [...rssItems, ...gdeltItems, ...newsdataItems, ...twitterItems, ...webItems];
-
-    // 4. Fuzzy dedup against existing (stricter)
-    const trulyNew = allNew.filter(newItem =>
-      !existing.some(ex => ex.cat === newItem.cat && isSimilar(newItem.title, ex.title))
+    // 2. Drop stale stories
+    const existing = existingItems.filter(i =>
+      (now - (i.pubTs || i.ts)) < FEED_RETENTION_H * 3600
     );
 
-    // 5. Fuzzy dedup within the new batch
+    // 3. Build dedup set
+    const seenTitles = new Set(existing.map(i => dedupKey(i.title)));
+
+    // 4. Fetch FREE sources only (no Claude web search, no Twitter)
+    const [rssResults, gdeltResults, newsdataResults] = await Promise.all([
+      Promise.all([...RSS_SOURCES, ...GOOGLE_NEWS_SOURCES].map(src =>
+        fetchRSS(src, seenTitles, INGEST_MAX_AGE_H)
+      )),
+      Promise.all(GDELT_QUERIES.map(q => fetchGDELT(q, seenTitles))),
+      Promise.all(NEWSDATA_QUERIES.map(q => fetchNewsData(q, newsDataKey, seenTitles))),
+    ]);
+
+    const allNew = [
+      ...rssResults.flat(),
+      ...gdeltResults.flat(),
+      ...newsdataResults.flat(),
+    ];
+
+    console.log('Ingested: RSS=' + rssResults.flat().length +
+                ' GDELT=' + gdeltResults.flat().length +
+                ' NewsData=' + newsdataResults.flat().length +
+                ' Total=' + allNew.length);
+
+    // 5. Skip Claude entirely if nothing new came in
+    if (allNew.length === 0) {
+      console.log('No new candidates — skipping Claude, keeping existing feed');
+      return res.status(200).json({
+        ok: true, stories: existing.length, ingested: 0, candidates: 0, approved: 0,
+      });
+    }
+
+    // 6. Fuzzy dedup against existing feed
+    const trulyNew = allNew.filter(item =>
+      !existing.some(ex => ex.cat === item.cat && isSimilar(item.title, ex.title))
+    );
+
+    // 7. Fuzzy dedup within new batch
     const uniqueNew = [];
     for (const item of trulyNew) {
       if (!uniqueNew.some(kept => kept.cat === item.cat && isSimilar(item.title, kept.title))) {
@@ -80,29 +84,38 @@ export default async function handler(req, res) {
 
     console.log('Unique new candidates: ' + uniqueNew.length);
 
-    // 6. Claude editorial scoring per category
+    // 8. Skip Claude if still nothing after dedup
+    if (uniqueNew.length === 0) {
+      console.log('All candidates already in feed — skipping Claude');
+      return res.status(200).json({
+        ok: true, stories: existing.length, ingested: allNew.length, candidates: 0, approved: 0,
+      });
+    }
+
+    // 9. Claude scoring — ONLY for categories that have new candidates
     const approvedArrays = await Promise.all(
       CATEGORIES.map(async (cat) => {
-        const catItems = uniqueNew.filter(i => i.cat === cat).sort((a,b) => b.pubTs - a.pubTs).slice(0, 30);
+        const catItems = uniqueNew
+          .filter(i => i.cat === cat)
+          .sort((a, b) => (b.pubTs || 0) - (a.pubTs || 0))
+          .slice(0, MAX_CANDIDATES);
         if (!catItems.length) return [];
         const result = await callClaudeScorer(catItems, cat, apiKey);
         console.log(cat + ': ' + result.length + ' approved / ' + catItems.length + ' candidates');
         return result;
       })
     );
-    const approved = approvedArrays.flat();
 
-    // 7. Stamp newly approved with current time as "added to feed"
-    //    but KEEP their original pubTs for display.
+    const approved = approvedArrays.flat();
     approved.forEach(item => {
       item.ts = now;
       if (!item.pubTs) item.pubTs = now;
     });
 
-    // 8. Merge existing + new, dedup again, sort by pubTs desc, cap 6 per cat
-    const all = [...existing, ...approved];
+    // 10. Merge, final dedup, sort by publish time, cap per category
+    const merged = [...existing, ...approved];
     const finalDeduped = [];
-    for (const item of all) {
+    for (const item of merged) {
       if (!finalDeduped.some(kept => kept.cat === item.cat && isSimilar(item.title, kept.title))) {
         finalDeduped.push(item);
       }
@@ -111,23 +124,23 @@ export default async function handler(req, res) {
     const final = CATEGORIES.map(cat =>
       finalDeduped
         .filter(i => i.cat === cat)
-        .sort((a,b) => (b.pubTs || b.ts) - (a.pubTs || a.ts))   // newest first by PUBLISH time
-        .slice(0, 6)
+        .sort((a, b) => (b.pubTs || b.ts) - (a.pubTs || a.ts))
+        .slice(0, MAX_PER_CAT)
     ).flat();
 
     console.log('Final feed: ' + final.length + ' stories');
 
-    if (sha && fullContent) {
-      await writeFeed(final, fullContent, sha);
-    }
+    // 11. Write back to GitHub
+    await writeFeed(final, fullContent, sha);
 
     return res.status(200).json({
       ok: true,
       stories: final.length,
-      ingested: rssItems.length + gdeltItems.length + newsdataItems.length + twitterItems.length + webItems.length,
+      ingested: allNew.length,
       candidates: uniqueNew.length,
       approved: approved.length,
     });
+
   } catch (e) {
     console.error('Handler error:', e.message);
     return res.status(500).json({ error: e.message });
