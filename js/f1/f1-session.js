@@ -53,14 +53,13 @@ async function loadSessionData() {
     fetchSessionResults(phase.lastSession.sess, phase.weekend);
   }
 
-  // Show grid if the session before the next session is a qualifying type
-  if (phase.nextSession) {
-    var nextName = phase.nextSession.sess.name;
-    // Show sprint grid before Sprint Race, show race grid before Race
-    if (nextName === 'Sprint Race' && phase.lastSession && phase.lastSession.sess.name === 'Sprint Qualifying') {
-      fetchGrid(phase.lastSession.sess, 'Sprint Grid');
-    } else if (nextName === 'Race' && phase.lastSession && phase.lastSession.sess.name === 'Qualifying') {
-      fetchGrid(phase.lastSession.sess, 'Race Grid');
+  // Show official starting grid whenever qualifying is the last completed session
+  if (phase.lastSession) {
+    var lastName = phase.lastSession.sess.name;
+    if (lastName === 'Sprint Qualifying') {
+      fetchOfficialGrid(phase.lastSession.sess, 'Sprint Grid');
+    } else if (lastName === 'Qualifying') {
+      fetchOfficialGrid(phase.lastSession.sess, 'Race Grid');
     } else {
       hideGrid();
     }
@@ -415,6 +414,58 @@ function renderGridSlot(lapData, pos, driverMap, side) {
     + '</div>'
     + '<span class="f1-grid-num" style="color:' + col + '">' + num + '</span>'
     + '</div>';
+}
+
+// Official Starting Grid (OpenF1 /starting_grid)
+// Separate from qualifying results. Reflects FIA-confirmed positions including penalties.
+
+async function fetchOfficialGrid(sess, label) {
+  var wrapper = document.getElementById('f1-next-grid');
+  if (!wrapper) return;
+  wrapper.style.display = 'block';
+  wrapper.innerHTML = '<div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading ' + label + '...</span></div>';
+
+  try {
+    var weekend = getCurrentRaceWeekend();
+    if (!weekend) { hideGrid(); return; }
+
+    var sessKey = await getSessionKey(weekend, sess);
+    if (!sessKey) { hideGrid(); return; }
+
+    var fetched = await Promise.all([
+      openf1('/starting_grid?session_key=' + sessKey, 10000),
+      openf1('/drivers?session_key=' + sessKey, 8000),
+    ]);
+
+    var grid    = fetched[0];
+    var drivers = fetched[1];
+
+    if (!grid || !grid.length) {
+      wrapper.innerHTML = '<div class="card" style="padding:14px;">'
+        + '<div class="f1-sess-header" style="border:none;padding:0 0 8px;"><span>' + label + '</span></div>'
+        + '<div style="font-size:13px;color:#aaa;text-align:center;padding:8px 0;">Official grid not yet published</div>'
+        + '<div style="font-size:11px;color:#666;text-align:center;margin-top:4px;">FIA releases 1-3 hours after qualifying</div>'
+        + '</div>';
+      return;
+    }
+
+    var driverMap = {};
+    if (drivers) {
+      drivers.forEach(function(d) { driverMap[d.driver_number] = d; });
+    }
+
+    var sorted = grid.slice().sort(function(a, b) {
+      return (a.grid_position || 99) - (b.grid_position || 99);
+    });
+    sorted.forEach(function(entry, i) {
+      if (!entry.grid_position) entry.grid_position = i + 1;
+    });
+
+    renderGridGraphic(wrapper, sorted, driverMap, label);
+
+  } catch (e) {
+    hideGrid();
+  }
 }
 
 function hideGrid() {
