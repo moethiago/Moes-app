@@ -1,5 +1,9 @@
-const CACHE = {};
-const CACHE_TTL = 30000;
+// ============================================================
+// api/football.js — football scores with KV-backed caching
+// Cache TTLs: live scores 30s, upcoming 10min
+// ============================================================
+
+import { cached, TTL } from './lib/cache.js';
 
 const LEAGUES = {
   epl:        { id: 39,  season: 2025 },
@@ -42,47 +46,43 @@ function simplifyFixture(f) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
 
   const apiKey = process.env.API_FOOTBALL_KEY;
   if (!apiKey) return res.status(500).json({ error: 'No API key' });
 
   const league = req.query.league || 'epl';
-  const today  = new Date().toISOString().split('T')[0];
-  const cacheKey = league + '_' + today;
-  const now = Date.now();
+  const cfg    = LEAGUES[league];
+  if (!cfg) return res.status(400).json({ error: 'Unknown league' });
 
-  if (CACHE[cacheKey] && (now - CACHE[cacheKey].ts) < CACHE_TTL) {
-    return res.status(200).json(CACHE[cacheKey].data);
-  }
-
-  const leagueConfig = LEAGUES[league];
-  if (!leagueConfig) return res.status(400).json({ error: 'Unknown league' });
+  const today    = new Date().toISOString().split('T')[0];
+  const cacheKey = 'cache:football:' + league + ':' + today;
 
   try {
-    // fetch today's fixtures
-    const todayData = await fetchFromAPI(
-      `/fixtures?league=${leagueConfig.id}&season=${leagueConfig.season}&date=${today}&timezone=Asia/Riyadh`,
-      apiKey
+    const { data, fromCache, ageSeconds } = await cached(
+      cacheKey,
+      TTL.LIVE_SCORES,
+      async () => {
+        const todayData = await fetchFromAPI(
+          `/fixtures?league=${cfg.id}&season=${cfg.season}&date=${today}&timezone=Asia/Riyadh`,
+          apiKey
+        );
+        const fixtures = (todayData.response || []).map(simplifyFixture);
+
+        let upcoming = [];
+        if (fixtures.length === 0) {
+          const upcomingData = await fetchFromAPI(
+            `/fixtures?league=${cfg.id}&season=${cfg.season}&next=5&timezone=Asia/Riyadh`,
+            apiKey
+          );
+          upcoming = (upcomingData.response || []).map(simplifyFixture);
+        }
+        return { league, fixtures, upcoming, fetchedAt: Date.now() };
+      }
     );
 
-    const fixtures = (todayData.response || []).map(simplifyFixture);
-
-    let upcoming = [];
-
-    // if no games today, fetch next 5 upcoming fixtures
-    if (fixtures.length === 0) {
-      const upcomingData = await fetchFromAPI(
-        `/fixtures?league=${leagueConfig.id}&season=${leagueConfig.season}&next=5&timezone=Asia/Riyadh`,
-        apiKey
-      );
-      upcoming = (upcomingData.response || []).map(simplifyFixture);
-    }
-
-    const result = { league, fixtures, upcoming, updated: now };
-    CACHE[cacheKey] = { data: result, ts: now };
-    return res.status(200).json(result);
-  } catch(e) {
+    res.setHeader('X-Cache', fromCache ? 'HIT-' + ageSeconds + 's' : 'MISS');
+    return res.status(200).json(data);
+  } catch (e) {
     return res.status(500).json({ error: e.message });
   }
 }

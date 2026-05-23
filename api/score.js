@@ -18,6 +18,16 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'No Anthropic API key' });
 
   try {
+    // 0. COST GUARD - check yesterday's spend before doing anything expensive
+    const costGuard = await checkCostGuard();
+    if (costGuard.blocked) {
+      return res.status(429).json({
+        error: 'Daily cost limit reached',
+        cost24h: costGuard.cost24h,
+        limit: costGuard.limit,
+      });
+    }
+
     // 1. For each category, get unscored IDs
     const unscoredIdsPerCat = await kvPipeline(
       CATEGORIES.map(c => ['SMEMBERS', 'unscored:' + c])
@@ -93,6 +103,35 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('score error:', e.message);
     return res.status(500).json({ error: e.message });
+  }
+}
+
+const DAILY_COST_LIMIT = 0.50; // $0.50 / day max - hard kill switch
+
+async function checkCostGuard() {
+  try {
+    const URL   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+    const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!URL || !TOKEN) return { blocked: false, cost24h: 0, limit: DAILY_COST_LIMIT };
+
+    const res = await fetch(URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify(['LRANGE', 'runs', '0', '99']),
+    });
+    if (!res.ok) return { blocked: false, cost24h: 0, limit: DAILY_COST_LIMIT };
+    const data = await res.json();
+    const runs = (data.result || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+    const now = Math.floor(Date.now() / 1000);
+    const day = 24 * 3600;
+    let cost24h = 0;
+    for (const r of runs) {
+      if (!r || !r.ts || r.ts < now - day) continue;
+      if (r.cost) cost24h += r.cost;
+    }
+    return { blocked: cost24h >= DAILY_COST_LIMIT, cost24h, limit: DAILY_COST_LIMIT };
+  } catch {
+    return { blocked: false, cost24h: 0, limit: DAILY_COST_LIMIT };
   }
 }
 
