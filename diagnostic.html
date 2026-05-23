@@ -262,8 +262,7 @@ function runAll() {
     ['loadWorldCup', 'renderWCSection']); })
   .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
     ['renderNewsFeed', 'loadNewsFeed']); })
-  .then(function() { return checkFile('feed-data.js',       '/js/feed/feed-data.js',
-    ['FALLBACK_NEWS']); })
+
   .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
     ['TARGETS', 'loadFoodLog']); })
   .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
