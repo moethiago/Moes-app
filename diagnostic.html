@@ -3,13 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moe's App Diagnostic</title>
+<title>Moe's App — Diagnostic v3</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { background: #0a0a0f; color: #e8e8f0; font-family: -apple-system, system-ui, sans-serif; padding: 14px; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  body {
+    background: #0a0a0f; color: #e8e8f0;
+    font-family: -apple-system, system-ui, sans-serif;
+    padding: 14px; font-size: 14px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
   h1 { color: #ff3366; font-size: 18px; margin-bottom: 4px; }
   .sub { color: #888; font-size: 11px; margin-bottom: 14px; }
-  #verdict { padding: 16px; border-radius: 12px; margin-bottom: 14px; background: #15151c; border: 2px solid #333; text-align: center; }
+  #verdict {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    background: #15151c;
+    border: 2px solid #333;
+    text-align: center;
+  }
   #verdict.green { border-color: #00ff88; background: rgba(0,255,136,0.06); }
   #verdict.red   { border-color: #ff3366; background: rgba(255,51,102,0.06); }
   #verdict.amber { border-color: #ffaa00; background: rgba(255,170,0,0.06); }
@@ -24,7 +36,10 @@
   .stat.pass .n { color: #00ff88; }
   .stat.fail .n { color: #ff3366; }
   .stat.warn .n { color: #ffaa00; }
-  .test { border-radius: 10px; padding: 11px 13px; margin-bottom: 7px; border-left: 4px solid #333; background: #13131a; }
+  .test {
+    border-radius: 10px; padding: 11px 13px; margin-bottom: 7px;
+    border-left: 4px solid #333; background: #13131a;
+  }
   .test.pass { border-left-color: #00ff88; }
   .test.fail { border-left-color: #ff3366; }
   .test.warn { border-left-color: #ffaa00; }
@@ -35,10 +50,14 @@
   .test.warn .result { color: #ffaa00; }
   .test .detail { font-size: 10px; color: #888; margin-top: 6px; font-family: ui-monospace, monospace; word-break: break-all; }
   .test .fix { font-size: 11px; color: #88aaff; margin-top: 6px; }
-  .section-label { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; padding: 10px 0 6px; font-weight: 600; }
-  .btn { background: #ff3366; color: #fff; border: none; padding: 13px; border-radius: 10px; font-size: 14px; font-weight: 600; width: 100%; margin-top: 10px; }
+  .btn {
+    background: #ff3366; color: #fff; border: none;
+    padding: 13px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    width: 100%; margin-top: 10px;
+  }
   .btn.alt { background: #2a2a3a; }
-  .btn.go  { background: #00aa55; }
+  .btn.go { background: #00aa55; }
   details { background: #13131a; border-radius: 8px; padding: 10px 12px; margin-top: 10px; font-size: 12px; }
   details summary { cursor: pointer; color: #aaf; font-weight: 600; }
   pre { white-space: pre-wrap; word-break: break-all; color: #aaa; font-size: 10px; margin-top: 8px; font-family: ui-monospace, monospace; max-height: 300px; overflow-y: auto; }
@@ -46,7 +65,7 @@
 </head>
 <body>
 
-<h1>Moe's App Diagnostic</h1>
+<h1>Moe's App — Full Diagnostic</h1>
 <div class="sub" id="ts">Initializing...</div>
 
 <div id="verdict">
@@ -64,7 +83,7 @@
 
 <button class="btn" onclick="location.reload()">Run Again</button>
 <button class="btn alt" onclick="copyReport()">Copy Full Report</button>
-<button class="btn go" id="trigger-btn">Trigger Ingest + Score</button>
+<button class="btn go" id="trigger-btn">Trigger /api/news Now</button>
 
 <details>
   <summary>Raw log</summary>
@@ -72,6 +91,11 @@
 </details>
 
 <script>
+// ==================================================================
+// DIAGNOSTIC v3 - built to actually work on iOS Safari
+// No smart quotes, no AbortSignal.timeout, no script-tag loading hacks
+// ==================================================================
+
 var REPO_BASE = 'https://moethiago.github.io/Moes-app';
 var VERCEL    = 'https://moes-app-two.vercel.app';
 
@@ -116,14 +140,16 @@ function esc(s) {
   });
 }
 
+// Cross-browser timeout wrapper (avoids AbortSignal.timeout which Safari handles poorly)
 function fetchWithTimeout(url, ms) {
   return new Promise(function(resolve) {
-    var done  = false;
+    var done = false;
     var timer = setTimeout(function() {
       if (done) return;
       done = true;
       resolve({ ok: false, error: 'TIMEOUT after ' + ms + 'ms' });
     }, ms || 10000);
+
     fetch(url, { cache: 'no-store' }).then(function(r) {
       if (done) return;
       done = true;
@@ -157,81 +183,110 @@ function fetchJSON(url, ms) {
   });
 }
 
+// ==================================================================
+// FILE INTEGRITY (text-based, does NOT execute the file)
+// ==================================================================
 function checkFile(name, path, requiredKeywords) {
   return fetchWithTimeout(bust(REPO_BASE + path), 8000).then(function(res) {
     if (!res.ok) {
-      record(name, 'fail', 'Cannot fetch: ' + (res.error || 'HTTP ' + res.status), path, 'Check GitHub Pages deployment.');
+      record(name, 'fail', 'Cannot fetch file: ' + (res.error || 'HTTP ' + res.status),
+        path, 'Check GitHub Pages deployment.');
       return;
     }
     var text = res.text;
     var size = Math.round(text.length / 1024);
+
     var smartSingle = (text.match(/[\u2018\u2019]/g) || []).length;
     var smartDouble = (text.match(/[\u201C\u201D]/g) || []).length;
+
     if (smartSingle + smartDouble > 0) {
-      record(name, 'fail', 'CORRUPT: ' + (smartSingle + smartDouble) + ' smart quote characters', path, 'Replace with clean ASCII version. Never edit JS in Notes or TextEdit.');
+      record(name, 'fail',
+        'CORRUPT: ' + (smartSingle + smartDouble) + ' smart quote characters',
+        smartSingle + ' curly singles + ' + smartDouble + ' curly doubles. Browser cannot parse this as JavaScript.',
+        'Replace with the clean ASCII version. Do NOT edit JS files in Notes, Pages, or TextEdit (rich text).');
       return;
     }
+
     var fences = (text.match(/^```/gm) || []).length;
     if (fences > 0) {
-      record(name, 'fail', 'CORRUPT: ' + fences + ' markdown fence lines embedded', null, 'Remove every line containing only triple backticks.');
+      record(name, 'fail',
+        'CORRUPT: ' + fences + ' markdown fence lines embedded in file',
+        null,
+        'Remove every line containing only triple backticks.');
       return;
     }
+
     if (requiredKeywords && requiredKeywords.length) {
       var missing = [];
       for (var i = 0; i < requiredKeywords.length; i++) {
         if (text.indexOf(requiredKeywords[i]) === -1) missing.push(requiredKeywords[i]);
       }
       if (missing.length) {
-        record(name, 'warn', 'Missing symbols: ' + missing.join(', '), size + ' KB', 'File may be incomplete or an old version.');
+        record(name, 'warn',
+          'File loaded but missing expected symbols: ' + missing.join(', '),
+          'File is ' + size + ' KB',
+          'File may be incomplete or truncated.');
         return;
       }
     }
-    record(name, 'pass', 'Clean - ' + size + ' KB', null, null);
+
+    record(name, 'pass', 'Clean - ' + size + ' KB, no corruption detected', null, null);
   });
 }
 
+// ==================================================================
+// MAIN TESTS
+// ==================================================================
 function runAll() {
   document.getElementById('ts').textContent = 'Started ' + new Date().toLocaleString();
-  logRaw('Diagnostic started. UA: ' + navigator.userAgent.slice(0, 80));
+  logRaw('Diagnostic v3 started. UA: ' + navigator.userAgent.slice(0, 80));
 
-  Promise.resolve()
+  var chain = Promise.resolve()
 
-  // ── F1 FILES ───────────────────────────────────────────────
-  .then(function() { return checkFile('f1-data.js',       '/js/f1/f1-data.js',       ['F1_CALENDAR','SESSION_DURATION','TEAM_COLORS','F1_STANDINGS_FALLBACK']); })
-  .then(function() { return checkFile('f1-timing.js',     '/js/f1/f1-timing.js',     ['startCountdown','getCurrentSession','getNextRaceAndSession','getCurrentRaceWeekend']); })
-  .then(function() { return checkFile('f1-livetiming.js', '/js/f1/f1-livetiming.js', ['fetchOpenF1Live','renderLiveTiming','startLiveTiming','fetchWithTimeout']); })
-  .then(function() { return checkFile('f1-standings.js',  '/js/f1/f1-standings.js',  ['renderDriverStandings','renderConstructorStandings','loadF1Data']); })
-  .then(function() { return checkFile('f1-weekend.js',    '/js/f1/f1-weekend.js',    ['renderWeekendCard','renderChampionshipContext','loadLastRaceResult']); })
-  .then(function() { return checkFile('f1-session.js',    '/js/f1/f1-session.js',    ['initSessionSection','loadSessionData','fetchSessionResults','renderGridGraphic']); })
+  // FILE INTEGRITY
+  .then(function() { return checkFile('f1-data.js',         '/js/f1/f1-data.js',
+    ['F1_CALENDAR', 'SESSION_DURATION', 'TEAM_COLORS']); })
+  .then(function() { return checkFile('f1-timing.js',       '/js/f1/f1-timing.js',
+    ['startCountdown', 'getCurrentSession', 'getNextRaceAndSession']); })
+  .then(function() { return checkFile('f1-livetiming.js',   '/js/f1/f1-livetiming.js',
+    ['fetchOpenF1Live', 'renderLiveTiming', 'startLiveTiming']); })
+  .then(function() { return checkFile('f1-standings.js',    '/js/f1/f1-standings.js',
+    ['renderDriverStandings', 'loadF1Data']); })
+  .then(function() { return checkFile('f1-weekend.js',      '/js/f1/f1-weekend.js',
+    ['renderWeekendCard', 'loadLastRaceResult']); })
+  .then(function() { return checkFile('f1-session.js',      '/js/f1/f1-session.js',
+    ['initSessionSection', 'fetchAndRenderResults', 'fetchAndRenderGrid']); })
+  .then(function() { return checkFile('football-config.js', '/js/football/football-config.js',
+    ['FOOTBALL_LEAGUES', 'BACKEND_URL']); })
+  .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',
+    ['buildFootballSection', 'loadAllFootball']); })
+  .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
+    ['loadWorldCup', 'renderWCSection']); })
+  .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
+    ['renderNewsFeed', 'loadNewsFeed']); })
 
-  // ── FOOTBALL FILES ─────────────────────────────────────────
-  .then(function() { return checkFile('football-config.js', '/js/football/football-config.js', ['FOOTBALL_LEAGUES','BACKEND_URL']); })
-  .then(function() { return checkFile('football-render.js', '/js/football/football-render.js', ['renderLeagueBlock','statusLabel','formatKickoff']); })
-  .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',  ['buildFootballSection','loadAllFootball','fetchLeague']); })
-  .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',        ['loadWorldCup','renderWCSection','formatWCDate']); })
+  .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
+    ['TARGETS', 'loadFoodLog']); })
+  .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
+    ['renderFood', 'renderSets']); })
+  .then(function() { return checkFile('core.js',            '/js/core.js',
+    ['switchTab', 'startClock']); })
+  .then(function() { return checkFile('index.html',         '/index.html',
+    ['f1/f1-data.js', 'feed/feed-render.js', 'football/worldcup.js']); })
 
-  // ── FEED FILES ─────────────────────────────────────────────
-  .then(function() { return checkFile('feed-render.js', '/js/feed/feed-render.js', ['renderNewsFeed','loadNewsFeed','FEED_URL','loadFromCache','saveToCache']); })
-
-  // ── HEALTH FILES ───────────────────────────────────────────
-  .then(function() { return checkFile('health-data.js',   '/js/health/health-data.js',   ['TARGETS','loadFoodLog','saveWorkoutLog']); })
-  .then(function() { return checkFile('health-render.js', '/js/health/health-render.js', ['renderFood','renderSets']); })
-
-  // ── CORE + INDEX ───────────────────────────────────────────
-  .then(function() { return checkFile('core.js',    '/js/core.js',    ['switchTab','startClock','initSessionSection']); })
-  .then(function() { return checkFile('index.html', '/index.html',    ['f1/f1-data.js','f1/f1-session.js','feed/feed-render.js','football/worldcup.js','f1-session-results','f1-next-grid']); })
-
-  // ── PIPELINE: FEED API ─────────────────────────────────────
+  // FEED CONTENT + PIPELINE STATS
   .then(function() {
     return fetchJSON(VERCEL + '/api/feed', 12000).then(function(res) {
       if (!res.ok) {
-        record('Feed API', 'fail', res.error || 'HTTP ' + res.status, VERCEL + '/api/feed', 'Check Vercel deployment.');
+        record('Feed API (/api/feed)', 'fail', res.error || 'HTTP ' + res.status, null,
+          'Check Vercel deployment. Open ' + VERCEL + '/api/feed in Safari.');
         return;
       }
       var stories = (res.data && res.data.stories) || [];
       var perCat  = (res.data && res.data.perCat)  || {};
       if (!stories.length) {
-        record('Feed API', 'warn', '0 stories in KV', JSON.stringify(perCat), 'Use Trigger button to run ingest + score.');
+        record('Feed API (/api/feed)', 'warn', '0 stories returned', JSON.stringify(perCat),
+          'Run /api/ingest then /api/score to populate. Use Trigger button below.');
         return;
       }
       var now  = Math.floor(Date.now() / 1000);
@@ -239,55 +294,52 @@ function runAll() {
       var youngest = Math.min.apply(null, ages);
       var oldest   = Math.max.apply(null, ages);
       var status   = youngest > 6 ? 'warn' : 'pass';
-      record('Feed API', status,
-        stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago',
-        'Oldest: ' + oldest.toFixed(1) + 'h | ' + JSON.stringify(perCat),
-        status === 'warn' ? 'Cron may not be running or no new stories passed scoring.' : null);
+      var msg      = stories.length + ' stories, freshest ' + youngest.toFixed(1) + 'h ago';
+      var detail   = 'Oldest: ' + oldest.toFixed(1) + 'h | Per cat: ' + JSON.stringify(perCat);
+      var fix      = status === 'warn' ? 'Cron may not be running. Use Trigger button below.' : null;
+      record('Feed API (/api/feed)', status, msg, detail, fix);
     });
   })
-
-  // ── PIPELINE: STATS ────────────────────────────────────────
   .then(function() {
     return fetchJSON(VERCEL + '/api/stats', 8000).then(function(res) {
-      if (!res.ok) { record('Pipeline stats', 'warn', res.error || 'unreachable', null, null); return; }
+      if (!res.ok) {
+        record('Pipeline stats', 'warn', res.error || 'unreachable', null, null);
+        return;
+      }
       var s = (res.data && res.data.summary) || {};
       record('Pipeline stats', 'pass',
-        '$' + (s.cost24h || 0).toFixed(4) + ' last 24h | ' + (s.ingest24h || 0) + ' ingested | ' + (s.approved24h || 0) + ' approved',
+        '$' + ((s.cost24h || 0).toFixed(4)) + ' last 24h | ' +
+        (s.ingest24h || 0) + ' ingested | ' + (s.approved24h || 0) + ' approved',
         'Per cat: ' + JSON.stringify(s.catCounts || {}), null);
     });
   })
 
-  // ── PIPELINE: INGEST ───────────────────────────────────────
-  .then(function() {
-    return fetchJSON(VERCEL + '/api/ingest', 20000).then(function(res) {
-      if (!res.ok) { record('Vercel /api/ingest', 'fail', res.error || 'HTTP ' + res.status, null, 'Check Vercel logs.'); return; }
-      var d = res.data || {};
-      record('Vercel /api/ingest', 'pass',
-        (d.ingested || 0) + ' new stories | ' + (d.candidates || 0) + ' candidates | ' + (d.durationMs || 0) + 'ms',
-        d.perCat ? JSON.stringify(d.perCat) : null, null);
-    });
-  })
-
-  // ── SPORTS: FOOTBALL API ───────────────────────────────────
+  // VERCEL BACKEND
   .then(function() {
     return fetchJSON(VERCEL + '/api/football?league=epl', 12000).then(function(res) {
-      if (!res.ok) { record('Vercel /api/football', 'fail', res.error || 'HTTP ' + res.status, null, 'Check Vercel logs.'); return; }
+      if (!res.ok) {
+        record('Vercel /api/football', 'fail', res.error || 'HTTP ' + res.status,
+          VERCEL + '/api/football?league=epl',
+          'Vercel function may have crashed. Check Vercel logs.');
+        return;
+      }
       var fx = (res.data.fixtures || []).length;
       var up = (res.data.upcoming || []).length;
-      record('Vercel /api/football', 'pass', fx + ' live fixtures | ' + up + ' upcoming', null, null);
+      record('Vercel /api/football', 'pass', fx + ' live fixtures, ' + up + ' upcoming', null, null);
     });
   })
 
-  // ── SPORTS: F1 DATA SOURCES ───────────────────────────────
+  // EXTERNAL APIs
   .then(function() {
     return fetchJSON('https://api.jolpi.ca/ergast/f1/current/driverstandings.json?limit=3', 10000).then(function(res) {
-      if (!res.ok) { record('Jolpica standings', 'fail', res.error, null, 'API may be down.'); return; }
-      var sl = res.data && res.data.MRData && res.data.MRData.StandingsTable && res.data.MRData.StandingsTable.StandingsLists[0];
+      if (!res.ok) { record('Jolpica F1 standings', 'fail', res.error, null, 'API may be down; app falls back to hardcoded standings.'); return; }
+      var d = res.data;
+      var sl = d && d.MRData && d.MRData.StandingsTable && d.MRData.StandingsTable.StandingsLists[0];
       if (sl && sl.DriverStandings && sl.DriverStandings.length) {
-        var leader = sl.DriverStandings[0];
-        record('Jolpica standings', 'pass', 'R' + sl.round + ' Leader: ' + leader.Driver.familyName + ' (' + leader.points + 'pts)', null, null);
+        var p1 = sl.DriverStandings[0];
+        record('Jolpica F1 standings', 'pass', 'R' + sl.round + ' Leader: ' + p1.Driver.familyName + ' (' + p1.points + 'pts)', null, null);
       } else {
-        record('Jolpica standings', 'warn', 'No standings data', null, null);
+        record('Jolpica F1 standings', 'warn', 'No standings returned', null, null);
       }
     });
   })
@@ -306,90 +358,117 @@ function runAll() {
 
   .then(function() {
     return fetchJSON('https://api.openf1.org/v1/sessions?year=2026', 12000).then(function(res) {
-      if (!res.ok) { record('OpenF1 API', 'warn', res.error, null, 'Used for session results + live timing.'); return; }
+      if (!res.ok) { record('OpenF1 live timing', 'warn', res.error, null, 'Used only during live sessions.'); return; }
       if (Array.isArray(res.data) && res.data.length) {
-        var latest = res.data[res.data.length - 1];
-        record('OpenF1 API', 'pass', res.data.length + ' sessions | Latest: ' + latest.session_name + ' (' + latest.circuit_short_name + ')', null, null);
+        var l = res.data[res.data.length - 1];
+        record('OpenF1 live timing', 'pass', res.data.length + ' sessions; latest: ' + l.session_name, null, null);
       } else {
-        record('OpenF1 API', 'warn', 'No 2026 sessions found', null, null);
+        record('OpenF1 live timing', 'warn', 'No 2026 sessions', null, null);
       }
     });
   })
 
   .then(function() {
     return fetchJSON('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', 10000).then(function(res) {
-      if (!res.ok) { record('World Cup data', 'warn', res.error, null, null); return; }
+      if (!res.ok) { record('World Cup 2026 data', 'warn', res.error, null, null); return; }
       var m = (res.data && res.data.matches) || [];
-      record('World Cup data', m.length ? 'pass' : 'warn',
-        m.length ? m.length + ' matches loaded' : 'No matches yet (tournament starts Jun 11)', null, null);
+      if (m.length) {
+        record('World Cup 2026 data', 'pass', m.length + ' matches loaded', null, null);
+      } else {
+        record('World Cup 2026 data', 'warn', 'No matches yet (tournament starts Jun 11)', null, null);
+      }
     });
   })
 
-  // ── F1 TIMING CALC ────────────────────────────────────────
+  // F1 CALENDAR LOGIC (computed locally)
   .then(function() {
-    var upcoming = [
-      { race:'Canadian GP',  name:'Race',        ms:Date.parse('2026-05-24T20:00:00Z') },
-      { race:'Spanish GP',   name:'Practice 1',  ms:Date.parse('2026-05-29T11:30:00Z') },
-      { race:'Spanish GP',   name:'Qualifying',  ms:Date.parse('2026-05-30T14:00:00Z') },
-      { race:'Spanish GP',   name:'Race',        ms:Date.parse('2026-05-31T13:00:00Z') },
-      { race:'Austrian GP',  name:'Practice 1',  ms:Date.parse('2026-06-26T10:30:00Z') },
-      { race:'Austrian GP',  name:'Race',        ms:Date.parse('2026-06-28T13:00:00Z') },
+    var sessions = [
+      {race:'Canadian GP', name:'Practice 1',         ms:Date.parse('2026-05-22T16:30:00Z')},
+      {race:'Canadian GP', name:'Sprint Qualifying',  ms:Date.parse('2026-05-22T20:30:00Z')},
+      {race:'Canadian GP', name:'Sprint Race',        ms:Date.parse('2026-05-23T16:00:00Z')},
+      {race:'Canadian GP', name:'Qualifying',         ms:Date.parse('2026-05-23T20:00:00Z')},
+      {race:'Canadian GP', name:'Race',               ms:Date.parse('2026-05-24T20:00:00Z')},
+      {race:'Spanish GP',  name:'Practice 1',         ms:Date.parse('2026-05-29T11:30:00Z')},
+      {race:'Spanish GP',  name:'Race',               ms:Date.parse('2026-05-31T13:00:00Z')},
     ];
-    var now  = Date.now();
+    var now = Date.now();
+    var live = null;
     var next = null;
-    for (var i = 0; i < upcoming.length; i++) {
-      if (upcoming[i].ms > now) { next = upcoming[i]; break; }
+    for (var i = 0; i < sessions.length; i++) {
+      var s = sessions[i];
+      var dur = (s.name === 'Race' ? 2 : 1.5) * 3600 * 1000;
+      if (now >= s.ms && now <= s.ms + dur) live = s;
+      if (s.ms > now && !next) next = s;
     }
-    if (next) {
+    if (live) {
+      record('F1 timing calc', 'pass', 'LIVE NOW: ' + live.race + ' - ' + live.name, null, null);
+    } else if (next) {
       var diff = next.ms - now;
       var h = Math.floor(diff / 3600000);
       var m = Math.floor(diff % 3600000 / 60000);
-      var riyadh = new Date(next.ms).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Riyadh' });
-      record('F1 timing calc', 'pass', next.race + ' ' + next.name + ' in ' + h + 'h ' + m + 'm', riyadh + ' Riyadh', null);
+      var riyadhTime = new Date(next.ms).toLocaleString('en-US', {
+        weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh'
+      });
+      record('F1 timing calc', 'pass',
+        next.race + ' ' + next.name + ' in ' + h + 'h ' + m + 'm',
+        'Local Riyadh time: ' + riyadhTime, null);
     } else {
-      record('F1 timing calc', 'warn', 'No upcoming sessions in hardcoded list', null, 'Update the sessions list in diagnostic.html.');
+      record('F1 timing calc', 'warn', 'No upcoming sessions in checked range', null, null);
     }
   })
 
+  // VERDICT
   .then(function() {
     showVerdict();
     logRaw('Complete: pass=' + p + ' fail=' + f + ' warn=' + w);
   });
+
+  return chain;
 }
 
+// ==================================================================
+// VERDICT
+// ==================================================================
 function showVerdict() {
   var v = document.getElementById('verdict');
   var color, head, summary, fix, emoji;
 
-  var fileFails = results.filter(function(r) { return r.status === 'fail' && r.name.indexOf('.js') > -1; });
-  var apiFails  = results.filter(function(r) { return r.status === 'fail' && r.name.indexOf('.js') === -1 && r.name !== 'Feed API'; });
-  var feedWarn  = results.filter(function(r) { return r.name === 'Feed API' && r.status === 'warn'; });
+  var fileFails = results.filter(function(r) {
+    return r.status === 'fail' && r.name.indexOf('integrity') > -1;
+  });
+  var contentIssues = results.filter(function(r) {
+    return (r.status === 'fail' || r.status === 'warn') && (r.name === 'Feed content' || r.name === 'Feed deduplication');
+  });
+  var apiFails = results.filter(function(r) {
+    return r.status === 'fail' && r.name.indexOf('integrity') === -1 && r.name.indexOf('Feed') === -1;
+  });
 
   if (fileFails.length > 0) {
     color = 'red'; emoji = 'X';
-    head  = 'File corruption detected';
-    summary = fileFails.map(function(r) { return r.name; }).join(', ') + ' cannot be parsed by the browser.';
-    fix = 'Replace the broken file(s) on GitHub with the clean version from Claude.';
+    head  = 'JavaScript file corruption';
+    var names = fileFails.map(function(r) { return r.name.replace(' integrity', ''); });
+    summary = 'These files cannot run in the browser: ' + names.join(', ') + '. Affected tabs will not work until you replace the corrupted file(s).';
+    fix = '1. Replace the broken file with the clean version. 2. Commit and push to GitHub. 3. Hard refresh to reload.';
   } else if (apiFails.length > 0) {
     color = 'amber'; emoji = '!';
-    head  = 'API failures';
-    summary = apiFails.map(function(r) { return r.name; }).join(', ') + ' failed.';
-    fix = 'Check Vercel env vars: ANTHROPIC_API_KEY, API_FOOTBALL_KEY, KV_REST_API_URL, KV_REST_API_TOKEN.';
-  } else if (feedWarn.length > 0) {
+    head  = 'Files OK but APIs failing';
+    summary = apiFails.length + ' API(s) failed: ' + apiFails.map(function(r) { return r.name; }).join(', ') + '.';
+    fix = 'Check Vercel logs and confirm env vars (ANTHROPIC_API_KEY, GITHUB_TOKEN, API_FOOTBALL_KEY) are set.';
+  } else if (contentIssues.length > 0) {
     color = 'amber'; emoji = '!';
-    head  = 'Feed is stale';
-    summary = 'All files clean but news feed has not updated recently.';
-    fix = 'Tap Trigger button to force a run. Check cron-job.org is calling /api/ingest every 30min and /api/score every 2h.';
+    head  = 'App works but news feed is stale or duplicated';
+    summary = contentIssues.map(function(r) { return r.name + ': ' + r.result; }).join(' / ');
+    fix = 'Tap "Trigger /api/news Now" below to force a refresh. Also confirm cron-job.org is still scheduled to call it every 10 minutes.';
   } else if (w > 0) {
     color = 'amber'; emoji = 'OK';
     head  = 'Mostly OK';
-    summary = w + ' minor warning(s). App is functional.';
-    fix = 'Warnings are usually pre-season data sources or minor gaps. Check the details above.';
+    summary = 'All critical systems working. ' + w + ' minor warning(s).';
+    fix = 'Warnings are usually safe (pre-season data sources, etc).';
   } else {
     color = 'green'; emoji = 'OK';
     head  = 'All systems operational';
-    summary = 'Every file is clean. All APIs responding. Pipeline healthy.';
-    fix = 'If the app still misbehaves, open Safari Web Inspector on a Mac for runtime errors.';
+    summary = 'Every file is clean, every API responded, content is fresh.';
+    fix = 'If the app still misbehaves, the issue is in render logic. Open Safari Web Inspector (Mac required) for runtime errors.';
   }
 
   v.className = color;
@@ -400,37 +479,42 @@ function showVerdict() {
     '<div class="fix"><strong>WHAT TO DO:</strong><br>' + fix + '</div>';
 }
 
+// ==================================================================
+// TRIGGER /api/news MANUALLY
+// ==================================================================
 document.getElementById('trigger-btn').addEventListener('click', function() {
   var btn = this;
   btn.textContent = 'Running ingest...';
   btn.disabled = true;
   fetchWithTimeout(VERCEL + '/api/ingest', 60000).then(function(res) {
+    btn.disabled = false;
+    btn.textContent = 'Trigger Ingest + Score';
     if (!res.ok) {
-      btn.disabled = false;
-      btn.textContent = 'Trigger Ingest + Score';
-      alert('Ingest FAILED: ' + (res.error || 'HTTP ' + res.status));
+      alert('FAIL: ' + (res.error || 'HTTP ' + res.status));
       return;
     }
     try {
       var d = JSON.parse(res.text);
-      if (!d.ok) { btn.disabled = false; btn.textContent = 'Trigger Ingest + Score'; alert('Ingest error: ' + (d.error || 'unknown')); return; }
-      btn.textContent = 'Scoring...';
-      fetchWithTimeout(VERCEL + '/api/score', 90000).then(function(r2) {
-        btn.disabled = false;
-        btn.textContent = 'Trigger Ingest + Score';
-        try {
-          var d2 = JSON.parse(r2.text);
-          alert('Ingest: ' + (d.ingested || 0) + ' new\nScore: ' + (d2.approved || 0) + ' approved\nCost: $' + ((d2.cost || 0).toFixed(4)) + '\n\nReload to see updated results.');
-        } catch (e) { alert('Done. Reload diagnostic.'); }
-      });
+      if (d.ok) {
+        btn.textContent = 'Scoring...';
+        fetchWithTimeout(VERCEL + '/api/score', 90000).then(function(r2) {
+          btn.disabled = false;
+          btn.textContent = 'Trigger Ingest + Score';
+          try {
+            var d2 = JSON.parse(r2.text);
+            alert('Ingest: ' + (d.ingested||0) + ' new\nScore: ' + (d2.approved||0) + ' approved\nCost: $' + ((d2.cost||0).toFixed(4)) + '\n\nReload diagnostic to see updated feed.');
+          } catch(e) { alert('Done. Reload diagnostic.'); }
+        });
+      } else alert('Ingest error: ' + (d.error || 'unknown'));
     } catch (e) {
-      btn.disabled = false;
-      btn.textContent = 'Trigger Ingest + Score';
-      alert('Bad response: ' + res.text.slice(0, 200));
+      alert('Got response but it was not JSON: ' + res.text.slice(0, 200));
     }
   });
 });
 
+// ==================================================================
+// COPY REPORT
+// ==================================================================
 function copyReport() {
   var lines = ["MOE'S APP DIAGNOSTIC REPORT"];
   lines.push('Time: ' + new Date().toISOString());
@@ -447,18 +531,27 @@ function copyReport() {
   }
   var text = lines.join('\n');
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function() { alert('Copied. Paste to Claude.'); }, function() { fallbackCopy(text); });
-  } else { fallbackCopy(text); }
+    navigator.clipboard.writeText(text).then(function() {
+      alert('Report copied. Paste it to Claude.');
+    }, function() { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
 }
 
 function fallbackCopy(text) {
   var ta = document.createElement('textarea');
-  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-  document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); alert('Copied.'); } catch (e) { alert('Copy failed. Use raw log.'); }
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); alert('Report copied.'); }
+  catch (e) { alert('Copy failed. Use the raw log below.'); }
   document.body.removeChild(ta);
 }
 
+// Go
 runAll();
 </script>
 </body>
