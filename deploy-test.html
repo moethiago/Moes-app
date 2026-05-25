@@ -1,63 +1,75 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deploy Test</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moe's App — Deploy Connection Test</title>
 <style>
-  body { background:#0a0a0f; color:#e8e8f0; font-family:-apple-system,sans-serif; padding:20px; }
-  button { background:#ff3366; color:#fff; border:none; padding:14px 20px; border-radius:10px; font-size:16px; width:100%; margin-top:10px; }
-  pre { background:#13131a; padding:14px; border-radius:8px; font-size:12px; margin-top:14px; white-space:pre-wrap; word-break:break-all; }
-  h2 { color:#00ff88; margin-top:14px; }
+  :root { color-scheme: dark; }
+  body { font-family: -apple-system, system-ui, sans-serif; background:#0f1115; color:#e6e6e6; max-width:640px; margin:0 auto; padding:24px; line-height:1.45; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.sub { color:#9aa0a6; margin:0 0 20px; font-size:14px; }
+  button { width:100%; padding:16px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:#3b82f6; color:white; cursor:pointer; }
+  button:active { background:#2563eb; }
+  button:disabled { background:#374151; color:#9aa0a6; }
+  #out { margin-top:20px; padding:14px; background:#1a1d23; border-radius:10px; font-family: ui-monospace, Menlo, monospace; font-size:13px; white-space:pre-wrap; word-break:break-word; min-height:60px; }
+  .ok { color:#34d399; }
+  .err { color:#f87171; }
+  .meta { color:#9aa0a6; font-size:12px; margin-top:14px; }
 </style>
 </head>
 <body>
-<h1 style="color:#ff3366">Deploy Connection Test</h1>
-<p style="color:#888;font-size:13px;">Tests if Claude can push files directly to your GitHub repo.</p>
+  <h1>Deploy Connection Test</h1>
+  <p class="sub">Overwrites <code>README.md</code> with a timestamped line. Safe and reversible.</p>
 
-<button onclick="testDeploy()">Test Connection</button>
+  <button id="go">Run deploy test</button>
+  <div id="out">Ready.</div>
 
-<div id="result"></div>
+  <p class="meta">Endpoint: <code>https://moes-app-two.vercel.app/api/deploy</code><br>Target file: <code>README.md</code></p>
 
 <script>
-function testDeploy() {
-  var btn = document.querySelector('button');
-  btn.textContent = 'Testing...';
-  btn.disabled = true;
-  document.getElementById('result').innerHTML = '';
+const btn = document.getElementById('go');
+const out = document.getElementById('out');
 
-  fetch('https://moes-app-two.vercel.app/api/deploy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      secret:  'moes-deploy-2026',
-      path:    'CHANGELOG.md',
-      message: 'Test deploy connection',
-      content: '# Moes App Changelog\n\n## ' + new Date().toISOString().split('T')[0] + '\n- Deploy endpoint connected and working\n- Direct code updates now possible without manual GitHub edits\n'
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(d) {
-    btn.textContent = 'Test Connection';
-    btn.disabled = false;
-    if (d.ok) {
-      document.getElementById('result').innerHTML =
-        '<h2>Connected!</h2>' +
-        '<p style="color:#aaa;font-size:13px;">Claude can now push files directly to your repo. No more copy-paste deploys.</p>' +
-        '<pre>' + JSON.stringify(d, null, 2) + '</pre>';
+btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  out.textContent = 'Sending…';
+  out.className = '';
+
+  const now = new Date().toISOString();
+  const content = `# Moes-app\n\nDeploy connection test OK — ${now}\n`;
+
+  try {
+    const res = await fetch('https://moes-app-two.vercel.app/api/deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: 'moes-deploy-2026',
+        path: 'README.md',
+        content: content,
+        message: 'Deploy connection test from new chat session'
+      })
+    });
+
+    const text = await res.text();
+    let body;
+    try { body = JSON.parse(text); } catch { body = text; }
+
+    if (res.ok) {
+      out.className = 'ok';
+      out.textContent = '✅ SUCCESS (' + res.status + ')\n\n' + JSON.stringify(body, null, 2) +
+        '\n\nCheck: https://github.com/moethiago/Moes-app/blob/main/README.md';
     } else {
-      document.getElementById('result').innerHTML =
-        '<h2 style="color:#ff3366">Failed</h2>' +
-        '<pre>' + JSON.stringify(d, null, 2) + '</pre>';
+      out.className = 'err';
+      out.textContent = '❌ FAILED (' + res.status + ')\n\n' + (typeof body === 'string' ? body : JSON.stringify(body, null, 2));
     }
-  })
-  .catch(function(e) {
-    btn.textContent = 'Test Connection';
+  } catch (e) {
+    out.className = 'err';
+    out.textContent = '❌ NETWORK ERROR\n\n' + (e && e.message ? e.message : String(e));
+  } finally {
     btn.disabled = false;
-    document.getElementById('result').innerHTML =
-      '<h2 style="color:#ff3366">Error</h2><pre>' + e.message + '</pre>';
-  });
-}
+  }
+});
 </script>
 </body>
 </html>
