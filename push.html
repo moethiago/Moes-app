@@ -3,64 +3,125 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Install push.html</title>
+<title>Moe's App — Push</title>
 <style>
   :root { color-scheme: dark; }
-  body { font-family: -apple-system, system-ui, sans-serif; background:#0f1115; color:#e6e6e6; max-width:640px; margin:0 auto; padding:24px; line-height:1.45; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, system-ui, sans-serif; background:#0f1115; color:#e6e6e6; max-width:720px; margin:0 auto; padding:20px; line-height:1.45; }
   h1 { font-size:20px; margin:0 0 4px; }
-  p { color:#9aa0a6; margin:0 0 16px; font-size:14px; }
-  .warn { background:#3a2a1a; border:1px solid #6b4a1f; color:#fbbf24; padding:12px; border-radius:8px; font-size:13px; margin:0 0 16px; }
-  button { width:100%; padding:16px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:#3b82f6; color:white; cursor:pointer; }
+  p.sub { color:#9aa0a6; margin:0 0 16px; font-size:14px; }
+  label { display:block; font-size:12px; color:#9aa0a6; margin:12px 0 4px; text-transform:uppercase; letter-spacing:0.5px; }
+  input, textarea { width:100%; padding:12px; font-size:14px; background:#1a1d23; border:1px solid #2a2f38; border-radius:8px; color:#e6e6e6; font-family: ui-monospace, Menlo, monospace; }
+  textarea { min-height:220px; resize:vertical; }
+  button { width:100%; padding:16px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:#3b82f6; color:white; cursor:pointer; margin-top:16px; }
   button:active { background:#2563eb; }
   button:disabled { background:#374151; color:#9aa0a6; }
-  #out { margin-top:16px; padding:14px; background:#1a1d23; border-radius:10px; font-family: ui-monospace, Menlo, monospace; font-size:13px; white-space:pre-wrap; word-break:break-word; min-height:60px; }
+  button.secondary { background:#2a2f38; margin-top:8px; }
+  #out { margin-top:16px; padding:14px; background:#1a1d23; border-radius:10px; font-family: ui-monospace, Menlo, monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; min-height:40px; }
   .ok { color:#34d399; }
   .err { color:#f87171; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  details { margin-top:12px; }
+  summary { cursor:pointer; font-size:13px; color:#9aa0a6; padding:6px 0; }
+  .meta { color:#9aa0a6; font-size:12px; margin-top:8px; }
 </style>
 </head>
 <body>
-  <h1>Install push.html (one-time)</h1>
-  <p>Pushes <code>push.html</code> to your repo. After this, you'll never need a per-fix HTML file again.</p>
-  <div class="warn">Open this page in <b>Safari</b> at moethiago.github.io &mdash; NOT in the Claude app preview.</div>
+  <h1>Push to GitHub</h1>
+  <p class="sub">One-tap deploy. Fields auto-fill from URL params if provided.</p>
 
-  <button id="go">Install push.html</button>
+  <label for="path">File path (e.g. <code>js/feed/feed-render.js</code>)</label>
+  <input id="path" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="path/to/file.js">
+
+  <label for="message">Commit message</label>
+  <input id="message" type="text" placeholder="What this change does">
+
+  <label for="content">File content</label>
+  <textarea id="content" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste full file contents here…"></textarea>
+
+  <button id="go">Push to GitHub</button>
+  <button id="load" class="secondary">Load payload from URL hash</button>
+
   <div id="out">Ready.</div>
 
-<script>
-const PUSH_HTML_CONTENT = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Moe's App \u2014 Push</title>\n<style>\n  :root { color-scheme: dark; }\n  * { box-sizing: border-box; }\n  body { font-family: -apple-system, system-ui, sans-serif; background:#0f1115; color:#e6e6e6; max-width:720px; margin:0 auto; padding:20px; line-height:1.45; }\n  h1 { font-size:20px; margin:0 0 4px; }\n  p.sub { color:#9aa0a6; margin:0 0 16px; font-size:14px; }\n  label { display:block; font-size:12px; color:#9aa0a6; margin:12px 0 4px; text-transform:uppercase; letter-spacing:0.5px; }\n  input, textarea { width:100%; padding:12px; font-size:14px; background:#1a1d23; border:1px solid #2a2f38; border-radius:8px; color:#e6e6e6; font-family: ui-monospace, Menlo, monospace; }\n  textarea { min-height:220px; resize:vertical; }\n  button { width:100%; padding:16px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:#3b82f6; color:white; cursor:pointer; margin-top:16px; }\n  button:active { background:#2563eb; }\n  button:disabled { background:#374151; color:#9aa0a6; }\n  button.secondary { background:#2a2f38; margin-top:8px; }\n  #out { margin-top:16px; padding:14px; background:#1a1d23; border-radius:10px; font-family: ui-monospace, Menlo, monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; min-height:40px; }\n  .ok { color:#34d399; }\n  .err { color:#f87171; }\n  .row { display:flex; gap:8px; }\n  .row > * { flex:1; }\n  details { margin-top:12px; }\n  summary { cursor:pointer; font-size:13px; color:#9aa0a6; padding:6px 0; }\n  .meta { color:#9aa0a6; font-size:12px; margin-top:8px; }\n<\/style>\n</head>\n<body>\n  <h1>Push to GitHub</h1>\n  <p class=\"sub\">One-tap deploy. Fields auto-fill from URL params if provided.</p>\n\n  <label for=\"path\">File path (e.g. <code>js/feed/feed-render.js</code>)</label>\n  <input id=\"path\" type=\"text\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" placeholder=\"path/to/file.js\">\n\n  <label for=\"message\">Commit message</label>\n  <input id=\"message\" type=\"text\" placeholder=\"What this change does\">\n\n  <label for=\"content\">File content</label>\n  <textarea id=\"content\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" placeholder=\"Paste full file contents here\u2026\"></textarea>\n\n  <button id=\"go\">Push to GitHub</button>\n  <button id=\"load\" class=\"secondary\">Load payload from URL hash</button>\n\n  <div id=\"out\">Ready.</div>\n\n  <details>\n    <summary>How URL params work</summary>\n    <p class=\"meta\">Open this page with a hash like <code>#payload=&lt;base64-json&gt;</code> and tap \"Load payload from URL hash\" to auto-fill. JSON shape: <code>{\"path\":\"...\",\"message\":\"...\",\"content\":\"...\"}</code></p>\n  </details>\n\n<script>\nconst $ = id => document.getElementById(id);\nconst out = $('out');\n\n// Auto-fill from query string ?path=&message= (content via hash to avoid URL length limits)\nconst params = new URLSearchParams(location.search);\nif (params.get('path')) $('path').value = params.get('path');\nif (params.get('message')) $('message').value = params.get('message');\n\nfunction loadFromHash() {\n  try {\n    const h = location.hash.replace(/^#/, '');\n    const sp = new URLSearchParams(h);\n    const payload = sp.get('payload');\n    if (!payload) {\n      out.textContent = 'No payload in URL hash.';\n      return;\n    }\n    const json = JSON.parse(atob(payload));\n    if (json.path) $('path').value = json.path;\n    if (json.message) $('message').value = json.message;\n    if (typeof json.content === 'string') $('content').value = json.content;\n    out.textContent = 'Payload loaded. Review and tap Push.';\n  } catch (e) {\n    out.className = 'err';\n    out.textContent = 'Failed to load payload: ' + e.message;\n  }\n}\n\n$('load').addEventListener('click', loadFromHash);\n// Auto-load if hash present\nif (location.hash.includes('payload=')) loadFromHash();\n\n$('go').addEventListener('click', async () => {\n  const path = $('path').value.trim();\n  const message = $('message').value.trim() || 'Update via push.html';\n  const content = $('content').value;\n\n  if (!path) { out.className='err'; out.textContent='Path is required.'; return; }\n  if (!content) { out.className='err'; out.textContent='Content is empty.'; return; }\n\n  $('go').disabled = true;\n  out.className = '';\n  out.textContent = 'Pushing\u2026';\n\n  try {\n    const res = await fetch('https://moes-app-two.vercel.app/api/deploy', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify({\n        secret: 'moes-deploy-2026',\n        path: path,\n        content: content,\n        message: message\n      })\n    });\n    const text = await res.text();\n    let body;\n    try { body = JSON.parse(text); } catch { body = text; }\n\n    if (res.ok) {\n      out.className = 'ok';\n      out.textContent = '\u2705 PUSHED (' + res.status + ')\\n\\n' + JSON.stringify(body, null, 2);\n    } else {\n      out.className = 'err';\n      out.textContent = '\u274c FAILED (' + res.status + ')\\n\\n' + (typeof body === 'string' ? body : JSON.stringify(body, null, 2));\n    }\n  } catch (e) {\n    out.className = 'err';\n    out.textContent = '\u274c NETWORK ERROR\\n\\n' + (e && e.message ? e.message : String(e));\n  } finally {\n    $('go').disabled = false;\n  }\n});\n<\/script>\n</body>\n</html>\n";
+  <details>
+    <summary>How URL params work</summary>
+    <p class="meta">Open this page with a hash like <code>#payload=&lt;base64-json&gt;</code> and tap "Load payload from URL hash" to auto-fill. JSON shape: <code>{"path":"...","message":"...","content":"..."}</code></p>
+  </details>
 
-document.getElementById('go').addEventListener('click', async () => {
-  const btn = document.getElementById('go');
-  const out = document.getElementById('out');
-  btn.disabled = true;
+<script>
+const $ = id => document.getElementById(id);
+const out = $('out');
+
+// Auto-fill from query string ?path=&message= (content via hash to avoid URL length limits)
+const params = new URLSearchParams(location.search);
+if (params.get('path')) $('path').value = params.get('path');
+if (params.get('message')) $('message').value = params.get('message');
+
+function loadFromHash() {
+  try {
+    const h = location.hash.replace(/^#/, '');
+    const sp = new URLSearchParams(h);
+    const payload = sp.get('payload');
+    if (!payload) {
+      out.textContent = 'No payload in URL hash.';
+      return;
+    }
+    const json = JSON.parse(atob(payload));
+    if (json.path) $('path').value = json.path;
+    if (json.message) $('message').value = json.message;
+    if (typeof json.content === 'string') $('content').value = json.content;
+    out.textContent = 'Payload loaded. Review and tap Push.';
+  } catch (e) {
+    out.className = 'err';
+    out.textContent = 'Failed to load payload: ' + e.message;
+  }
+}
+
+$('load').addEventListener('click', loadFromHash);
+// Auto-load if hash present
+if (location.hash.includes('payload=')) loadFromHash();
+
+$('go').addEventListener('click', async () => {
+  const path = $('path').value.trim();
+  const message = $('message').value.trim() || 'Update via push.html';
+  const content = $('content').value;
+
+  if (!path) { out.className='err'; out.textContent='Path is required.'; return; }
+  if (!content) { out.className='err'; out.textContent='Content is empty.'; return; }
+
+  $('go').disabled = true;
   out.className = '';
-  out.textContent = 'Pushing...';
+  out.textContent = 'Pushing…';
+
   try {
     const res = await fetch('https://moes-app-two.vercel.app/api/deploy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         secret: 'moes-deploy-2026',
-        path: 'push.html',
-        content: PUSH_HTML_CONTENT,
-        message: 'Add permanent push.html deploy page'
+        path: path,
+        content: content,
+        message: message
       })
     });
     const text = await res.text();
-    let body; try { body = JSON.parse(text); } catch (e) { body = text; }
+    let body;
+    try { body = JSON.parse(text); } catch { body = text; }
+
     if (res.ok) {
       out.className = 'ok';
-      out.textContent = 'INSTALLED OK\n\n' + JSON.stringify(body, null, 2) +
-        '\n\nBookmark: https://moethiago.github.io/Moes-app/push.html';
+      out.textContent = '✅ PUSHED (' + res.status + ')\n\n' + JSON.stringify(body, null, 2);
     } else {
       out.className = 'err';
-      out.textContent = 'FAILED (' + res.status + ')\n\n' + (typeof body === 'string' ? body : JSON.stringify(body, null, 2));
+      out.textContent = '❌ FAILED (' + res.status + ')\n\n' + (typeof body === 'string' ? body : JSON.stringify(body, null, 2));
     }
   } catch (e) {
     out.className = 'err';
-    out.textContent = 'NETWORK ERROR\n\n' + (e.message || String(e));
+    out.textContent = '❌ NETWORK ERROR\n\n' + (e && e.message ? e.message : String(e));
   } finally {
-    btn.disabled = false;
+    $('go').disabled = false;
   }
 });
 </script>
