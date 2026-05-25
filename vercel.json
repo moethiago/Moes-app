@@ -20,9 +20,20 @@
       "maxDuration": 10,
       "includeFiles": "api/lib/**"
     },
+    "api/f1-results.js": {
+      "memory": 512,
+      "maxDuration": 30,
+      "includeFiles": "api/lib/**"
+    },
+    "api/f1-grid.js": {
+      "memory": 512,
+      "maxDuration": 30,
+      "includeFiles": "api/lib/**"
+    },
     "api/football.js": {
       "memory": 128,
-      "maxDuration": 10
+      "maxDuration": 10,
+      "includeFiles": "api/lib/**"
     }
   }
 }
