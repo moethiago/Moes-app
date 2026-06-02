@@ -18,7 +18,8 @@ function startClock() {
   setInterval(tick, 10000);
 }
 
-var sportsSectionLoaded = false;
+// Track which sport tabs have already loaded (lazy-load once)
+var loaded = { f1:false, football:false, worldcup:false };
 
 function switchTab(tab) {
   if (tab === 'health') return; // Health tab hidden for now
@@ -36,12 +37,20 @@ function switchTab(tab) {
   var sw = document.getElementById('scroll-wrap');
   if (sw) sw.scrollTop = 0;
 
-  if (tab === 'sports' && !sportsSectionLoaded) {
-    sportsSectionLoaded = true;
-    try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
-    try { loadF1Data();         } catch(e) { console.warn('sports:f1', e); }
+  if (tab === 'f1' && !loaded.f1) {
+    loaded.f1 = true;
+    try { loadF1Data(); } catch(e) { console.warn('f1:data', e); }
     try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
-    try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) {}
-    try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('sports:session', e); }
+    try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
+  }
+
+  if (tab === 'football' && !loaded.football) {
+    loaded.football = true;
+    try { buildFootballSection(); } catch(e) { console.warn('football:scores', e); }
+  }
+
+  if (tab === 'worldcup' && !loaded.worldcup) {
+    loaded.worldcup = true;
+    try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) { console.warn('worldcup', e); }
   }
 }
