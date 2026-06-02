@@ -58,14 +58,21 @@ async function renderTitleMath() {
   html += '<div class="f1a-sub">' + roundsLeft + ' rounds left \u00b7 max ' + maxLeft + ' pts still available</div>';
   ds.forEach(function(d) {
     var name = d.Driver.familyName;
+    var cid = (d.Constructors && d.Constructors[0] && d.Constructors[0].constructorId) || '';
+    if (cid && typeof registerDriverColor === 'function') registerDriverColor(name, cid);
+    var col = (typeof driverColor === 'function') ? driverColor(name) : '#e6e6e6';
     var pts = parseFloat(d.points);
     var gap = lpts - pts;
     var alive = pts + maxLeft >= lpts;
-    var tag = d.position === '1'
-      ? '<span class="f1a-tag lead">LEADER</span>'
-      : (alive ? '<span class="f1a-tag alive">IN CONTENTION (-' + gap + ')</span>'
-               : '<span class="f1a-tag dead">MATHEMATICALLY OUT</span>');
-    html += '<div class="f1a-row"><span class="f1a-pos">' + d.position + '</span><span class="f1a-name">' + name + '</span><span class="f1a-pts">' + pts + '</span>' + tag + '</div>';
+    var tag;
+    if (d.position === '1') {
+      tag = '<span class="f1a-tag lead">LEADER</span>';
+    } else if (alive) {
+      tag = '<span class="f1a-tag alive">-' + gap + '</span>';
+    } else {
+      tag = '<span class="f1a-tag dead">OUT</span>';
+    }
+    html += '<div class="f1a-row"><span class="f1a-pos">' + d.position + '</span><span class="f1a-name" style="color:' + col + '">' + name + '</span><span class="f1a-pts">' + pts + '</span>' + tag + '</div>';
   });
   html += '</div>';
   appendAsync(html);
@@ -113,6 +120,7 @@ async function renderTeammateH2H() {
   sl.DriverStandings.forEach(function(d) {
     var c = d.Constructors && d.Constructors[0];
     if (!c) return;
+    if (typeof registerDriverColor === 'function') registerDriverColor(d.Driver.familyName, c.constructorId);
     (byTeam[c.constructorId] = byTeam[c.constructorId] || { name: c.name, drivers: [] }).drivers.push({
       name: d.Driver.familyName, pts: parseFloat(d.points), pos: parseInt(d.position),
       cid: c.constructorId
@@ -128,9 +136,9 @@ async function renderTeammateH2H() {
     var aPct = Math.round((a.pts / total) * 100);
     var col = (typeof TEAM_COLORS !== 'undefined' && TEAM_COLORS[tid]) || '#8a8fa8';
     html += '<div class="f1a-h2h">'
-      + '<div class="f1a-h2h-top"><span>' + a.name + ' <strong>' + a.pts + '</strong></span>'
-      + '<span class="f1a-team" style="color:' + col + '">' + t.name + '</span>'
-      + '<span><strong>' + b.pts + '</strong> ' + b.name + '</span></div>'
+      + '<div class="f1a-h2h-top"><span style="color:' + col + '">' + a.name + ' <strong>' + a.pts + '</strong></span>'
+      + teamBadge(tid, t.name)
+      + '<span style="color:' + col + '"><strong>' + b.pts + '</strong> ' + b.name + '</span></div>'
       + '<div class="f1a-h2h-bar"><div class="f1a-h2h-fill" style="width:' + aPct + '%;background:' + col + '"></div></div>'
       + '</div>';
   });
@@ -164,12 +172,14 @@ async function renderFormGuide() {
   var html = '<div class="f1a-card"><div class="f1a-h">\u{1F4CA} Form Guide \u00b7 last 5</div>';
   sl.DriverStandings.forEach(function(d) {
     var id = d.Driver.driverId;
+    var nm = d.Driver.familyName;
+    var col = (typeof driverColor === 'function') ? driverColor(nm) : '#e6e6e6';
     var arr = form[id] || [];
     var dots = arr.map(function(p) {
       var cls = p === 1 ? 'win' : (p <= 3 ? 'pod' : (p <= 10 ? 'pts' : 'out'));
       return '<span class="f1a-form-dot ' + cls + '">' + p + '</span>';
     }).join('');
-    html += '<div class="f1a-form-row"><span class="f1a-name">' + d.Driver.familyName + '</span><span class="f1a-form-dots">' + dots + '</span></div>';
+    html += '<div class="f1a-form-row"><span class="f1a-name" style="color:' + col + '">' + nm + '</span><span class="f1a-form-dots">' + dots + '</span></div>';
   });
   html += '<div class="f1a-sub">\u{1F7E1} win \u00b7 \u{1F7E2} podium \u00b7 \u{1F535} points \u00b7 \u26AA out</div></div>';
   appendAsync(html);
@@ -189,13 +199,23 @@ async function renderLastRaceStrategy() {
     var dur = parseFloat(p.duration);
     if (!isNaN(dur) && (!fastest || dur < parseFloat(fastest.duration))) fastest = p;
   });
-  var html = '<div class="f1a-card"><div class="f1a-h">\u{1F6E0}\uFE0F ' + race.raceName + ' \u00b7 Strategy</div>';
-  if (fastest) html += '<div class="f1a-sub">Fastest stop: <strong>' + fastest.driverId + '</strong> ' + fastest.duration + 's (lap ' + fastest.lap + ')</div>';
+  var html = '<div class="f1a-card"><div class="f1a-h">\u{1F6E0}\uFE0F ' + race.raceName.replace(' Grand Prix','') + ' \u00b7 Strategy</div>';
+  function cleanName(id) {
+    var parts = id.split('_');
+    var last = parts[parts.length - 1];
+    return last.charAt(0).toUpperCase() + last.slice(1);
+  }
+  if (fastest) {
+    var fn = cleanName(fastest.driverId);
+    html += '<div class="f1a-sub">Fastest stop: <strong style="color:' + (typeof driverColor==='function'?driverColor(fn):'#fff') + '">' + fn + '</strong> ' + fastest.duration + 's (lap ' + fastest.lap + ')</div>';
+  }
   var ids = Object.keys(perDriver).slice(0, 10);
   ids.forEach(function(id) {
     var arr = perDriver[id];
+    var nm = cleanName(id);
+    var col = (typeof driverColor === 'function') ? driverColor(nm) : '#e6e6e6';
     var laps = arr.map(function(s){ return 'L' + s.lap; }).join(' \u00b7 ');
-    html += '<div class="f1a-strat-row"><span class="f1a-name">' + id + '</span><span class="f1a-strat-stops">' + arr.length + ' stop' + (arr.length>1?'s':'') + '</span><span class="f1a-strat-laps">' + laps + '</span></div>';
+    html += '<div class="f1a-strat-row"><span class="f1a-name" style="color:' + col + '">' + nm + '</span><span class="f1a-strat-stops">' + arr.length + ' stop' + (arr.length>1?'s':'') + '</span><span class="f1a-strat-laps">' + laps + '</span></div>';
   });
   html += '</div>';
   appendAsync(html);

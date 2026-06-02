@@ -39,12 +39,13 @@ function renderDriverStandings(drivers, round) {
     var pts  = parseFloat(d.pts || d.points);
     var wins = d.wins || 0;
     var col  = TEAM_COLORS[cid] || '#8a8fa8';
+    registerDriverColor(name, cid);
     var barW = Math.round((pts / maxPts) * 100);
     var pc   = pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : '';
     var did  = d.driverId || (d.Driver && d.Driver.driverId) || '';
     var moveHtml = '';
     if (_prevPositions && did && _prevPositions[did]) {
-      var delta = _prevPositions[did] - pos; // positive = climbed
+      var delta = _prevPositions[did] - pos;
       if (delta > 0)      moveHtml = '<span class="f1-move up">\u25B2' + delta + '</span>';
       else if (delta < 0) moveHtml = '<span class="f1-move down">\u25BC' + Math.abs(delta) + '</span>';
       else                moveHtml = '<span class="f1-move same">\u2013</span>';
@@ -53,6 +54,7 @@ function renderDriverStandings(drivers, round) {
       + '<span class="f1-pos ' + pc + '">' + pos + moveHtml + '</span>'
       + '<span class="f1-num" style="background:' + col + '22;color:' + col + '">' + num + '</span>'
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
+      + teamBadge(cid)
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
       + '<span class="f1-wins">' + wins + '</span>'
       + '<span class="f1-pts">' + pts + '</span></div>';
@@ -82,6 +84,7 @@ function renderConstructorStandings(teams, round) {
       + '<span class="f1-num" style="background:' + col + '22;">'
       + '<div style="width:10px;height:10px;border-radius:2px;background:' + col + '"></div></span>'
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
+      + teamBadge(cid, name)
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
       + '<span class="f1-wins">' + wins + '</span>'
       + '<span class="f1-pts">' + pts + '</span></div>';

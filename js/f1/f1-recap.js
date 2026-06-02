@@ -54,6 +54,7 @@ async function loadF1Recap() {
   podium.forEach(function(r, i) {
     var cid = r.Constructor.constructorId;
     var col = (typeof TEAM_COLORS !== 'undefined' && TEAM_COLORS[cid]) || '#8a8fa8';
+    if (typeof registerDriverColor === 'function') registerDriverColor(r.Driver.familyName, cid);
     html += '<div class="f1-recap-pod-item">'
       + '<span class="f1-recap-medal">' + medals[i] + '</span>'
       + '<div class="f1-recap-pod-info"><span class="f1-recap-pod-name" style="color:' + col + '">' + r.Driver.familyName + '</span>'
