@@ -24,12 +24,12 @@ async function loadWorldCup() {
     container.innerHTML = html;
   } catch(e) {
     container.innerHTML = renderWCSection([
-      { team1:'Mexico',      team2:'South Africa',   date:'2026-06-11', group:'Group A' },
-      { team1:'South Korea', team2:'Czech Republic', date:'2026-06-11', group:'Group A' },
-      { team1:'USA',         team2:'TBD',            date:'2026-06-12', group:'Group B' },
-      { team1:'Canada',      team2:'TBD',            date:'2026-06-12', group:'Group C' },
-      { team1:'Brazil',      team2:'TBD',            date:'2026-06-13', group:'Group D' },
-      { team1:'England',     team2:'TBD',            date:'2026-06-13', group:'Group E' },
+      { team1:'Mexico',  team2:'TBD', date:'2026-06-11', group:'Group A \u00b7 Mexico City' },
+      { team1:'Canada',  team2:'TBD', date:'2026-06-12', group:'Group B \u00b7 Toronto' },
+      { team1:'USA',     team2:'TBD', date:'2026-06-12', group:'Group D \u00b7 Los Angeles' },
+      { team1:'TBD',     team2:'TBD', date:'2026-06-13', group:'Group C' },
+      { team1:'TBD',     team2:'TBD', date:'2026-06-13', group:'Group E' },
+      { team1:'TBD',     team2:'TBD', date:'2026-06-14', group:'Group F' },
     ], 'Opening Fixtures - Jun 11, 2026');
   }
 }
