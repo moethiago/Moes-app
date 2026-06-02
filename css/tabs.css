@@ -330,3 +330,65 @@
   margin-left: 3px;
   vertical-align: middle;
 }
+
+/* ═══ F1 SUPER TAB — analytics, race card, driver modal ═══ */
+.f1a-card{background:var(--bg-card,#14171d);border:1px solid var(--border,#232830);border-radius:14px;padding:14px;margin-bottom:12px}
+.f1a-h{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--txt,#e6e6e6);margin-bottom:8px}
+.f1a-sub{font-size:11px;color:var(--txt-muted,#8a8fa8);margin:4px 0}
+.f1a-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+.f1a-row:last-child{border-bottom:0}
+.f1a-pos{width:20px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace;font-size:12px}
+.f1a-name{flex:1;font-weight:600}
+.f1a-pts{font-family:'JetBrains Mono',monospace;font-weight:700;margin-right:6px}
+.f1a-tag{font-size:9px;font-weight:700;padding:3px 7px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap}
+.f1a-tag.lead{background:#1c3a24;color:#34d399}
+.f1a-tag.alive{background:#2a2410;color:#fbbf24}
+.f1a-tag.dead{background:#2a1518;color:#f87171}
+.f1a-otd-text{font-size:13px;line-height:1.5;color:var(--txt,#e6e6e6)}
+/* gap trend bars */
+.f1a-bars{display:flex;align-items:flex-end;gap:6px;height:72px;padding:8px 0}
+.f1a-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.f1a-bar{width:100%;max-width:22px;background:linear-gradient(180deg,#4f9cf9,#a78bfa);border-radius:3px 3px 0 0}
+.f1a-bar-lbl{font-size:8px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace}
+/* teammate h2h */
+.f1a-h2h{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.f1a-h2h:last-child{border-bottom:0}
+.f1a-h2h-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:5px}
+.f1a-team{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+.f1a-h2h-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+.f1a-h2h-fill{height:100%;border-radius:3px}
+/* form guide */
+.f1a-form-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.f1a-form-row:last-child{border-bottom:0}
+.f1a-form-dots{display:flex;gap:4px}
+.f1a-form-dot{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.f1a-form-dot.win{background:#a98a16;color:#fff}
+.f1a-form-dot.pod{background:#1c3a24;color:#34d399}
+.f1a-form-dot.pts{background:#1a2a3a;color:#4f9cf9}
+.f1a-form-dot.out{background:#222;color:#777}
+/* strategy */
+.f1a-strat-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
+.f1a-strat-row:last-child{border-bottom:0}
+.f1a-strat-stops{font-weight:700;color:var(--cyan,#4f9cf9);white-space:nowrap}
+.f1a-strat-laps{font-size:10px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace;flex:1;text-align:right}
+/* race card */
+.f1-rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.f1-rc-stat{background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 4px;text-align:center}
+.f1-rc-v{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.f1-rc-l{font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.f1-rc-record{font-size:11px;color:var(--txt-muted);padding-top:4px}
+.f1-rc-weather{font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)}
+/* driver modal */
+.f1-modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.f1-modal-inner{background:var(--bg-card,#14171d);border:1px solid var(--border,#232830);border-radius:18px;padding:20px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;position:relative}
+.f1-modal-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.08);border:0;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer}
+.f1-modal-title{font-size:20px;font-weight:700;margin-bottom:14px}
+.f1-modal-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.f1-ms{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 4px;text-align:center}
+.f1-ms-v{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.f1-ms-l{font-size:8px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;margin-top:2px}
+.f1-modal-results{margin-top:6px}
+.f1-mr-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
+.f1-mr-pos{font-family:'JetBrains Mono',monospace;font-weight:700}
+.f1-mr-pos.win{color:#fbbf24}
+.f1-mr-pos.pod{color:#34d399}
