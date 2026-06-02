@@ -44,6 +44,8 @@ function switchTab(tab) {
     try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
     try { if (typeof loadNextRaceCard === 'function') loadNextRaceCard(); } catch(e) { console.warn('f1:racecard', e); }
     try { if (typeof loadF1Analytics === 'function') loadF1Analytics(); } catch(e) { console.warn('f1:analytics', e); }
+    try { if (typeof loadF1Story === 'function') loadF1Story(); } catch(e) { console.warn('f1:story', e); }
+    try { if (typeof loadF1Interactive === 'function') loadF1Interactive(); } catch(e) { console.warn('f1:interactive', e); }
   }
 
   if (tab === 'football' && !loaded.football) {
