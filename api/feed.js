@@ -6,7 +6,7 @@
 import { CATEGORIES } from './lib/sources.js';
 import { kvReady, kvPipeline, zrevrange } from './lib/kv.js';
 
-const MAX_PER_CAT = 6;
+const MAX_PER_CAT = 12;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

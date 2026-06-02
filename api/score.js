@@ -9,6 +9,20 @@ import { kvReady, kvPipeline, lpush, ltrim } from './lib/kv.js';
 
 const MAX_CANDIDATES_PER_CAT = 25;
 
+// Cheap local pre-filter — drops obvious clickbait/opinion BEFORE the paid AI
+// pass, so the token budget is spent only on plausible real stories.
+const JUNK_PATTERNS = [
+  /\bopinion\b/i, /\bcolumn\b/i, /\bwhy \w+ (should|must|could)\b/i,
+  /\branking\b/i, /\brated\b/i, /\bbest \d+\b/i, /\btop \d+ /i,
+  /\bfans react\b/i, /\breaction\b/i, /\bhere'?s why\b/i,
+  /\bthings we learned\b/i, /\bquiz\b/i, /\bpredict/i, /\bvote\b/i,
+  /\bwatch:/i, /\bgallery\b/i, /\bin pictures\b/i,
+];
+function isObviousJunk(title) {
+  if (!title) return true;
+  return JUNK_PATTERNS.some(re => re.test(title));
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const started = Date.now();
@@ -54,6 +68,7 @@ export default async function handler(req, res) {
       const stories = storyJsons
         .map(j => { try { return JSON.parse(j); } catch { return null; } })
         .filter(Boolean)
+        .filter(s => !isObviousJunk(s.title))
         .sort((a, b) => b.publishedAt - a.publishedAt);
 
       const { approved, cost, inputTokens, outputTokens } = await scoreCategory(stories, cat, apiKey);
