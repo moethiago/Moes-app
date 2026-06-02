@@ -54,7 +54,7 @@ function renderDriverStandings(drivers, round) {
       + '<span class="f1-pos ' + pc + '">' + pos + moveHtml + '</span>'
       + '<span class="f1-num" style="background:' + col + '22;color:' + col + '">' + num + '</span>'
       + '<div class="f1-driver-info">'
-      + '<span class="f1-driver-line"><span class="f1-driver-name">' + name + '</span>' + teamLogo(cid) + '</span>'
+      + '<span class="f1-driver-line">' + teamLogo(cid) + '<span class="f1-driver-name">' + name + '</span></span>'
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
       + '<span class="f1-wins">' + wins + '</span>'
       + '<span class="f1-pts">' + pts + '</span></div>';
