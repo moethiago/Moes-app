@@ -39,13 +39,12 @@ function switchTab(tab) {
 
   if (tab === 'f1' && !loaded.f1) {
     loaded.f1 = true;
-    try { loadF1Data(); } catch(e) { console.warn('f1:data', e); }
-    try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
-    try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
-    try { if (typeof loadNextRaceCard === 'function') loadNextRaceCard(); } catch(e) { console.warn('f1:racecard', e); }
-    try { if (typeof loadF1Analytics === 'function') loadF1Analytics(); } catch(e) { console.warn('f1:analytics', e); }
-    try { if (typeof loadF1Story === 'function') loadF1Story(); } catch(e) { console.warn('f1:story', e); }
-    try { if (typeof loadF1Recap === 'function') loadF1Recap(); } catch(e) { console.warn('f1:recap', e); }
+    // Pre-seed driver->team colors so every section is consistent from first paint
+    if (typeof seedDriverColors === 'function') {
+      seedDriverColors().then(function(){ runF1Loaders(); });
+    } else {
+      runF1Loaders();
+    }
   }
 
   if (tab === 'football' && !loaded.football) {
@@ -57,4 +56,14 @@ function switchTab(tab) {
     loaded.worldcup = true;
     try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) { console.warn('worldcup', e); }
   }
+}
+
+function runF1Loaders() {
+    try { loadF1Data(); } catch(e) { console.warn('f1:data', e); }
+    try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
+    try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
+    try { if (typeof loadNextRaceCard === 'function') loadNextRaceCard(); } catch(e) { console.warn('f1:racecard', e); }
+    try { if (typeof loadF1Analytics === 'function') loadF1Analytics(); } catch(e) { console.warn('f1:analytics', e); }
+    try { if (typeof loadF1Story === 'function') loadF1Story(); } catch(e) { console.warn('f1:story', e); }
+    try { if (typeof loadF1Recap === 'function') loadF1Recap(); } catch(e) { console.warn('f1:recap', e); }
 }
