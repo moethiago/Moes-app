@@ -137,7 +137,7 @@ async function renderTeammateH2H() {
     var col = (typeof TEAM_COLORS !== 'undefined' && TEAM_COLORS[tid]) || '#8a8fa8';
     html += '<div class="f1a-h2h">'
       + '<div class="f1a-h2h-top"><span style="color:' + col + '">' + a.name + ' <strong>' + a.pts + '</strong></span>'
-      + teamBadge(tid, t.name)
+      + teamLogo(tid, t.name)
       + '<span style="color:' + col + '"><strong>' + b.pts + '</strong> ' + b.name + '</span></div>'
       + '<div class="f1a-h2h-bar"><div class="f1a-h2h-fill" style="width:' + aPct + '%;background:' + col + '"></div></div>'
       + '</div>';

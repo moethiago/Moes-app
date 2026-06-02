@@ -52,9 +52,9 @@ function renderDriverStandings(drivers, round) {
     }
     html += '<div class="f1-std-row" ' + (did ? 'onclick="openDriverDetail(\'' + did + '\',\'' + name + '\')" style="cursor:pointer"' : '') + '>'
       + '<span class="f1-pos ' + pc + '">' + pos + moveHtml + '</span>'
-      + '<span class="f1-num" style="background:' + col + '22;color:' + col + '">' + num + '</span>'
+      + driverHelmet(num, cid, 30)
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
-      + teamBadge(cid)
+      + teamLogo(cid)
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
       + '<span class="f1-wins">' + wins + '</span>'
       + '<span class="f1-pts">' + pts + '</span></div>';
@@ -81,10 +81,8 @@ function renderConstructorStandings(teams, round) {
     var pc   = pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : '';
     html += '<div class="f1-std-row">'
       + '<span class="f1-pos ' + pc + '">' + pos + '</span>'
-      + '<span class="f1-num" style="background:' + col + '22;">'
-      + '<div style="width:10px;height:10px;border-radius:2px;background:' + col + '"></div></span>'
+      + '<span class="f1-logo-wrap">' + teamLogo(cid, name) + '</span>'
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
-      + teamBadge(cid, name)
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
       + '<span class="f1-wins">' + wins + '</span>'
       + '<span class="f1-pts">' + pts + '</span></div>';

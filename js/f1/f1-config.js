@@ -70,3 +70,53 @@ function seedDriverColors() {
     }).catch(function(){ if(!done){done=true;clearTimeout(t);resolve();} });
   });
 }
+
+// ============================================================
+// Team logos (real, via public CDN) + driver helmet emblems
+// Personal-use app. Logos load from formula1.com media CDN with
+// graceful fallback to a colored chip if the image fails.
+// ============================================================
+
+// formula1.com uses content-key paths; this CDN mirror keys by team slug.
+var TEAM_LOGO_SLUG = {
+  mercedes:'mercedes', ferrari:'ferrari', red_bull:'red-bull-racing',
+  mclaren:'mclaren', aston_martin:'aston-martin', alpine:'alpine',
+  williams:'williams', rb:'racing-bulls', kick_sauber:'kick-sauber',
+  haas:'haas', cadillac:'cadillac', audi:'audi'
+};
+
+function teamLogoUrl(constructorId) {
+  // Self-hosted SVGs in the repo — no CDN, no 404s, works offline.
+  var known = {
+    mercedes:1, ferrari:1, red_bull:1, mclaren:1, aston_martin:1, alpine:1,
+    williams:1, rb:1, kick_sauber:1, haas:1, cadillac:1, audi:1
+  };
+  if (!known[constructorId]) return null;
+  return 'assets/teams/' + constructorId + '.svg?v=1';
+}
+
+// Real team logo <img> with fallback to colored chip badge
+function teamLogo(constructorId, label) {
+  var col = TEAM_COLORS[constructorId] || '#8a8fa8';
+  var short = TEAM_SHORT[constructorId] || (label ? label.slice(0,3).toUpperCase() : '');
+  var url = teamLogoUrl(constructorId);
+  var fallback = "this.onerror=null;this.outerHTML='<span class=\\'f1-team-badge\\' style=\\'background:" + col + "22;color:" + col + ";border:1px solid " + col + "55\\'>" + short + "</span>';";
+  if (!url) return '<span class="f1-team-badge" style="background:' + col + '22;color:' + col + ';border:1px solid ' + col + '55">' + short + '</span>';
+  return '<img class="f1-team-logo" src="' + url + '" alt="' + short + '" onerror="' + fallback + '">';
+}
+
+// Original driver helmet emblem — stylized SVG, team-colored, with car number.
+// No copyright issue (our own shape).
+function driverHelmet(number, constructorId, size) {
+  var col = TEAM_COLORS[constructorId] || '#8a8fa8';
+  var s = size || 30;
+  var num = number || '';
+  return '<span class="f1-helmet" style="width:' + s + 'px;height:' + s + 'px">'
+    + '<svg viewBox="0 0 40 40" width="' + s + '" height="' + s + '">'
+    + '<path d="M20 5 C30 5 35 12 35 20 C35 24 33 26 30 27 L30 31 C30 32 29 33 28 33 L13 33 C9 33 5 28 5 21 C5 11 11 5 20 5 Z" fill="' + col + '"/>'
+    + '<path d="M13 18 C13 15 16 13 20 13 C26 13 30 15 31 19 L31 22 L13 22 Z" fill="rgba(0,0,0,0.35)"/>'
+    + '<rect x="5" y="24" width="25" height="4" rx="2" fill="rgba(255,255,255,0.25)"/>'
+    + '</svg>'
+    + '<span class="f1-helmet-num">' + num + '</span>'
+    + '</span>';
+}
