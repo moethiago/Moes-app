@@ -24,3 +24,11 @@
 - `feed-render.js` → split into `feed-utils.js`, `feed-ticker.js`, `feed-render.js`, `feed-fetch.js`.
 - `worldcup.js` → split fallback data into `worldcup-data.js`.
 - `api/football.js` → league IDs + season extracted to `api/lib/leagues.js` (single place to bump season each year).
+
+## v9 — June 2, 2026
+
+### Tabs restructured
+- Split the single "Sports" tab into three separate tabs: **F1**, **Football**, **World Cup**. Nav now: Feed · F1 · Football · World Cup.
+- Each sport lazy-loads independently when its tab is first opened.
+- Fixed: football auto-refresh never started — core.js was calling a non-existent `loadFootballScores()`; now correctly calls `buildFootballSection()`.
+- Nav label spacing tightened to fit 4 tabs cleanly.

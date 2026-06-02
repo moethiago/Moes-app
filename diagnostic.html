@@ -244,8 +244,12 @@ function runAll() {
   var chain = Promise.resolve()
 
   // FILE INTEGRITY
-  .then(function() { return checkFile('f1-data.js',         '/js/f1/f1-data.js',
-    ['F1_CALENDAR', 'SESSION_DURATION', 'TEAM_COLORS']); })
+  .then(function() { return checkFile('f1-config.js',       '/js/f1/f1-config.js',
+    ['SESSION_DURATION', 'TEAM_COLORS']); })
+  .then(function() { return checkFile('f1-calendar.js',     '/js/f1/f1-calendar.js',
+    ['F1_CALENDAR']); })
+  .then(function() { return checkFile('f1-fallback.js',     '/js/f1/f1-fallback.js',
+    ['F1_STANDINGS_FALLBACK', 'F1_CONSTRUCTORS_FALLBACK']); })
   .then(function() { return checkFile('f1-timing.js',       '/js/f1/f1-timing.js',
     ['startCountdown', 'getCurrentSession', 'getNextRaceAndSession']); })
   .then(function() { return checkFile('f1-livetiming.js',   '/js/f1/f1-livetiming.js',
@@ -260,19 +264,21 @@ function runAll() {
     ['FOOTBALL_LEAGUES', 'BACKEND_URL']); })
   .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',
     ['buildFootballSection', 'loadAllFootball']); })
+  .then(function() { return checkFile('worldcup-data.js',   '/js/football/worldcup-data.js',
+    ['WORLDCUP_FALLBACK']); })
   .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
     ['loadWorldCup', 'renderWCSection']); })
+  .then(function() { return checkFile('feed-utils.js',      '/js/feed/feed-utils.js',
+    ['timeAgo', 'makeWireItem']); })
   .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
-    ['renderNewsFeed', 'loadNewsFeed']); })
+    ['renderNewsFeed', 'setFeedFilter']); })
+  .then(function() { return checkFile('feed-fetch.js',      '/js/feed/feed-fetch.js',
+    ['loadNewsFeed']); })
 
-  .then(function() { return checkFile('health-data.js',     '/js/health/health-data.js',
-    ['TARGETS', 'loadFoodLog']); })
-  .then(function() { return checkFile('health-render.js',   '/js/health/health-render.js',
-    ['renderFood', 'renderSets']); })
   .then(function() { return checkFile('core.js',            '/js/core.js',
     ['switchTab', 'startClock']); })
   .then(function() { return checkFile('index.html',         '/index.html',
-    ['f1/f1-data.js', 'feed/feed-render.js', 'football/worldcup.js']); })
+    ['f1/f1-calendar.js', 'feed/feed-fetch.js', 'football/worldcup.js', 'panel-f1', 'panel-football', 'panel-worldcup']); })
 
   // FEED CONTENT + PIPELINE STATS
   .then(function() {
