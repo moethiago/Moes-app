@@ -41,7 +41,8 @@ function renderDriverStandings(drivers, round) {
     var col  = TEAM_COLORS[cid] || '#8a8fa8';
     var barW = Math.round((pts / maxPts) * 100);
     var pc   = pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : '';
-    html += '<div class="f1-std-row">'
+    var did  = d.driverId || (d.Driver && d.Driver.driverId) || '';
+    html += '<div class="f1-std-row" ' + (did ? 'onclick="openDriverDetail(\'' + did + '\',\'' + name + '\')" style="cursor:pointer"' : '') + '>'
       + '<span class="f1-pos ' + pc + '">' + pos + '</span>'
       + '<span class="f1-num" style="background:' + col + '22;color:' + col + '">' + num + '</span>'
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
