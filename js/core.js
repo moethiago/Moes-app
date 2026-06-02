@@ -67,4 +67,8 @@ function runF1Loaders() {
     try { if (typeof loadF1Analytics === 'function') loadF1Analytics(); } catch(e) { console.warn('f1:analytics', e); }
     try { if (typeof loadF1Story === 'function') loadF1Story(); } catch(e) { console.warn('f1:story', e); }
     try { if (typeof loadF1Recap === 'function') loadF1Recap(); } catch(e) { console.warn('f1:recap', e); }
+    try { if (typeof loadF1News === 'function') loadF1News(); } catch(e) { console.warn('f1:news', e); }
+    try { if (typeof loadF1Extras === 'function') loadF1Extras(); } catch(e) { console.warn('f1:extras', e); }
+    try { if (typeof loadF1Times === 'function') loadF1Times(); } catch(e) { console.warn('f1:times', e); }
+    try { if (typeof loadF1Preview === 'function') loadF1Preview(); } catch(e) { console.warn('f1:preview', e); }
 }
