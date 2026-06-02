@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moe's App — Admin</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family:-apple-system,system-ui,sans-serif; background:#0b0d11; color:#e6e6e6; max-width:760px; margin:0 auto; padding:20px; line-height:1.4; }
+  h1 { font-size:22px; margin:0 0 2px; }
+  .sub { color:#8a909a; font-size:13px; margin:0 0 20px; }
+  .card { background:#14171d; border:1px solid #232830; border-radius:14px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:14px; text-transform:uppercase; letter-spacing:0.5px; color:#8a909a; margin:0 0 12px; }
+  .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .stat { background:#0f1216; border-radius:10px; padding:12px; }
+  .stat .v { font-size:24px; font-weight:700; }
+  .stat .l { font-size:12px; color:#8a909a; margin-top:2px; }
+  .svc { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #1c2129; }
+  .svc:last-child { border-bottom:0; }
+  .svc .name { font-size:14px; }
+  .badge { font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; }
+  .up { background:#0e2f1f; color:#34d399; }
+  .down { background:#3a1518; color:#f87171; }
+  .pending { background:#2a2410; color:#fbbf24; }
+  .cat-row { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
+  .cat-row .c { color:#8a909a; }
+  button { width:100%; padding:14px; font-size:15px; font-weight:600; border:0; border-radius:12px; background:#3b82f6; color:white; margin-top:8px; }
+  button:active { background:#2563eb; }
+  .run { font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:8px 0; border-bottom:1px solid #1c2129; color:#b8bec8; }
+  .ts { color:#6b7280; }
+  .err { color:#f87171; }
+</style>
+</head>
+<body>
+  <h1>Admin Dashboard</h1>
+  <p class="sub">Pipeline health, costs, and service status</p>
+
+  <div class="card">
+    <h2>Last 24 Hours</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="cost">—</div><div class="l">Spend (USD)</div></div>
+      <div class="stat"><div class="v" id="ingested">—</div><div class="l">Stories ingested</div></div>
+      <div class="stat"><div class="v" id="approved">—</div><div class="l">Stories approved</div></div>
+      <div class="stat"><div class="v" id="totalStories">—</div><div class="l">Live in feed</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Service Status</h2>
+    <div id="services"><div class="svc"><span class="name">Checking…</span></div></div>
+    <button id="recheck">Re-check services</button>
+  </div>
+
+  <div class="card">
+    <h2>Stories per Category</h2>
+    <div id="cats">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2>Recent Pipeline Runs</h2>
+    <div id="runs">Loading…</div>
+  </div>
+
+<script>
+const BACKEND = 'https://moes-app-two.vercel.app';
+
+function badge(state) {
+  if (state === 'up') return '<span class="badge up">UP</span>';
+  if (state === 'down') return '<span class="badge down">DOWN</span>';
+  return '<span class="badge pending">PENDING</span>';
+}
+
+async function ping(name, url, check) {
+  try {
+    const res = await fetch(url, { signal: (function(){ const c=new AbortController(); setTimeout(()=>c.abort(),9000); return c.signal; })() });
+    if (!res.ok) return { name, state:'down', detail:'HTTP '+res.status };
+    const data = await res.json().catch(()=>null);
+    if (check && data) {
+      const r = check(data);
+      return { name, state: r.ok ? 'up' : 'pending', detail: r.detail || '' };
+    }
+    return { name, state:'up', detail:'' };
+  } catch(e) {
+    return { name, state:'down', detail: e.name === 'AbortError' ? 'timeout' : (e.message||'error') };
+  }
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(BACKEND + '/api/stats');
+    const data = await res.json();
+    const s = data.summary || {};
+    document.getElementById('cost').textContent = '$' + (s.cost24h != null ? s.cost24h : '—');
+    document.getElementById('ingested').textContent = s.ingest24h != null ? s.ingest24h : '—';
+    document.getElementById('approved').textContent = s.approved24h != null ? s.approved24h : '—';
+
+    let total = 0;
+    const cc = s.catCounts || {};
+    let catHtml = '';
+    Object.keys(cc).forEach(function(k){
+      total += cc[k] || 0;
+      catHtml += '<div class="cat-row"><span>'+k+'</span><span class="c">'+(cc[k]||0)+'</span></div>';
+    });
+    document.getElementById('totalStories').textContent = total;
+    document.getElementById('cats').innerHTML = catHtml || 'No categories';
+
+    const runs = data.recentRuns || [];
+    let runHtml = '';
+    runs.slice(0,15).forEach(function(r){
+      const when = r.ts ? new Date(r.ts*1000).toLocaleString() : '?';
+      const bits = [];
+      if (r.phase) bits.push(r.phase);
+      if (r.ingested != null) bits.push(r.ingested+' ingested');
+      if (r.approved != null) bits.push(r.approved+' approved');
+      if (r.cost) bits.push('$'+(Math.round(r.cost*10000)/10000));
+      if (r.note) bits.push(r.note);
+      runHtml += '<div class="run"><span class="ts">'+when+'</span> — '+bits.join(' · ')+'</div>';
+    });
+    document.getElementById('runs').innerHTML = runHtml || 'No runs logged';
+  } catch(e) {
+    document.getElementById('cats').innerHTML = '<span class="err">Failed: '+e.message+'</span>';
+  }
+}
+
+async function loadServices() {
+  document.getElementById('services').innerHTML = '<div class="svc"><span class="name">Checking…</span></div>';
+  const checks = await Promise.all([
+    ping('Feed API', BACKEND+'/api/feed', d => ({ ok: d.ok && (d.count>0), detail: (d.count||0)+' stories' })),
+    ping('Football API', BACKEND+'/api/football?league=epl', d => ({ ok: !d.error, detail: d.error||((d.fixtures?d.fixtures.length:0)+' today') })),
+    ping('Stats API', BACKEND+'/api/stats', d => ({ ok: d.ok })),
+    ping('Ingest endpoint', BACKEND+'/api/ingest', d => ({ ok: d.ok, detail: d.ingested!=null?(d.ingested+' new'):'' })),
+  ]);
+  let html = '';
+  checks.forEach(function(c){
+    html += '<div class="svc"><span class="name">'+c.name+(c.detail?' <span class="ts">('+c.detail+')</span>':'')+'</span>'+badge(c.state)+'</div>';
+  });
+  document.getElementById('services').innerHTML = html;
+}
+
+document.getElementById('recheck').addEventListener('click', loadServices);
+loadStats();
+loadServices();
+setInterval(loadStats, 60000);
+</script>
+</body>
+</html>
