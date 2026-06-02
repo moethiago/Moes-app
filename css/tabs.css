@@ -392,3 +392,32 @@
 .f1-mr-pos{font-family:'JetBrains Mono',monospace;font-weight:700}
 .f1-mr-pos.win{color:#fbbf24}
 .f1-mr-pos.pod{color:#34d399}
+
+/* ═══ F1 story / rivalry / records ═══ */
+.f1-story-text{font-size:13px;line-height:1.6;color:var(--txt,#e6e6e6)}
+.f1-story-text strong{color:#fff}
+.f1-rivalry{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+.f1-riv-side{flex:1}
+.f1-riv-name{font-size:14px;font-weight:700}
+.f1-riv-pts{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.f1-riv-vs{font-size:11px;color:var(--txt-muted);padding:0 12px;font-weight:700}
+.f1-riv-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:6px 0}
+.f1-riv-fill-l{height:100%}
+.f1-riv-fill-r{height:100%}
+.f1-milestone{font-size:12px;padding:5px 0;color:var(--txt,#e6e6e6);line-height:1.4}
+/* compare drivers */
+.f1-cmp-pickers{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.f1-cmp-select{flex:1;background:#0f1216;border:1px solid var(--border,#232830);color:#e6e6e6;border-radius:8px;padding:10px;font-size:13px;-webkit-appearance:none}
+.f1-cmp-vs{font-size:11px;color:var(--txt-muted);font-weight:700}
+.f1-cmp-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;padding:6px 0;color:#fff}
+.f1-cmp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.f1-cmp-row:last-child{border-bottom:0}
+.f1-cmp-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;width:60px;text-align:center;color:var(--txt-muted)}
+.f1-cmp-val.win{color:#34d399}
+.f1-cmp-lbl{flex:1;text-align:center;font-size:11px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px}
+/* predict podium */
+.f1-predict-saved{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.f1-predict-slot{background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600}
+.f1-predict-btn{width:100%;margin-top:8px;padding:11px;background:var(--cyan,#4f9cf9);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.f1-predict-btn:active{opacity:0.85}
+#f1-predict-body .f1-cmp-select{width:100%;margin-top:6px}
