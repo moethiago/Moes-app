@@ -85,24 +85,41 @@ var TEAM_LOGO_SLUG = {
   haas:'haas', cadillac:'cadillac', audi:'audi'
 };
 
-function teamLogoUrl(constructorId) {
-  // Self-hosted SVGs in the repo — no CDN, no 404s, works offline.
-  var known = {
-    mercedes:1, ferrari:1, red_bull:1, mclaren:1, aston_martin:1, alpine:1,
-    williams:1, rb:1, kick_sauber:1, haas:1, cadillac:1, audi:1
-  };
-  if (!known[constructorId]) return null;
-  return 'assets/teams/' + constructorId + '.svg?v=1';
-}
+// CDN slugs for real logos
+var TEAM_CDN_SLUG = {
+  mercedes:'mercedes', ferrari:'ferrari', red_bull:'red-bull-racing',
+  mclaren:'mclaren', aston_martin:'aston-martin', alpine:'alpine',
+  williams:'williams', rb:'racing-bulls', kick_sauber:'kick-sauber',
+  haas:'haas', cadillac:'cadillac', audi:'audi'
+};
 
-// Real team logo <img> with fallback to colored chip badge
+function teamLogoUrl(constructorId) { return null; } // handled in teamLogo()
+
+// Real team logo: tries multiple public CDN URLs in order; on each 404 it
+// advances to the next; final fallback is our self-hosted SVG, then a chip.
 function teamLogo(constructorId, label) {
   var col = TEAM_COLORS[constructorId] || '#8a8fa8';
   var short = TEAM_SHORT[constructorId] || (label ? label.slice(0,3).toUpperCase() : '');
-  var url = teamLogoUrl(constructorId);
-  var fallback = "this.onerror=null;this.outerHTML='<span class=\\'f1-team-badge\\' style=\\'background:" + col + "22;color:" + col + ";border:1px solid " + col + "55\\'>" + short + "</span>';";
-  if (!url) return '<span class="f1-team-badge" style="background:' + col + '22;color:' + col + ';border:1px solid ' + col + '55">' + short + '</span>';
-  return '<img class="f1-team-logo" src="' + url + '" alt="' + short + '" onerror="' + fallback + '">';
+  var chip = "<span class='f1-team-badge' style='background:" + col + "22;color:" + col + ";border:1px solid " + col + "55'>" + short + "</span>";
+  var slug = TEAM_CDN_SLUG[constructorId];
+  if (!slug) return chip;
+
+  // Candidate real-logo sources, tried in order. Self-hosted SVG is last.
+  var sources = [
+    'https://media.formula1.com/content/dam/fom-website/teams/2026/' + slug + '-logo.png',
+    'https://www.formula1.com/content/dam/fom-website/teams/2026/' + slug + '-logo.png',
+    'https://media.formula1.com/content/dam/fom-website/teams/2025/' + slug + '-logo.png',
+    'assets/teams/' + constructorId + '.svg'
+  ];
+  var first = sources[0];
+  var rest  = sources.slice(1);
+  var chainErr = "try{var r=JSON.parse(this.getAttribute('data-rest')||'[]');"
+    + "if(r.length){var n=r.shift();this.setAttribute('data-rest',JSON.stringify(r));this.src=n;}"
+    + "else{this.onerror=null;this.outerHTML=this.getAttribute('data-chip');}}catch(e){this.onerror=null;}";
+  return '<img class="f1-team-logo" src="' + first + '" alt="' + short + '" '
+    + "data-rest='" + JSON.stringify(rest) + "' "
+    + 'data-chip="' + chip.replace(/"/g,'&quot;') + '" '
+    + 'onerror="' + chainErr + '">';
 }
 
 // Original driver helmet emblem — stylized SVG, team-colored, with car number.
