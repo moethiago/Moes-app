@@ -1,52 +1,57 @@
 // ============================================================
 // score-core.js — Claude editorial scoring
+// Philosophy: judge the EVENT, not the wording. A real confirmed
+// development passes even if the headline hedges ("could", "set to").
+// Reject only genuine speculation, opinion, and clickbait.
 // ============================================================
 
 const NOW_STR = () => new Date().toUTCString();
 
+const COMMON_RULES = `
+SCORING PHILOSOPHY:
+- Judge the underlying EVENT, not the headline's wording. Hedge words like "could", "set to", "linked", "in talks" do NOT auto-reject — many real confirmed stories are written that way.
+- Approve any genuine, concrete development from a trusted source: results, signings, sackings, injuries, official statements, confirmed talks, real reporting with a named subject.
+- Reject ONLY: pure opinion/columns, ratings/rankings listicles, "X reacts" reaction pieces, clickbait, vague speculation with no concrete subject, and obvious duplicates.
+- When unsure but the story names a real team/person and a real event, lean APPROVE (score 6-7).
+- Be generous with volume; be strict on junk.`;
+
 const PROMPTS = {
-  F1: () => `You are the F1 editor. Today is ${NOW_STR()}.
-Score 0-10 by SPECIFICITY and CONFIRMED FACT:
-10 = confirmed driver signing/sacking with team named, race result, FIA penalty issued
-8-9 = confirmed contract extension with name, team principal change, factory news with figures
-7   = official team announcement with concrete impact
-6   = solid reporting with named source on concrete development
-0-5 = REJECT: quotes, opinions, "could", "set to", previews, technical analyses, speculation
-Return ONLY stories scoring 6+. JSON: [{"idx":0,"title":"rewritten max 12 words","score":9}]. Return [] if none qualify.`,
+  F1: () => `You are the F1 editor. Today is ${NOW_STR()}.${COMMON_RULES}
+10 = confirmed driver signing/sacking, race/session result, FIA penalty
+8-9 = contract news, team principal/staff change, factory or technical news with substance
+6-7 = any concrete F1 development naming a driver/team (result, update, statement, confirmed talks)
+0-5 = REJECT: opinion columns, driver rating lists, "fans react", pure clickbait, contentless speculation
+Return stories scoring 6+. JSON: [{"idx":0,"title":"rewritten max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
-  FOOTBALL: () => `You are the Football editor. Today is ${NOW_STR()}.
-Top 5 leagues + Champions League ONLY. Score 0-10:
-10 = title won, confirmed major sacking, confirmed transfer with fee
-8-9 = confirmed transfer with player name AND club, ban/expulsion, decisive cup result
-7   = confirmed managerial appointment with named club
-6   = official club statement with concrete content (injury, squad, contract talks confirmed)
-0-5 = REJECT: quotes, "linked", "could", player ratings, previews, World Cup squad rumour
-Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+  FOOTBALL: () => `You are the Football editor. Today is ${NOW_STR()}.${COMMON_RULES}
+Top 5 European leagues + Champions League focus.
+10 = title decided, major sacking, transfer with fee confirmed
+8-9 = transfer/loan with player+club named, ban, big match result, managerial change
+6-7 = any concrete development naming a club/player (result, injury, lineup, confirmed talks, official statement)
+0-5 = REJECT: opinion/columns, player rating lists, "fans react", pure clickbait, vague rumour with no named subject
+Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
-  BAYERN: () => `You are the Bayern Munich editor. Today is ${NOW_STR()}.
-MUST be specifically about FC Bayern Munich men's first team.
-10 = confirmed transfer with fee, manager sacked/appointed
-8-9 = confirmed injury with timeline, major match result with title implication
-7   = official Bayern statement with concrete content
-6   = match result, lineup news, or confirmed squad development from named source
-0-5 = REJECT: quotes, women's team, U19, Germany NT, "linked" rumour, previews
-Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+  BAYERN: () => `You are the Bayern Munich editor. Today is ${NOW_STR()}.${COMMON_RULES}
+MUST relate to FC Bayern Munich men's first team.
+10 = transfer with fee, manager sacked/appointed
+8-9 = injury with timeline, big match result, contract confirmed
+6-7 = any concrete Bayern first-team development (result, lineup, statement, confirmed talks)
+0-5 = REJECT: women's team, U19/youth, Germany NT-only stories, opinion, clickbait
+Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
-  SPL: () => `You are the Saudi Pro League editor. Today is ${NOW_STR()}.
-10 = title clinched, confirmed major signing
-8-9 = match with title-race impact naming Al Hilal/Nassr/Ittihad/Ahli, confirmed sacking
-7   = confirmed squad news with specific named player
-6   = match result or official club announcement naming a specific SPL team
-0-5 = REJECT: manager quotes, previews, stories not naming a specific SPL team
-Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+  SPL: () => `You are the Saudi Pro League editor. Today is ${NOW_STR()}.${COMMON_RULES}
+10 = title clinched, major signing confirmed
+8-9 = result with title impact naming Al Hilal/Nassr/Ittihad/Ahli, sacking
+6-7 = any concrete development naming a specific SPL club (result, signing, statement, confirmed talks)
+0-5 = REJECT: opinion, clickbait, stories not naming a specific SPL team
+Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
-  KSA: () => `You are the Saudi Arabia editor (economy, PIF, Vision 2030). Today is ${NOW_STR()}.
-10 = confirmed multi-billion deal with figures, major royal decree with economic impact
+  KSA: () => `You are the Saudi Arabia editor (economy, PIF, Vision 2030). Today is ${NOW_STR()}.${COMMON_RULES}
+10 = multi-billion deal with figures, major royal decree with economic impact
 8-9 = PIF announcement with numbers, Vision 2030 milestone with data
-7   = confirmed economic stat with numbers
-6   = confirmed policy announcement, investment, or initiative with concrete details
-0-5 = REJECT: diplomatic visits without outcome, religious/Hajj, tourism without dollar figures, aid stories
-Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+6-7 = any concrete economic/policy development (investment, initiative, deal, official announcement)
+0-5 = REJECT: pure opinion, religious/Hajj logistics, fluff tourism pieces with no substance, clickbait
+Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 };
 
 export async function scoreCategory(items, cat, apiKey) {
