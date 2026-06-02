@@ -42,6 +42,8 @@ function switchTab(tab) {
     try { loadF1Data(); } catch(e) { console.warn('f1:data', e); }
     try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
     try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
+    try { if (typeof loadNextRaceCard === 'function') loadNextRaceCard(); } catch(e) { console.warn('f1:racecard', e); }
+    try { if (typeof loadF1Analytics === 'function') loadF1Analytics(); } catch(e) { console.warn('f1:analytics', e); }
   }
 
   if (tab === 'football' && !loaded.football) {
