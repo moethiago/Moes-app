@@ -59,6 +59,7 @@ function switchTab(tab) {
 }
 
 function runF1Loaders() {
+    try { if (typeof startF1Status === 'function') startF1Status(); } catch(e) { console.warn('f1:status', e); }
     try { loadF1Data(); } catch(e) { console.warn('f1:data', e); }
     try { if (typeof loadLastRaceResult === 'function') loadLastRaceResult(); } catch(e) {}
     try { if (typeof initSessionSection === 'function') initSessionSection(); } catch(e) { console.warn('f1:session', e); }
