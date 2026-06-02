@@ -42,8 +42,15 @@ function renderDriverStandings(drivers, round) {
     var barW = Math.round((pts / maxPts) * 100);
     var pc   = pos === 1 ? 'p1' : pos === 2 ? 'p2' : pos === 3 ? 'p3' : '';
     var did  = d.driverId || (d.Driver && d.Driver.driverId) || '';
+    var moveHtml = '';
+    if (_prevPositions && did && _prevPositions[did]) {
+      var delta = _prevPositions[did] - pos; // positive = climbed
+      if (delta > 0)      moveHtml = '<span class="f1-move up">\u25B2' + delta + '</span>';
+      else if (delta < 0) moveHtml = '<span class="f1-move down">\u25BC' + Math.abs(delta) + '</span>';
+      else                moveHtml = '<span class="f1-move same">\u2013</span>';
+    }
     html += '<div class="f1-std-row" ' + (did ? 'onclick="openDriverDetail(\'' + did + '\',\'' + name + '\')" style="cursor:pointer"' : '') + '>'
-      + '<span class="f1-pos ' + pc + '">' + pos + '</span>'
+      + '<span class="f1-pos ' + pc + '">' + pos + moveHtml + '</span>'
       + '<span class="f1-num" style="background:' + col + '22;color:' + col + '">' + num + '</span>'
       + '<div class="f1-driver-info"><span class="f1-driver-name">' + name + '</span>'
       + '<div class="f1-con-bar"><div class="f1-con-fill" style="width:' + barW + '%;background:' + col + '"></div></div></div>'
@@ -82,6 +89,22 @@ function renderConstructorStandings(teams, round) {
   body.innerHTML = html;
 }
 
+var _prevPositions = null; // driverId -> previous round position
+
+async function fetchPrevPositions(round) {
+  if (round <= 1) return null;
+  try {
+    var res = await fetch('https://api.jolpi.ca/ergast/f1/current/' + (round - 1) + '/driverstandings.json?limit=30');
+    if (!res.ok) return null;
+    var data = await res.json();
+    var sl = data.MRData.StandingsTable.StandingsLists[0];
+    if (!sl) return null;
+    var map = {};
+    sl.DriverStandings.forEach(function(d){ map[d.Driver.driverId] = parseInt(d.position); });
+    return map;
+  } catch(e) { return null; }
+}
+
 async function loadLiveDriverStandings() {
   try {
     var controller = new AbortController();
@@ -93,6 +116,7 @@ async function loadLiveDriverStandings() {
     var sl = data && data.MRData && data.MRData.StandingsTable && data.MRData.StandingsTable.StandingsLists[0];
     if (!sl || !sl.DriverStandings || !sl.DriverStandings.length) return;
     if (currentStandingsView !== 'driver') return;
+    _prevPositions = await fetchPrevPositions(parseInt(sl.round));
     renderDriverStandings(sl.DriverStandings.slice(0,10), 'Live · R' + sl.round);
     var t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
     var el = document.createElement('div');
