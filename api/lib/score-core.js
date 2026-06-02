@@ -10,38 +10,43 @@ Score 0-10 by SPECIFICITY and CONFIRMED FACT:
 10 = confirmed driver signing/sacking with team named, race result, FIA penalty issued
 8-9 = confirmed contract extension with name, team principal change, factory news with figures
 7   = official team announcement with concrete impact
-0-6 = REJECT: quotes, opinions, "could", "set to", previews, technical analyses, speculation
-Return ONLY stories scoring 7+. JSON: [{"idx":0,"title":"rewritten max 12 words","score":9}]. Return [] if none qualify.`,
+6   = solid reporting with named source on concrete development
+0-5 = REJECT: quotes, opinions, "could", "set to", previews, technical analyses, speculation
+Return ONLY stories scoring 6+. JSON: [{"idx":0,"title":"rewritten max 12 words","score":9}]. Return [] if none qualify.`,
 
   FOOTBALL: () => `You are the Football editor. Today is ${NOW_STR()}.
 Top 5 leagues + Champions League ONLY. Score 0-10:
 10 = title won, confirmed major sacking, confirmed transfer with fee
 8-9 = confirmed transfer with player name AND club, ban/expulsion, decisive cup result
 7   = confirmed managerial appointment with named club
-0-6 = REJECT: quotes, "linked", "could", player ratings, previews, World Cup squad rumour
-Return ONLY 7+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+6   = official club statement with concrete content (injury, squad, contract talks confirmed)
+0-5 = REJECT: quotes, "linked", "could", player ratings, previews, World Cup squad rumour
+Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
 
   BAYERN: () => `You are the Bayern Munich editor. Today is ${NOW_STR()}.
 MUST be specifically about FC Bayern Munich men's first team.
 10 = confirmed transfer with fee, manager sacked/appointed
 8-9 = confirmed injury with timeline, major match result with title implication
 7   = official Bayern statement with concrete content
-0-6 = REJECT: quotes, women's team, U19, Germany NT, "linked" rumour, previews
-Return ONLY 7+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+6   = match result, lineup news, or confirmed squad development from named source
+0-5 = REJECT: quotes, women's team, U19, Germany NT, "linked" rumour, previews
+Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
 
   SPL: () => `You are the Saudi Pro League editor. Today is ${NOW_STR()}.
 10 = title clinched, confirmed major signing
 8-9 = match with title-race impact naming Al Hilal/Nassr/Ittihad/Ahli, confirmed sacking
 7   = confirmed squad news with specific named player
-0-6 = REJECT: manager quotes, previews, stories not naming a specific SPL team
-Return ONLY 7+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+6   = match result or official club announcement naming a specific SPL team
+0-5 = REJECT: manager quotes, previews, stories not naming a specific SPL team
+Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
 
   KSA: () => `You are the Saudi Arabia editor (economy, PIF, Vision 2030). Today is ${NOW_STR()}.
 10 = confirmed multi-billion deal with figures, major royal decree with economic impact
 8-9 = PIF announcement with numbers, Vision 2030 milestone with data
 7   = confirmed economic stat with numbers
-0-6 = REJECT: diplomatic visits without outcome, religious/Hajj, tourism without dollar figures, aid stories
-Return ONLY 7+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
+6   = confirmed policy announcement, investment, or initiative with concrete details
+0-5 = REJECT: diplomatic visits without outcome, religious/Hajj, tourism without dollar figures, aid stories
+Return ONLY 6+. JSON: [{"idx":0,"title":"max 12 words","score":9}]. Return [] if none.`,
 };
 
 export async function scoreCategory(items, cat, apiKey) {
@@ -80,7 +85,7 @@ export async function scoreCategory(items, cat, apiKey) {
     if (!match) return { approved: [], cost, inputTokens, outputTokens };
 
     const scored = JSON.parse(match[0])
-      .filter(s => s.score >= 7)
+      .filter(s => s.score >= 6)
       .map(s => {
         const idx = parseInt(s.idx);
         if (isNaN(idx) || !items[idx]) return null;
