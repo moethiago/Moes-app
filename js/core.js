@@ -1,10 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-  try { window.foodLog = JSON.parse(localStorage.getItem('m_food') || '[]'); } catch(e) { window.foodLog = []; }
-  try { window.setLog  = JSON.parse(localStorage.getItem('m_sets') || '[]'); } catch(e) { window.setLog  = []; }
-
   startClock();
-  try { renderFood();     } catch(e) { console.warn('health:food', e); }
-  try { renderSets();     } catch(e) { console.warn('health:sets', e); }
   try { startCountdown(); } catch(e) { console.warn('sports:countdown', e); }
   try { renderNewsFeed(); } catch(e) { console.warn('feed:render', e); }
 
@@ -26,6 +21,8 @@ function startClock() {
 var sportsSectionLoaded = false;
 
 function switchTab(tab) {
+  if (tab === 'health') return; // Health tab hidden for now
+
   document.querySelectorAll('.tab-panel').forEach(function(panel) {
     panel.classList.remove('active');
   });
@@ -36,9 +33,9 @@ function switchTab(tab) {
   var activeBtn   = document.getElementById('nav-' + tab);
   if (activePanel) activePanel.classList.add('active');
   if (activeBtn)   activeBtn.classList.add('active');
-  document.getElementById('scroll-wrap').scrollTop = 0;
+  var sw = document.getElementById('scroll-wrap');
+  if (sw) sw.scrollTop = 0;
 
-  // lazy load sports only when sports tab is opened
   if (tab === 'sports' && !sportsSectionLoaded) {
     sportsSectionLoaded = true;
     try { loadFootballScores(); } catch(e) { console.warn('sports:football', e); }
