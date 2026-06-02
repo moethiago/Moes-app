@@ -260,6 +260,12 @@ function runAll() {
     ['renderWeekendCard', 'loadLastRaceResult']); })
   .then(function() { return checkFile('f1-session.js',      '/js/f1/f1-session.js',
     ['initSessionSection', 'fetchAndRenderResults', 'fetchAndRenderGrid']); })
+  .then(function() { return checkFile('f1-circuits.js',     '/js/f1/f1-circuits.js',
+    ['F1_CIRCUITS', 'getCircuitInfo']); })
+  .then(function() { return checkFile('f1-racecard.js',     '/js/f1/f1-racecard.js',
+    ['loadNextRaceCard', 'openDriverDetail']); })
+  .then(function() { return checkFile('f1-analytics.js',    '/js/f1/f1-analytics.js',
+    ['loadF1Analytics', 'renderTitleMath']); })
   .then(function() { return checkFile('football-config.js', '/js/football/football-config.js',
     ['FOOTBALL_LEAGUES', 'BACKEND_URL']); })
   .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',
