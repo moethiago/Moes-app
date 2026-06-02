@@ -16,7 +16,8 @@ async function loadWorldCup() {
     var today   = new Date().toISOString().split('T')[0];
     var todayMatches   = matches.filter(function(m) { return m.date === today; });
     var recentResults  = matches.filter(function(m) { return m.score && m.date < today; }).slice(-3);
-    var upcoming       = matches.filter(function(m) { return m.date > today && !m.score; }).slice(0, 6);
+    var upcomingAll    = matches.filter(function(m) { return m.date > today && !m.score; });
+    var upcoming       = diversifyByGroup(upcomingAll, 6);
     var html = '';
     if (todayMatches.length)                          html += renderWCSection(todayMatches, 'Today');
     if (!todayMatches.length && recentResults.length) html += renderWCSection(recentResults, 'Recent Results');
@@ -26,6 +27,31 @@ async function loadWorldCup() {
   } catch(e) {
     container.innerHTML = renderWCSection(WORLDCUP_FALLBACK, 'Opening Fixtures - Jun 11, 2026');
   }
+}
+
+function diversifyByGroup(list, limit) {
+  // Prefer showing matches from different groups so the list isn't all one group
+  var byGroup = {};
+  list.forEach(function(m) {
+    var g = m.group || m.round || 'x';
+    (byGroup[g] = byGroup[g] || []).push(m);
+  });
+  var groups = Object.keys(byGroup);
+  var out = [];
+  var i = 0;
+  while (out.length < limit && groups.length) {
+    var g = groups[i % groups.length];
+    if (byGroup[g].length) {
+      out.push(byGroup[g].shift());
+    } else {
+      groups.splice(i % groups.length, 1);
+      continue;
+    }
+    i++;
+  }
+  // keep chronological order for display
+  out.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+  return out;
 }
 
 function renderWCSection(matches, label) {
