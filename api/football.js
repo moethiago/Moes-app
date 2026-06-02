@@ -4,18 +4,9 @@
 // ============================================================
 
 import { cached, TTL } from './lib/cache.js';
+import { LEAGUES } from './lib/leagues.js';
 
-const LEAGUES = {
-  epl:        { id: 39,  season: 2026 },
-  laliga:     { id: 140, season: 2026 },
-  seriea:     { id: 135, season: 2026 },
-  bundesliga: { id: 78,  season: 2026 },
-  ligue1:     { id: 61,  season: 2026 },
-  ucl:        { id: 2,   season: 2026 },
-  spl:        { id: 307, season: 2026 },
-  nations:    { id: 5,   season: 2026 },
-  worldcup:   { id: 1,   season: 2026 },
-};
+// LEAGUES + SEASON now live in ./lib/leagues.js
 
 async function fetchFromAPI(path, apiKey) {
   const controller = new AbortController();
