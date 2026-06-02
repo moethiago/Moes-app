@@ -32,3 +32,12 @@
 - Each sport lazy-loads independently when its tab is first opened.
 - Fixed: football auto-refresh never started — core.js was calling a non-existent `loadFootballScores()`; now correctly calls `buildFootballSection()`.
 - Nav label spacing tightened to fit 4 tabs cleanly.
+
+## v10 — June 2, 2026
+
+### Feed: more news, same quality
+- **Rewrote scoring prompts** to judge the EVENT, not the wording. Hedge words ("could", "set to", "linked", "in talks") no longer auto-reject — they were killing real confirmed stories. Still rejects opinion/columns, rating listicles, "fans react", clickbait.
+- **Added local junk pre-filter** (`score.js`): drops obvious clickbait/opinion BEFORE the paid AI pass, so token budget goes only to real candidates — cheaper per run AND more approvals.
+- **Raised feed display** from 6 to 12 stories per category so the feed actually fills now that more passes.
+
+Net effect: was ~7% pass rate (7 of 102). Should rise substantially while still blocking junk.
