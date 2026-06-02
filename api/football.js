@@ -6,27 +6,33 @@
 import { cached, TTL } from './lib/cache.js';
 
 const LEAGUES = {
-  epl:        { id: 39,  season: 2025 },
-  laliga:     { id: 140, season: 2025 },
-  seriea:     { id: 135, season: 2025 },
-  bundesliga: { id: 78,  season: 2025 },
-  ligue1:     { id: 61,  season: 2025 },
-  ucl:        { id: 2,   season: 2025 },
-  spl:        { id: 307, season: 2025 },
-  nations:    { id: 5,   season: 2024 },
+  epl:        { id: 39,  season: 2026 },
+  laliga:     { id: 140, season: 2026 },
+  seriea:     { id: 135, season: 2026 },
+  bundesliga: { id: 78,  season: 2026 },
+  ligue1:     { id: 61,  season: 2026 },
+  ucl:        { id: 2,   season: 2026 },
+  spl:        { id: 307, season: 2026 },
+  nations:    { id: 5,   season: 2026 },
   worldcup:   { id: 1,   season: 2026 },
 };
 
 async function fetchFromAPI(path, apiKey) {
-  const res = await fetch(`https://v3.football.api-sports.io${path}`, {
-    headers: {
-      'x-apisports-key': apiKey,
-      'x-rapidapi-host': 'v3.football.api-sports.io',
-    },
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) throw new Error('API error ' + res.status);
-  return res.json();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`https://v3.football.api-sports.io${path}`, {
+      headers: {
+        'x-apisports-key': apiKey,
+        'x-rapidapi-host': 'v3.football.api-sports.io',
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error('API error ' + res.status);
+    return res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function simplifyFixture(f) {

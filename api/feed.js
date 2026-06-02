@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     const jsonResults = await kvPipeline(allIds.map(id => ['GET', 'story:' + id]));
     const stories = jsonResults
       .map(j => { try { return JSON.parse(j); } catch { return null; } })
-      .filter(s => s && s.score && s.score >= 7);
+      .filter(s => s && s.score && s.score >= 6);
 
     // Group by category, take top N per cat, sorted by publishedAt desc
     const final = [];

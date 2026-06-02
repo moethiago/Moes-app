@@ -90,8 +90,8 @@ export default async function handler(req, res) {
       ingestedPerCat[it.cat] = (ingestedPerCat[it.cat] || 0) + 1;
     }
 
-    // 5. Trim old stories from sorted sets (older than 24h)
-    const cutoff = now - 24 * 3600;
+    // 5. Trim old stories from sorted sets (older than 48h, matching story TTL)
+    const cutoff = now - 48 * 3600;
     for (const cat of CATEGORIES) {
       await kvCall(['ZREMRANGEBYSCORE', 'cat:' + cat, '-inf', String(cutoff)]);
     }
