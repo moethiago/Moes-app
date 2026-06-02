@@ -34,7 +34,7 @@
 .f1-std-row{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center}
 .f1-std-row:last-child{border-bottom:none}
 .f1-pos{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:16px;text-align:center}
-.f1-pos.p1{color:var(--gold)}.f1-pos.p2{color:#c0c0c0}.f1-pos.p3{color:#cd7f32}
+.f1-pos.p1,.f1-pos.p2,.f1-pos.p3{color:var(--txt-primary)}
 .f1-num{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600}
 .f1-driver-info{display:flex;flex-direction:column;gap:2px;min-width:0}
 .f1-driver-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -332,9 +332,9 @@
 }
 
 /* ═══ F1 SUPER TAB — analytics, race card, driver modal ═══ */
-.f1a-card{background:var(--bg-card,#14171d);border:1px solid var(--border,#232830);border-radius:14px;padding:14px;margin-bottom:12px}
-.f1a-h{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--txt,#e6e6e6);margin-bottom:8px}
-.f1a-sub{font-size:11px;color:var(--txt-muted,#8a8fa8);margin:4px 0}
+.f1a-card{background:var(--bg-card);border:1px solid var(--border-hi);border-radius:14px;padding:14px;margin-bottom:12px}
+.f1a-h{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--txt-primary);margin-bottom:8px}
+.f1a-sub{font-size:11px;color:var(--txt-secondary);margin:4px 0}
 .f1a-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
 .f1a-row:last-child{border-bottom:0}
 .f1a-pos{width:20px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace;font-size:12px}
@@ -344,7 +344,7 @@
 .f1a-tag.lead{background:#1c3a24;color:#34d399}
 .f1a-tag.alive{background:#2a2410;color:#fbbf24}
 .f1a-tag.dead{background:#2a1518;color:#f87171}
-.f1a-otd-text{font-size:13px;line-height:1.5;color:var(--txt,#e6e6e6)}
+.f1a-otd-text{font-size:13px;line-height:1.5;color:var(--txt-primary)}
 /* gap trend bars */
 .f1a-bars{display:flex;align-items:flex-end;gap:6px;height:72px;padding:8px 0}
 .f1a-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
@@ -369,7 +369,7 @@
 /* strategy */
 .f1a-strat-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
 .f1a-strat-row:last-child{border-bottom:0}
-.f1a-strat-stops{font-weight:700;color:var(--cyan,#4f9cf9);white-space:nowrap}
+.f1a-strat-stops{font-weight:700;color:var(--cyan);white-space:nowrap}
 .f1a-strat-laps{font-size:10px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace;flex:1;text-align:right}
 /* race card */
 .f1-rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
@@ -380,7 +380,7 @@
 .f1-rc-weather{font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)}
 /* driver modal */
 .f1-modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
-.f1-modal-inner{background:var(--bg-card,#14171d);border:1px solid var(--border,#232830);border-radius:18px;padding:20px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;position:relative}
+.f1-modal-inner{background:var(--bg-card);border:1px solid var(--border-hi);border-radius:18px;padding:20px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;position:relative}
 .f1-modal-close{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.08);border:0;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer}
 .f1-modal-title{font-size:20px;font-weight:700;margin-bottom:14px}
 .f1-modal-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -394,7 +394,7 @@
 .f1-mr-pos.pod{color:#34d399}
 
 /* ═══ F1 story / rivalry / records ═══ */
-.f1-story-text{font-size:13px;line-height:1.6;color:var(--txt,#e6e6e6)}
+.f1-story-text{font-size:13px;line-height:1.6;color:var(--txt-primary)}
 .f1-story-text strong{color:#fff}
 .f1-rivalry{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
 .f1-riv-side{flex:1}
@@ -404,10 +404,10 @@
 .f1-riv-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:6px 0}
 .f1-riv-fill-l{height:100%}
 .f1-riv-fill-r{height:100%}
-.f1-milestone{font-size:12px;padding:5px 0;color:var(--txt,#e6e6e6);line-height:1.4}
+.f1-milestone{font-size:12px;padding:5px 0;color:var(--txt-primary);line-height:1.4}
 /* compare drivers */
 .f1-cmp-pickers{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.f1-cmp-select{flex:1;background:#0f1216;border:1px solid var(--border,#232830);color:#e6e6e6;border-radius:8px;padding:10px;font-size:13px;-webkit-appearance:none}
+.f1-cmp-select{flex:1;background:#0f1216;border:1px solid var(--border-hi);color:#e6e6e6;border-radius:8px;padding:10px;font-size:13px;-webkit-appearance:none}
 .f1-cmp-vs{font-size:11px;color:var(--txt-muted);font-weight:700}
 .f1-cmp-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;padding:6px 0;color:#fff}
 .f1-cmp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
@@ -418,7 +418,7 @@
 /* predict podium */
 .f1-predict-saved{display:flex;flex-direction:column;gap:6px;margin:8px 0}
 .f1-predict-slot{background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600}
-.f1-predict-btn{width:100%;margin-top:8px;padding:11px;background:var(--cyan,#4f9cf9);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
+.f1-predict-btn{width:100%;margin-top:8px;padding:11px;background:var(--cyan);color:#fff;border:0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer}
 .f1-predict-btn:active{opacity:0.85}
 #f1-predict-body .f1-cmp-select{width:100%;margin-top:6px}
 
@@ -431,7 +431,7 @@
 .f1-recap-pod-name{font-weight:700;font-size:14px}
 .f1-recap-pod-team{font-size:10px;color:var(--txt-muted)}
 .f1-recap-pod-time{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt-muted)}
-.f1-recap-fl{font-size:12px;padding:8px 0 4px;color:var(--txt,#e6e6e6)}
+.f1-recap-fl{font-size:12px;padding:8px 0 4px;color:var(--txt-primary)}
 .f1-recap-fl strong{color:#a78bfa}
 .f1-recap-dnf{font-size:12px;padding:4px 0;color:#f87171}
 .f1-recap-incident{font-size:11px;padding:5px 0;color:var(--txt-muted);border-bottom:1px solid rgba(255,255,255,0.03);line-height:1.4}
@@ -439,3 +439,42 @@
 .f1-move.up{color:#34d399}
 .f1-move.down{color:#f87171}
 .f1-move.same{color:#666}
+
+/* ═══ F1 SUPER TAB — polish & team badges ═══ */
+.f1-team-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;padding:2px 5px;border-radius:4px;margin-left:6px;vertical-align:middle;line-height:1.3}
+/* elevate analytics cards: subtle gradient, depth, smoother borders */
+.f1a-card{background:linear-gradient(160deg,var(--bg-card),var(--bg-base));border:1px solid var(--border-hi);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,0.25);position:relative;overflow:hidden}
+.f1a-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
+.f1a-h{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.3px;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.f1a-name{font-weight:600;transition:color 0.2s}
+/* story card accent */
+.f1-story-card{border-left:3px solid var(--f1-red)}
+/* rivalry numbers bigger, more dramatic */
+.f1-riv-pts{font-size:30px;font-weight:800;letter-spacing:-1px}
+.f1-riv-bar{height:10px;border-radius:5px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4)}
+/* recap card accent */
+.f1-recap-card{border-left:3px solid var(--gold)}
+/* race card stat tiles: gradient + depth */
+.f1-rc-stat{background:linear-gradient(160deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01));border:1px solid var(--border);border-radius:10px;padding:10px 4px;text-align:center;transition:transform 0.15s}
+.f1-rc-v{font-size:20px;font-weight:700;font-family:'Rajdhani',sans-serif;color:#fff}
+/* form dots: rounder, glow on win */
+.f1a-form-dot{width:24px;height:24px;border-radius:7px;font-size:10px;font-weight:700}
+.f1a-form-dot.win{background:linear-gradient(135deg,#f5c842,#d4a017);color:#1a1a1a;box-shadow:0 0 8px rgba(245,200,66,0.4)}
+.f1a-form-dot.pod{background:linear-gradient(135deg,#1c3a24,#0e2718);color:#34d399}
+.f1a-form-dot.pts{background:rgba(79,156,249,0.15);color:#4f9cf9}
+/* title-math tags: cleaner pills */
+.f1a-tag{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.3px;min-width:32px;text-align:center}
+.f1a-tag.lead{background:linear-gradient(135deg,#f5c842,#d4a017);color:#1a1a1a}
+.f1a-tag.alive{background:rgba(245,200,66,0.12);color:var(--gold)}
+.f1a-tag.dead{background:rgba(255,255,255,0.05);color:var(--txt-muted)}
+/* gap-trend bars gradient */
+.f1a-bar{background:linear-gradient(180deg,var(--ig-blue),var(--purple));border-radius:4px 4px 0 0;box-shadow:0 0 8px rgba(79,156,249,0.2)}
+/* standings row: smoother tap feedback */
+.f1-std-row{transition:background 0.15s}
+.f1-std-row:active{background:var(--bg-hover)}
+/* movement arrows: pill style */
+.f1-move{display:inline-block;font-size:8px;font-weight:700;margin-left:3px;vertical-align:super}
+/* driver modal: more premium */
+.f1-modal-inner{background:linear-gradient(160deg,var(--bg-card),var(--bg-base));border:1px solid var(--border-hi);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+.f1-modal-title{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700}
+.f1-ms-v{font-family:'Rajdhani',sans-serif;font-size:20px}
