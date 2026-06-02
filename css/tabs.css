@@ -478,3 +478,12 @@
 .f1-modal-inner{background:linear-gradient(160deg,var(--bg-card),var(--bg-base));border:1px solid var(--border-hi);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
 .f1-modal-title{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700}
 .f1-ms-v{font-family:'Rajdhani',sans-serif;font-size:20px}
+
+/* ═══ Driver helmet emblems + real team logos ═══ */
+.f1-helmet{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.f1-helmet svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.4))}
+.f1-helmet-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.8);padding-top:2px}
+.f1-team-logo{height:26px;width:auto;max-width:72px;object-fit:contain;margin-left:6px;vertical-align:middle}
+.f1-logo-wrap{display:inline-flex;align-items:center;justify-content:center;width:46px;height:38px;flex-shrink:0}
+.f1-logo-wrap .f1-team-logo{height:34px;max-width:46px;margin:0}
+.f1-logo-wrap .f1-team-badge{margin:0}
