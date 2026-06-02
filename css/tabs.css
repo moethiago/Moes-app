@@ -495,3 +495,14 @@
 .f1a-h2h-logo .f1-team-logo{height:22px;width:22px;border-radius:6px;padding:2px}
 /* driver-line: logo before name, tidy spacing */
 .f1-driver-line{display:flex;align-items:center;gap:7px;min-width:0}
+
+/* ═══ Glanceable weekend status strip ═══ */
+.f1-status{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;font-family:'Rajdhani',sans-serif;border:1px solid transparent}
+.f1-status-main{font-size:15px;font-weight:700;letter-spacing:0.3px}
+.f1-status-sub{margin-left:auto;font-size:12px;font-weight:600;opacity:0.7;font-family:-apple-system,sans-serif}
+.f1-status-dot{width:9px;height:9px;border-radius:50%;background:#ff1e1e;flex-shrink:0;animation:f1pulse 1.2s infinite}
+@keyframes f1pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(255,30,30,0.5)}50%{opacity:0.6;box-shadow:0 0 0 6px rgba(255,30,30,0)}}
+.f1-status.live{background:linear-gradient(135deg,rgba(232,0,45,0.18),rgba(232,0,45,0.06));border-color:rgba(232,0,45,0.4);color:#ff5a6e}
+.f1-status.soon{background:linear-gradient(135deg,rgba(245,200,66,0.14),rgba(245,200,66,0.04));border-color:rgba(245,200,66,0.3);color:var(--gold)}
+.f1-status.upcoming{background:var(--bg-card);border-color:var(--border-hi);color:var(--txt-primary)}
+.f1-status.idle{background:var(--bg-card);border-color:var(--border-hi);color:var(--txt-secondary)}
