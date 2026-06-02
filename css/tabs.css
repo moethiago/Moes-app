@@ -506,3 +506,54 @@
 .f1-status.soon{background:linear-gradient(135deg,rgba(245,200,66,0.14),rgba(245,200,66,0.04));border-color:rgba(245,200,66,0.3);color:var(--gold)}
 .f1-status.upcoming{background:var(--bg-card);border-color:var(--border-hi);color:var(--txt-primary)}
 .f1-status.idle{background:var(--bg-card);border-color:var(--border-hi);color:var(--txt-secondary)}
+
+/* ═══ Local session times + calendar ═══ */
+.f1-time-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.f1-time-row:last-child{border-bottom:0}
+.f1-time-name{flex:1;font-size:13px;font-weight:600}
+.f1-time-anti{font-size:9px;color:var(--gold);font-weight:700;margin-left:4px}
+.f1-time-when{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt-secondary)}
+.f1-time-cal{background:var(--cyan);color:#fff;border:0;border-radius:6px;font-size:10px;font-weight:700;padding:5px 9px;cursor:pointer}
+.f1-time-cal:active{opacity:0.8}
+/* ═══ Circuit preview ═══ */
+.f1-prev-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.f1-prev-stat{background:rgba(255,255,255,0.03);border-radius:10px;padding:10px;text-align:center}
+.f1-prev-v{font-size:18px;font-weight:700;font-family:'Rajdhani',sans-serif;color:#fff}
+.f1-prev-l{font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+.f1-prev-fact{font-size:12px;line-height:1.5;color:var(--txt-secondary);padding:6px 0}
+.f1-prev-weather{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)}
+.f1-wx-label{font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.f1-wx-row{display:flex;gap:6px;justify-content:space-between}
+.f1-wx-day{flex:1;background:rgba(255,255,255,0.03);border-radius:8px;padding:7px 2px;text-align:center}
+.f1-wx-dow{font-size:9px;color:var(--txt-muted);font-weight:700}
+.f1-wx-icon{font-size:15px;margin:2px 0}
+.f1-wx-temp{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.f1-wx-rain{font-size:9px;color:var(--cyan)}
+/* history */
+.f1-hist-card{border-left:3px solid var(--purple)}
+.f1-hist-text{font-size:13px;line-height:1.6;color:var(--txt-secondary);font-style:italic}
+/* ═══ F1 news ═══ */
+.f1-news-card{border-left:3px solid var(--f1-red)}
+.f1-news-top{display:flex;flex-direction:column;gap:3px;padding:8px 0 10px;border-bottom:1px solid rgba(255,255,255,0.06);text-decoration:none}
+.f1-news-top-tag{font-size:9px;font-weight:700;color:var(--f1-red);letter-spacing:0.5px}
+.f1-news-top-title{font-size:14px;font-weight:600;color:#fff;line-height:1.3}
+.f1-news-top-time{font-size:10px;color:var(--txt-muted)}
+.f1-news-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none}
+.f1-news-row:last-child{border-bottom:0}
+.f1-news-dot{color:var(--f1-red)}
+.f1-news-title{flex:1;font-size:12px;color:var(--txt-primary);line-height:1.3}
+.f1-news-time{font-size:10px;color:var(--txt-muted);font-family:'JetBrains Mono',monospace}
+/* ═══ Extras: changed/streaks/silly/permutations ═══ */
+.f1x-changed{border-left:3px solid #34d399}
+.f1x-change{font-size:13px;padding:4px 0;color:var(--txt-primary)}
+.f1x-line{font-size:13px;line-height:1.5;padding:3px 0;color:var(--txt-primary)}
+.f1x-perm{font-size:12px;line-height:1.5;color:var(--txt-secondary);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)}
+.f1x-streak{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.f1x-streak:last-child{border-bottom:0}
+.f1x-streak-txt{font-size:12px;color:var(--txt-secondary)}
+.f1x-silly-label{font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px}
+.f1x-silly-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.f1x-silly-row:last-child{border-bottom:0}
+.f1x-silly-row .f1a-name{flex:1}
+.f1x-silly-status{font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px}
+.f1x-silly-status.expiring{background:rgba(245,200,66,0.14);color:var(--gold)}
