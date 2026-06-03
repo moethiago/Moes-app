@@ -8,12 +8,12 @@ var _ftActiveLeague = 'epl';
 var _ftCache = {}; // league -> {standings, scorers}
 
 var FT_LEAGUE_META = {
-  epl:        { flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', short:'Premier League' },
+  epl:        { flag:'🇬🇧', short:'Premier League' },
   laliga:     { flag:'🇪🇸', short:'La Liga' },
   seriea:     { flag:'🇮🇹', short:'Serie A' },
   bundesliga: { flag:'🇩🇪', short:'Bundesliga' },
   ligue1:     { flag:'🇫🇷', short:'Ligue 1' },
-  spl:        { flag:'🇸🇦', short:'Saudi PL' },
+  spl:        { flag:'🇸🇦', short:'Saudi Pro League' },
 };
 
 function loadFootballTables() {

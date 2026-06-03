@@ -13,21 +13,27 @@ async function loadFootballNews() {
   root.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Loading football news...</span></div>';
 
   var stories = [];
-  // use in-memory feed cache if present
-  if (typeof parsedStoriesCache !== 'undefined' && parsedStoriesCache && parsedStoriesCache.length) {
+  // Always hit the API directly (don't rely on the Feed tab having been opened)
+  try {
+    var res = await fetch(FT_FEED_URL);
+    if (res.ok) {
+      var data = await res.json();
+      if (data && data.stories) {
+        stories = data.stories.filter(function(s){ return FT_NEWS_CATS.indexOf(s.cat) !== -1; });
+      }
+    }
+  } catch(e) {}
+
+  // Fall back to in-memory cache if the API gave nothing
+  if (!stories.length && typeof parsedStoriesCache !== 'undefined' && parsedStoriesCache && parsedStoriesCache.length) {
     stories = parsedStoriesCache.filter(function(s){ return FT_NEWS_CATS.indexOf(s.cat) !== -1; });
   }
-  if (!stories.length) {
-    try {
-      var res = await fetch(FT_FEED_URL);
-      if (res.ok) {
-        var data = await res.json();
-        if (data && data.stories) stories = data.stories.filter(function(s){ return FT_NEWS_CATS.indexOf(s.cat) !== -1; });
-      }
-    } catch(e) {}
-  }
 
-  if (!stories.length) { root.innerHTML = '<div class="f1a-card"><div class="f1a-h">Football News</div><div class="f1a-sub">No football news right now.</div></div>'; return; }
+  if (!stories.length) {
+    root.innerHTML = '<div class="f1a-card"><div class="f1a-h">\u26BD Football News</div>'
+      + '<div class="f1a-sub">No football stories scored in the feed right now. News appears here as the pipeline ingests and scores football, Saudi football, and Bayern stories.</div></div>';
+    return;
+  }
 
   stories.sort(function(a,b){ return (b.pubTs||0) - (a.pubTs||0); });
 
