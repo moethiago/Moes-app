@@ -3,7 +3,11 @@
 // Edit season here once per year (single source of truth)
 // ============================================================
 
-export const SEASON = 2026;
+// API-Football labels a season by the YEAR IT STARTS. The 2025-26
+// European season is "2025". The backend automatically falls forward to
+// SEASON+1 for upcoming fixtures once the new season is scheduled, so this
+// only needs bumping when a whole new cycle is fully under way.
+export const SEASON = 2025;
 
 export const LEAGUES = {
   epl:        { id: 39,  season: SEASON },
