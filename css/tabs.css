@@ -616,3 +616,23 @@
 .wc-res-team.win{color:#fff;font-weight:700}
 .wc-res-right{text-align:right}
 .wc-res-score{font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff}
+
+/* ═══ Football tab: tables, scorers, your teams ═══ */
+.ft-league-picker{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.ft-league-picker::-webkit-scrollbar{display:none}
+.ft-league-btn{flex-shrink:0;padding:7px 12px;font-size:12px;font-weight:600;background:var(--bg-card);color:var(--txt-secondary);border:1px solid var(--border-hi);border-radius:8px;cursor:pointer;white-space:nowrap}
+.ft-league-btn.active{background:var(--ig-blue);color:#fff;border-color:var(--ig-blue)}
+.ft-tbl-head{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;padding:4px 0;border-bottom:1px solid var(--border-hi)}
+.ft-tbl-logo{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:2px}
+.ft-scorer-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ft-scorer-row:last-child{border-bottom:0}
+.ft-scorer-rank{width:20px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.ft-scorer-name{flex:1;font-size:13px;font-weight:600}
+.ft-scorer-team{font-weight:400;color:var(--txt-muted);font-size:11px}
+.ft-scorer-goals{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--ig-blue)}
+.ft-myteam-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.ft-myteam-row:last-child{border-bottom:0}
+.ft-myteam-match{font-size:13px;font-weight:600}
+.ft-myteam-when{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt-secondary)}
+.ft-myteam-score{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:#fff}
+.ft-myteam-score.live{color:var(--f1-red)}
