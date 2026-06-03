@@ -195,3 +195,10 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 ## v28 — June 2, 2026
 ### Flag-only league picker
 - Removed league name labels from the Tables picker — now just clean flag circles (name shows on long-press via title). Flags enlarged.
+
+## v29 — June 2, 2026
+### World Cup bracket auto-fill
+- The Round of 32 now fills automatically from the live group tables: group winners and runners-up appear with real team names + flags as soon as the standings decide them, and update live as results come in.
+- Added a "Best Third-Place Teams" board: ranks all 12 third-placed teams by Pts/GD/GF and marks the 8 that qualify IN vs OUT — fully computed, live.
+- Third-place R32 slots are labelled by their group cluster (FIFA resolves the exact pairing via 495 scenarios only after all groups finish, so we show the pool honestly rather than guessing).
+- Once the real knockout matches exist in the feed, they render with live scores below the projected bracket.
