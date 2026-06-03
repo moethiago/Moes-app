@@ -227,3 +227,11 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **Personal score** = explicit follows (x5) + learned keywords + semantic taste-match (cosine similarity to your taste vector x10). So if you keep opening McLaren stories, Norris news surfaces even if you never followed him.
 - Backend now exposes each story's id + a compact embedding so ranking happens on-device (your data stays yours, server cache stays shared/fast).
 - Stories matching your explicit follows get a gold dot. A hint shows until the app has learned enough.
+
+## v33 — June 2, 2026
+### For You — now looks and feels AI-native
+- **Duplicates collapse:** the For You feed clusters near-identical stories into ONE card showing "X sources covering this" — so the 4 Leclerc-contract repeats become a single card, immediately, without waiting for the backend dupes to age out.
+- **Match badges:** each card shows a "✨ X% match" badge based on your taste profile.
+- **What to know:** an AI-style summary card at the top ("✨ What to know right now") with the top 3 stories.
+- **Why you're seeing it:** each card shows a reason ("Because you follow Ferrari" / "Based on what you've been reading").
+- Richer card design replacing the plain list — category tag, source count, match %, reason line.
