@@ -44,7 +44,11 @@ export default async function handler(req, res) {
     const jsonResults = await kvPipeline(allIds.map(id => ['GET', 'story:' + id]));
     const stories = jsonResults
       .map(j => { try { return JSON.parse(j); } catch { return null; } })
-      .filter(s => s && s.score && s.score >= 5);
+      .filter(s => {
+        if (!s || !s.score) return false;
+        const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
+        return isTweet ? s.score >= 3 : s.score >= 5;
+      });
 
     // Source-weight lookup from TRUSTED_SOURCES (by sourceUrl).
     const weightByUrl = {};
@@ -63,7 +67,11 @@ export default async function handler(req, res) {
       // Big-story rescue + noise cut: keep score>=6 always; a score-5 story
       // survives only if 2+ independent sources corroborate it.
       const kept = ranked
-        .filter(s => (s.score >= 6) || (s._corroboration >= 2))
+        .filter(s => {
+          const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
+          if (isTweet) return s.score >= 3;            // trusted curated accounts
+          return (s.score >= 6) || (s._corroboration >= 2);
+        })
         .slice(0, MAX_PER_CAT);
       perCat[cat] = kept.length;
       for (const s of kept) {
