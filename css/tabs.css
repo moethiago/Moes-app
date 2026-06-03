@@ -569,3 +569,50 @@
 .f1-spoiler-btn{padding:12px 28px;background:var(--f1-red);color:#fff;border:0;border-radius:12px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif;cursor:pointer}
 .f1-spoiler-btn:active{opacity:0.85}
 .f1-relock-btn{display:block;margin:8px 14px 24px;padding:10px;width:calc(100% - 28px);background:transparent;color:var(--txt-muted);border:1px solid var(--border-hi);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer}
+
+/* ═══ World Cup tab ═══ */
+.wc-next-card{border-left:3px solid var(--cyan)}
+.wc-next-teams{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 6px}
+.wc-next-team{font-size:15px;font-weight:700;color:#fff}
+.wc-next-vs{font-size:11px;color:var(--txt-muted);font-weight:700}
+.wc-next-meta{text-align:center;font-size:11px;color:var(--txt-secondary)}
+.wc-next-when{text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--cyan);margin-top:8px;font-weight:700}
+.wc-myteam-card{border-left:3px solid var(--gold)}
+.wc-myteam-next{font-size:14px;color:var(--txt-primary);margin:4px 0}
+.wc-myteam-when{font-size:12px;color:var(--txt-secondary);margin-bottom:8px}
+.wc-up-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.wc-up-row:last-child{border-bottom:0}
+.wc-up-teams{font-size:13px;color:var(--txt-primary);flex:1;min-width:0}
+.wc-up-v{color:var(--txt-muted);font-size:11px;margin:0 2px}
+.wc-up-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.wc-up-when{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt-secondary)}
+.wc-up-cal{background:var(--cyan);color:#fff;border:0;border-radius:6px;width:24px;height:24px;font-size:14px;font-weight:700;cursor:pointer;line-height:1}
+/* group tables */
+.wc-grp-card{padding:12px}
+.wc-grp-head{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;padding:4px 0;border-bottom:1px solid var(--border-hi)}
+.wc-grp-row{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px}
+.wc-grp-row:last-child{border-bottom:0}
+.wc-grp-pos{color:var(--txt-muted);font-family:'JetBrains Mono',monospace}
+.wc-grp-team{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wc-grp-n{text-align:center;font-family:'JetBrains Mono',monospace;color:var(--txt-secondary)}
+.wc-grp-pts{color:#fff;font-weight:700}
+.wc-grp-row.wc-qual{background:linear-gradient(90deg,rgba(52,211,153,0.08),transparent)}
+.wc-grp-row.wc-qual .wc-grp-pos{color:#34d399;font-weight:700}
+.wc-grp-row.wc-maybe .wc-grp-pos{color:var(--gold)}
+.wc-grp-row.wc-myrow{background:linear-gradient(90deg,rgba(245,200,66,0.12),transparent)}
+.wc-grp-row.wc-myrow .wc-grp-team{color:var(--gold)}
+/* knockout */
+.wc-ko-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+.wc-ko-row:last-child{border-bottom:0}
+.wc-ko-team{flex:1;font-weight:600}
+.wc-ko-right{text-align:right}
+.wc-ko-v{color:var(--txt-muted);font-size:11px}
+.wc-ko-score{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--cyan)}
+/* results */
+.wc-results-card{border-left:3px solid var(--gold)}
+.wc-res-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+.wc-res-row:last-child{border-bottom:0}
+.wc-res-team{flex:1;color:var(--txt-secondary)}
+.wc-res-team.win{color:#fff;font-weight:700}
+.wc-res-right{text-align:right}
+.wc-res-score{font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff}
