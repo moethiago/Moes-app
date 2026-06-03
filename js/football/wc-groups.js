@@ -45,37 +45,84 @@ function renderGroupTable(groupName) {
   return html;
 }
 
-// ---- KNOCKOUT BRACKET ----
+// ---- KNOCKOUT BRACKET (auto-filled from live group standings) ----
 function loadWCBracket() {
   var root = document.getElementById('wc-bracket-body');
   if (!root) return;
-  root.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Loading bracket...</span></div>';
+  root.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Building bracket...</span></div>';
   wcLoad().then(function(data){
     if (!data) { root.innerHTML = '<div class="empty-state">Bracket unavailable.</div>'; return; }
-    var ko = wcKnockout();
-    var order = ['Round of 32','Round of 16','Quarter-finals','Quarter-final','Semi-finals','Semi-final','Match for third place','Final'];
-    var keys = Object.keys(ko).sort(function(a,b){
-      function idx(x){ for(var i=0;i<order.length;i++){ if(x.indexOf(order[i])!==-1) return i; } return 99; }
-      return idx(a) - idx(b);
-    });
-    if (!keys.length) { root.innerHTML = '<div class="f1a-card"><div class="f1a-h">\u{1F3C6} Knockout Bracket</div><div class="f1a-sub">Bracket fills in after the group stage (starts late June).</div></div>'; return; }
+
     var html = '';
-    keys.forEach(function(round){
-      html += '<div class="f1a-card"><div class="f1a-h">' + round + '</div>';
-      ko[round].forEach(function(m){
-        var played = wcHasScore(m);
-        var t1 = m.team1 || m.home_team_label || 'TBD';
-        var t2 = m.team2 || m.away_team_label || 'TBD';
+
+    // 1) If the feed already has actual knockout matches (teams set / played), show them first.
+    var ko = wcKnockout();
+    var koKeys = Object.keys(ko);
+    var hasRealKO = koKeys.some(function(r){
+      return ko[r].some(function(m){ return m.team1 && m.team2 || wcHasScore(m); });
+    });
+
+    // 2) Auto-filled Round of 32 from live group tables
+    var qual = (typeof wcQualifiers === 'function') ? wcQualifiers() : null;
+    var anyGroupData = qual && Object.keys(qual.winners).some(function(k){ return qual.winners[k].team; });
+
+    if (qual && anyGroupData && typeof wcR32Template === 'function') {
+      var tmpl = wcR32Template();
+      var allDone = (typeof wcAllGroupsComplete === 'function') && wcAllGroupsComplete();
+      html += '<div class="f1a-card"><div class="f1a-h">\u{1F3C6} Round of 32 '
+        + (allDone ? '' : '<span class="wc-live-tag">updating live</span>') + '</div>'
+        + '<div class="f1a-sub">Winners &amp; runners-up fill automatically from the group tables. Third-place slots resolve once all groups finish.</div>';
+      tmpl.forEach(function(slot){
+        var h = wcResolveSlot(slot.home, qual);
+        var a = wcResolveSlot(slot.away, qual);
         html += '<div class="wc-ko-row">'
-          + '<span class="wc-ko-team">' + wcFlag(t1) + ' ' + t1 + '</span>'
-          + (played
-            ? '<span class="wc-ko-score">' + m.score.ft[0] + '-' + m.score.ft[1] + '</span>'
-            : '<span class="wc-ko-v">v</span>')
-          + '<span class="wc-ko-team wc-ko-right">' + t2 + ' ' + wcFlag(t2) + '</span>'
+          + '<span class="wc-ko-team' + (h.decided?' wc-ko-set':'') + '">' + (h.decided?wcFlag(h.name)+' ':'') + h.name + '</span>'
+          + '<span class="wc-ko-v">v</span>'
+          + '<span class="wc-ko-team wc-ko-right' + (a.decided?' wc-ko-set':'') + '">' + a.name + (a.decided?' '+wcFlag(a.name):'') + '</span>'
           + '</div>';
       });
       html += '</div>';
-    });
+
+      // best third-place teams board
+      if (qual.bestThirds && qual.bestThirds.length) {
+        html += '<div class="f1a-card"><div class="f1a-h">\u{1F947} Best Third-Place Teams</div>'
+          + '<div class="f1a-sub">Top 8 of 12 third-placed teams advance (Pts, then GD, then GF).</div>';
+        qual.thirds.forEach(function(t, i){
+          var inOut = i < 8 ? 'wc-third-in' : 'wc-third-out';
+          html += '<div class="wc-third-row ' + inOut + '">'
+            + '<span class="wc-third-rank">' + (i+1) + '</span>'
+            + '<span class="wc-third-team">' + wcFlag(t.row.team) + ' ' + t.row.team + ' <span class="wc-third-grp">(' + t.group + ')</span></span>'
+            + '<span class="wc-third-pts">' + t.row.Pts + 'p ' + (t.row.GD>0?'+':'') + t.row.GD + '</span>'
+            + (i < 8 ? '<span class="wc-third-badge">IN</span>' : '<span class="wc-third-badge out">OUT</span>')
+            + '</div>';
+        });
+        html += '</div>';
+      }
+    }
+
+    // 3) Real knockout matches from the feed (once they exist), with scores
+    if (hasRealKO) {
+      var order = ['Round of 32','Round of 16','Quarter-finals','Quarter-final','Semi-finals','Semi-final','Match for third place','Final'];
+      koKeys.sort(function(a,b){
+        function idx(x){ for(var i=0;i<order.length;i++){ if(x.indexOf(order[i])!==-1) return i; } return 99; }
+        return idx(a) - idx(b);
+      });
+      koKeys.forEach(function(round){
+        html += '<div class="f1a-card"><div class="f1a-h">' + round + '</div>';
+        ko[round].forEach(function(m){
+          var played = wcHasScore(m);
+          var t1 = m.team1 || 'TBD', t2 = m.team2 || 'TBD';
+          html += '<div class="wc-ko-row">'
+            + '<span class="wc-ko-team">' + wcFlag(t1) + ' ' + t1 + '</span>'
+            + (played ? '<span class="wc-ko-score">' + m.score.ft[0] + '-' + m.score.ft[1] + '</span>' : '<span class="wc-ko-v">v</span>')
+            + '<span class="wc-ko-team wc-ko-right">' + t2 + ' ' + wcFlag(t2) + '</span>'
+            + '</div>';
+        });
+        html += '</div>';
+      });
+    }
+
+    if (!html) html = '<div class="f1a-card"><div class="f1a-h">\u{1F3C6} Knockout Bracket</div><div class="f1a-sub">The bracket auto-fills from the group tables as results come in (group stage starts June 11).</div></div>';
     root.innerHTML = html;
   });
 }
