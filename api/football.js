@@ -41,6 +41,32 @@ function simplifyFixture(f) {
   };
 }
 
+function simplifyStanding(s) {
+  return {
+    rank:   s.rank,
+    team:   s.team.name,
+    logo:   s.team.logo,
+    played: s.all.played,
+    win:    s.all.win,
+    draw:   s.all.draw,
+    lose:   s.all.lose,
+    gd:     s.goalsDiff,
+    points: s.points,
+    form:   s.form,
+  };
+}
+
+function simplifyScorer(p) {
+  var stat = (p.statistics && p.statistics[0]) || {};
+  return {
+    name:  p.player.name,
+    photo: p.player.photo,
+    team:  stat.team ? stat.team.name : '',
+    goals: stat.goals ? stat.goals.total : 0,
+    assists: stat.goals ? stat.goals.assists : 0,
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -48,13 +74,50 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'No API key' });
 
   const league = req.query.league || 'epl';
+  const type   = req.query.type || 'fixtures';
   const cfg    = LEAGUES[league];
   if (!cfg) return res.status(400).json({ error: 'Unknown league' });
 
-  const today    = new Date().toISOString().split('T')[0];
-  const cacheKey = 'cache:football:' + league + ':' + today;
+  const today = new Date().toISOString().split('T')[0];
 
   try {
+    // STANDINGS
+    if (type === 'standings') {
+      const cacheKey = 'cache:football:standings:' + league;
+      const { data, fromCache, ageSeconds } = await cached(
+        cacheKey,
+        TTL.UPCOMING,
+        async () => {
+          const sd = await fetchFromAPI(`/standings?league=${cfg.id}&season=${cfg.season}`, apiKey);
+          const resp = sd.response && sd.response[0];
+          const groups = (resp && resp.league && resp.league.standings) || [];
+          // standings is an array of arrays (groups); flatten first group for league tables
+          const table = (groups[0] || []).map(simplifyStanding);
+          return { league, standings: table, fetchedAt: Date.now() };
+        }
+      );
+      res.setHeader('X-Cache', fromCache ? 'HIT-' + ageSeconds + 's' : 'MISS');
+      return res.status(200).json(data);
+    }
+
+    // TOP SCORERS
+    if (type === 'topscorers') {
+      const cacheKey = 'cache:football:scorers:' + league;
+      const { data, fromCache, ageSeconds } = await cached(
+        cacheKey,
+        TTL.UPCOMING,
+        async () => {
+          const ps = await fetchFromAPI(`/players/topscorers?league=${cfg.id}&season=${cfg.season}`, apiKey);
+          const scorers = (ps.response || []).slice(0, 10).map(simplifyScorer);
+          return { league, scorers, fetchedAt: Date.now() };
+        }
+      );
+      res.setHeader('X-Cache', fromCache ? 'HIT-' + ageSeconds + 's' : 'MISS');
+      return res.status(200).json(data);
+    }
+
+    // FIXTURES (default)
+    const cacheKey = 'cache:football:' + league + ':' + today;
     const { data, fromCache, ageSeconds } = await cached(
       cacheKey,
       TTL.LIVE_SCORES,
