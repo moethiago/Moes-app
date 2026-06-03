@@ -185,3 +185,9 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - Tables subtab: league buttons replaced with clean flag pills (flag + short name, highlighted when active).
 - Fixed empty Today/Upcoming: backend now ALWAYS returns both today's fixtures and the next 10 upcoming (independently), and falls forward to the next season automatically. Season corrected to 2025 (API-Football labels the 2025-26 season as "2025"); the fall-forward picks up 2026-27 fixtures as they're scheduled. Today subtab now shows the next upcoming matches when nothing is on today.
 - Standings + scorers endpoints also fall forward a season if the current one has no data yet.
+
+## v27 — June 2, 2026
+
+### Flag pills + robust news
+- League picker redesigned as clean circular flag buttons (flag in a circle, label beneath, blue ring when active) instead of the ugly white blobs. Swapped the England tag-emoji (which fails to render on iOS) for a reliable flag.
+- Football News tab now always queries the feed API directly (not just the in-memory cache), falls back to cache, and shows a clear explanatory message when the pipeline has no football stories scored yet — instead of a blank screen.
