@@ -1,89 +1,93 @@
 // ============================================================
-// taste.js — the "AI native" personalization layer.
-// Learns implicitly from what you open, builds a taste vector from
-// Gemini embeddings, and scores every story for "For You" ranking.
-//   personalScore = followMatch*5 + interestKeyword + cosine(taste, story)*10
-// All on-device. Pairs with prefs.js (explicit follows).
+// taste.js — AI-native personalization by STORY TYPE.
+// No follows, no buttons. The app classifies each story into a
+// type (transfer, result, contract, preview, injury, opinion...)
+// and learns silently from what you OPEN vs what you SKIP.
+// Types you engage with rise; types you ignore fade.
 // ============================================================
 
-var TASTE_KEY = 'moe_taste_v1';
+var TASTE_KEY = 'moe_taste_v2';
 
-// taste = { vec:[768]|null, n:0, kw:{word:count} }
+// Story types we recognise, with keyword signatures.
+var STORY_TYPES = {
+  transfer:  ['transfer','signs','signing','joins','move','deal','agree','agreement','fee','bid','loan','target','linked','swoop','poised to join','set to join'],
+  contract:  ['contract','extends','extension','renew','new deal','long-term','multi-year','stays','commits','tie down'],
+  result:    ['win','wins','beat','beats','victory','defeat','loss','draw','thrash','held','score','final score','full-time','result','triumph'],
+  injury:    ['injury','injured','out for','sidelined','ruled out','fitness','doubt','strain','surgery','recovery','return from'],
+  preview:   ['preview','how to watch','tv times','viewing guide','prediction','predicted','line-ups','what time','ahead of','build-up','to watch'],
+  lineup:    ['line-up','lineup','starting xi','team news','squad','named','selection','bench','rotation'],
+  manager:   ['manager','sack','sacked','appoint','appointed','hire','hired','coach','boss','dismiss','step down','resign'],
+  opinion:   ['opinion','analysis','column','verdict','why','how','explained','view','debate','rating','ranked'],
+  business:  ['takeover','investment','sponsor','revenue','wages','financial','sold','buy','owner','stake','valuation'],
+  result_f1: ['pole','grand prix','qualifying','podium','fastest lap','race win','dnf','grid','practice','sprint'],
+};
+
+// taste = { type:{transfer:score,...}, opens:n, skips:n }
 function loadTaste() {
-  try {
-    var raw = localStorage.getItem(TASTE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return { vec: null, n: 0, kw: {} };
+  try { var raw = localStorage.getItem(TASTE_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+  return { type: {}, opens: 0, skips: 0 };
 }
-function saveTaste(t) {
-  try { localStorage.setItem(TASTE_KEY, JSON.stringify(t)); } catch(e) {}
-}
+function saveTaste(t) { try { localStorage.setItem(TASTE_KEY, JSON.stringify(t)); } catch(e) {} }
 
-function cosineSim(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  var dot = 0, na = 0, nb = 0;
-  for (var i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
-  if (!na || !nb) return 0;
-  return dot / (Math.sqrt(na) * Math.sqrt(nb));
-}
-
-// Meaningful words from a title (for keyword interests).
-function tasteWords(title) {
-  var stop = {the:1,and:1,for:1,with:1,new:1,his:1,her:1,out:1,off:1,set:1,via:1,how:1,why:1,who:1,are:1,was:1};
-  return (title || '').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/)
-    .filter(function(w){ return w.length > 3 && !stop[w]; });
-}
-
-// Called when the user opens a story. Updates taste vector + keywords.
-function recordClick(story) {
-  if (!story) return;
-  var t = loadTaste();
-  // 1) running-average the embedding into the taste vector
-  if (story.emb && story.emb.length) {
-    if (!t.vec) { t.vec = story.emb.slice(); t.n = 1; }
-    else {
-      var n = t.n || 1;
-      for (var i = 0; i < t.vec.length; i++) t.vec[i] = (t.vec[i]*n + story.emb[i]) / (n+1);
-      t.n = n + 1;
+// Classify a story into one or more types from its title.
+function classifyStory(story) {
+  var title = (story.title || '').toLowerCase();
+  var hits = [];
+  Object.keys(STORY_TYPES).forEach(function(type){
+    var kws = STORY_TYPES[type];
+    for (var i = 0; i < kws.length; i++) {
+      if (title.indexOf(kws[i]) !== -1) { hits.push(type); break; }
     }
-  }
-  // 2) keyword interest counts
-  tasteWords(story.title).forEach(function(w){ t.kw[w] = (t.kw[w]||0) + 1; });
+  });
+  return hits; // may be empty (general news)
+}
+
+// OPEN = strong positive signal for that story's type(s).
+function recordOpen(story) {
+  var t = loadTaste();
+  classifyStory(story).forEach(function(type){ t.type[type] = (t.type[type] || 0) + 1; });
+  t.opens = (t.opens || 0) + 1;
   saveTaste(t);
 }
 
-// Personal score for a story given current taste + explicit follows.
-function personalScore(story) {
+// SKIP = the story was shown near the top but NOT opened (mild negative).
+// Called for the visible top stories the user scrolled past without tapping.
+function recordSkips(shownStories, openedTitle) {
   var t = loadTaste();
-  var score = 0;
-  var title = (story.title || '').toLowerCase();
-
-  // explicit follows (strongest signal)
-  if (typeof loadPrefs === 'function') {
-    var p = loadPrefs();
-    var names = [].concat(p.f1Drivers||[], p.footballClubs||[], p.f1Teams||[]);
-    names.forEach(function(n){ if (title.indexOf(n.toLowerCase()) !== -1) score += 5; });
-  }
-  // learned keyword interests
-  Object.keys(t.kw).forEach(function(w){ if (title.indexOf(w) !== -1) score += Math.min(2, t.kw[w] * 0.5); });
-  // semantic taste match (the magic): cosine to taste vector
-  if (t.vec && story.emb) score += Math.max(0, cosineSim(t.vec, story.emb)) * 10;
-
-  return score;
-}
-
-// Rank a list of stories by personal score (desc), tie-break by recency.
-function rankForYou(stories) {
-  return stories.map(function(s){ s._p = personalScore(s); return s; })
-    .sort(function(a,b){
-      if (b._p !== a._p) return b._p - a._p;
-      return (b.pubTs||0) - (a.pubTs||0);
+  shownStories.forEach(function(s){
+    if (openedTitle && s.title === openedTitle) return;
+    classifyStory(s).forEach(function(type){
+      t.type[type] = (t.type[type] || 0) - 0.15; // gentle decay
     });
+  });
+  t.skips = (t.skips || 0) + 1;
+  saveTaste(t);
 }
 
-// Has the user trained the model at all yet?
+// Type-affinity score for a story: sum of learned scores of its types.
+function typeScore(story) {
+  var t = loadTaste();
+  var types = classifyStory(story);
+  if (!types.length) return 0;
+  var s = 0;
+  types.forEach(function(type){ s += (t.type[type] || 0); });
+  return s / types.length; // average so multi-type stories aren't over-boosted
+}
+
+// Has the app learned anything yet?
 function tasteReady() {
   var t = loadTaste();
-  return (t.n && t.n > 0) || Object.keys(t.kw).length > 0;
+  return (t.opens || 0) >= 3;
+}
+
+// Human-readable summary of what the app has learned (for the UI).
+function tasteSummary() {
+  var t = loadTaste();
+  var entries = Object.keys(t.type).map(function(k){ return { type:k, n:t.type[k] }; })
+    .filter(function(e){ return e.n > 0; })
+    .sort(function(a,b){ return b.n - a.n; });
+  var labels = { transfer:'transfers', contract:'contracts', result:'results', injury:'injury news',
+    preview:'previews', lineup:'team news', manager:'manager moves', opinion:'analysis',
+    business:'business', result_f1:'race weekends' };
+  return entries.slice(0, 3).map(function(e){ return labels[e.type] || e.type; });
 }

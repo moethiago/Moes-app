@@ -13,9 +13,6 @@ function loadHome() {
   if (!root) return;
   root.innerHTML = '<div class="fxt-loading"><div class="f1-spinner"></div><span>Building your brief...</span></div>';
 
-  var p = (typeof loadPrefs === 'function') ? loadPrefs() : {};
-  var blocks = [];
-
   // 1) Next F1 session (spoiler-free — it's upcoming)
   var f1Next = homeNextF1();
 
@@ -37,16 +34,11 @@ function loadHome() {
   html += '<div class="home-section-title">For You</div>';
   html += '<div id="home-news"><div class="f1a-sub" style="padding:0 14px">Loading...</div></div>';
 
-  // Quick links + follow editor
-  html += '<div class="home-section-title">Following</div>';
-  html += '<div id="home-follows" style="padding:0 14px 8px"></div>';
-
   // Alerts
-  html += '<div id="home-alerts" style="padding:0 14px 28px"></div>';
+  html += '<div id="home-alerts" style="padding:18px 14px 28px"></div>';
 
   root.innerHTML = html;
 
-  homeRenderFollows();
   homeRenderAlerts();
   homeLoadFootballEvents();
   homeLoadNews();
@@ -92,8 +84,7 @@ function homeEventCard(icon, title, when, tab) {
 async function homeLoadFootballEvents() {
   var el = document.getElementById('home-football-events');
   if (!el || typeof FOOTBALL_LEAGUES === 'undefined') return;
-  var p = (typeof loadPrefs === 'function') ? loadPrefs() : {};
-  var clubs = p.footballClubs || [];
+  var clubs = ['Bayern', 'Al-Hilal'];
   if (!clubs.length) return;
   try {
     var results = await Promise.all(FOOTBALL_LEAGUES.map(function(l){ return fetchLeague(l.key); }));
@@ -116,7 +107,9 @@ async function homeLoadFootballEvents() {
   } catch(e) {}
 }
 
-// "For You" — clusters dupes, scores by taste, shows why + match + sources.
+// "For You" — clusters dupes, ranks by the TYPES of news you engage with.
+var _homeShownStories = []; // track what's shown so we can detect skips
+
 async function homeLoadNews() {
   var el = document.getElementById('home-news');
   if (!el) return;
@@ -132,70 +125,52 @@ async function homeLoadNews() {
     return;
   }
 
-  // 1) Cluster near-duplicates client-side so repeats collapse into one card.
+  // 1) Cluster near-duplicates so repeats collapse into one card.
   var clusters = homeClusterStories(stories);
 
-  // 2) Build a representative per cluster + personal score + reason.
+  // 2) Representative per cluster + type-affinity score.
   var cards = clusters.map(function(group){
     var rep = group.slice().sort(function(a,b){ return (b.score||0)-(a.score||0) || (b.pubTs||0)-(a.pubTs||0); })[0];
-    var srcCount = group.length;
-    var p = (typeof personalScore === 'function') ? personalScore(rep) : 0;
-    return { rep: rep, sources: srcCount, p: p, reason: homeWhy(rep) };
+    var ts = (typeof typeScore === 'function') ? typeScore(rep) : 0;
+    // base recency component so fresh news still surfaces before learning kicks in
+    var recency = rep.pubTs ? Math.max(0, 1 - (Date.now()/1000 - rep.pubTs)/172800) : 0;
+    return { rep: rep, sources: group.length, ts: ts, rank: ts + recency };
   });
 
-  // 3) Rank by personal score, then recency.
-  cards.sort(function(a,b){ if (b.p !== a.p) return b.p - a.p; return (b.rep.pubTs||0)-(a.rep.pubTs||0); });
+  // 3) Rank by (type affinity + recency).
+  cards.sort(function(a,b){ if (b.rank !== a.rank) return b.rank - a.rank; return (b.rep.pubTs||0)-(a.rep.pubTs||0); });
 
-  // 4) AI-style "what to know" summary from the top cards.
+  // remember shown order for skip-learning
+  _homeShownStories = cards.slice(0, 8).map(function(c){ return { title: c.rep.title }; });
+
   var summaryHtml = homeWhatToKnow(cards);
 
   function ago(ts){ var m=Math.floor((Date.now()-ts*1000)/60000); if(m<1)return'now'; if(m<60)return m+'m'; var h=Math.floor(m/60); if(h<24)return h+'h'; return Math.floor(h/24)+'d'; }
-  function matchPct(p){
-    // map raw score to a friendly 60-99% band so it reads like a match
-    if (p <= 0) return null;
-    var pct = Math.min(99, 60 + Math.round(p * 3));
-    return pct;
-  }
   function catEmoji(c){ return c==='F1'?'\u{1F3CE}\uFE0F':(c==='BAYERN'?'\u{1F534}':(c==='SPL'?'\u{1F1F8}\u{1F1E6}':(c==='KSA'?'\u{1F4F0}':'\u26BD'))); }
+  var typeLabels = { transfer:'Transfer', contract:'Contract', result:'Result', injury:'Injury',
+    preview:'Preview', lineup:'Team news', manager:'Manager', opinion:'Analysis', business:'Business', result_f1:'Race weekend' };
 
   var html = summaryHtml;
-  cards.slice(0, 14).forEach(function(c){
+  cards.slice(0, 16).forEach(function(c){
     var s = c.rep;
-    var pct = matchPct(c.p);
-    var payload = encodeURIComponent(JSON.stringify({ title:s.title, emb:s.emb||null }));
+    var types = (typeof classifyStory === 'function') ? classifyStory(s) : [];
+    var typeTag = types.length ? (typeLabels[types[0]] || '') : '';
+    var payload = encodeURIComponent(JSON.stringify({ title:s.title, emb:s.emb||null, cat:s.cat }));
     html += '<a class="foryou-card" href="' + s.url + '" target="_blank" rel="noopener" onclick="homeOnStoryClick(\'' + payload + '\')">';
-    // top row: category + match badge + sources
     html += '<div class="foryou-top">'
       + '<span class="foryou-cat">' + catEmoji(s.cat) + ' ' + s.cat + '</span>'
-      + (pct ? '<span class="foryou-match">\u2728 ' + pct + '% match</span>' : '')
+      + (typeTag ? '<span class="foryou-type">' + typeTag + '</span>' : '')
       + (c.sources > 1 ? '<span class="foryou-sources">\u{1F4F0} ' + c.sources + ' sources</span>' : '')
       + '<span class="foryou-time">' + ago(s.pubTs) + '</span>'
       + '</div>';
     html += '<div class="foryou-title">' + s.title + '</div>';
-    if (c.reason) html += '<div class="foryou-reason">' + c.reason + '</div>';
     html += '</a>';
   });
   el.innerHTML = html;
 }
 
 // Why is this story shown? Returns a short reason or ''.
-function homeWhy(story) {
-  var title = (story.title || '').toLowerCase();
-  if (typeof loadPrefs === 'function') {
-    var p = loadPrefs();
-    var names = [].concat(p.f1Drivers||[], p.footballClubs||[]);
-    for (var i = 0; i < names.length; i++) {
-      if (title.indexOf(names[i].toLowerCase()) !== -1) return 'Because you follow ' + names[i];
-    }
-  }
-  // learned-interest reason
-  if (typeof loadTaste === 'function') {
-    var t = loadTaste();
-    var top = Object.keys(t.kw || {}).sort(function(a,b){ return t.kw[b]-t.kw[a]; })[0];
-    if (top && title.indexOf(top) !== -1) return 'Based on what you\u2019ve been reading';
-  }
-  return '';
-}
+function homeWhy(story) { return ''; }
 
 // Cluster stories by embedding (if present) else title similarity.
 function homeClusterStories(stories) {
@@ -216,22 +191,29 @@ function homeClusterStories(stories) {
   return clusters;
 }
 
-// AI-style "3 things to know" summary card from the top stories.
+// AI-style "what to know" summary from the top stories.
 function homeWhatToKnow(cards) {
   if (!cards.length) return '';
+  var learned = (typeof tasteReady === 'function') && tasteReady();
+  var lead = '';
+  if (learned && typeof tasteSummary === 'function') {
+    var likes = tasteSummary();
+    if (likes.length) lead = '<div class="brief-learned">Tuned to you: more ' + likes.join(', ') + '</div>';
+  }
   var top = cards.slice(0, 3).filter(function(c){ return c.rep && c.rep.title; });
   if (!top.length) return '';
   var items = top.map(function(c){
     return '<li class="brief-li">' + c.rep.title + (c.sources>1?' <span class="brief-src">('+c.sources+' sources)</span>':'') + '</li>';
   }).join('');
-  return '<div class="brief-card"><div class="brief-h">\u2728 What to know right now</div><ul class="brief-ul">' + items + '</ul></div>';
+  return '<div class="brief-card"><div class="brief-h">\u2728 What to know right now</div><ul class="brief-ul">' + items + '</ul>' + lead + '</div>';
 }
 
-// Record a click into the taste engine, then let the link open.
+// Record an open (positive) + skips for the others shown above it.
 function homeOnStoryClick(payload) {
   try {
     var story = JSON.parse(decodeURIComponent(payload));
-    if (typeof recordClick === 'function') recordClick(story);
+    if (typeof recordOpen === 'function') recordOpen(story);
+    if (typeof recordSkips === 'function') recordSkips(_homeShownStories, story.title);
   } catch(e) {}
   return true; // allow navigation
 }
@@ -248,31 +230,6 @@ async function homeBuildBrief(f1Next) {
   }
   // football + news counts fill in shortly after their loaders; keep it simple
   el.textContent = bits.length ? ('Here\u2019s your day: ' + bits.join(' \u00b7 ') + '.') : 'No big events on your radar right now \u2014 enjoy the quiet.';
-}
-
-// Follow editor: simple toggle chips.
-function homeRenderFollows() {
-  var el = document.getElementById('home-follows');
-  if (!el) return;
-  var p = (typeof loadPrefs === 'function') ? loadPrefs() : {};
-  function chips(listKey, options) {
-    return options.map(function(o){
-      var on = (p[listKey] || []).indexOf(o) !== -1;
-      return '<button class="home-chip' + (on?' on':'') + '" onclick="homeToggle(\'' + listKey + '\',\'' + o + '\')">' + (on?'\u2713 ':'') + o + '</button>';
-    }).join('');
-  }
-  el.innerHTML = '<div class="home-follow-group"><div class="home-follow-label">F1 drivers</div><div class="home-chips">'
-    + chips('f1Drivers', ['Verstappen','Leclerc','Hamilton','Norris','Piastri','Russell','Antonelli']) + '</div></div>'
-    + '<div class="home-follow-group"><div class="home-follow-label">Football clubs</div><div class="home-chips">'
-    + chips('footballClubs', ['Bayern','Al-Hilal','Al-Nassr','Real Madrid','Barcelona','Liverpool','Man City']) + '</div></div>';
-}
-
-function homeToggle(listKey, value) {
-  if (typeof toggleFollow === 'function') toggleFollow(listKey, value);
-  homeRenderFollows();
-  // refresh the personalized sections
-  homeLoadFootballEvents();
-  homeLoadNews();
 }
 
 // Alerts row: enable button or status.
