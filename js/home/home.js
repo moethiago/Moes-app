@@ -116,7 +116,7 @@ async function homeLoadFootballEvents() {
   } catch(e) {}
 }
 
-// "For You" — every story ranked by your personal taste profile.
+// "For You" — clusters dupes, scores by taste, shows why + match + sources.
 async function homeLoadNews() {
   var el = document.getElementById('home-news');
   if (!el) return;
@@ -132,33 +132,99 @@ async function homeLoadNews() {
     return;
   }
 
-  // Rank by personal taste if the engine is available; else newest first.
-  var ranked;
-  if (typeof rankForYou === 'function') {
-    ranked = rankForYou(stories.slice());
-  } else {
-    ranked = stories.slice().sort(function(a,b){ return (b.pubTs||0)-(a.pubTs||0); });
-  }
+  // 1) Cluster near-duplicates client-side so repeats collapse into one card.
+  var clusters = homeClusterStories(stories);
+
+  // 2) Build a representative per cluster + personal score + reason.
+  var cards = clusters.map(function(group){
+    var rep = group.slice().sort(function(a,b){ return (b.score||0)-(a.score||0) || (b.pubTs||0)-(a.pubTs||0); })[0];
+    var srcCount = group.length;
+    var p = (typeof personalScore === 'function') ? personalScore(rep) : 0;
+    return { rep: rep, sources: srcCount, p: p, reason: homeWhy(rep) };
+  });
+
+  // 3) Rank by personal score, then recency.
+  cards.sort(function(a,b){ if (b.p !== a.p) return b.p - a.p; return (b.rep.pubTs||0)-(a.rep.pubTs||0); });
+
+  // 4) AI-style "what to know" summary from the top cards.
+  var summaryHtml = homeWhatToKnow(cards);
 
   function ago(ts){ var m=Math.floor((Date.now()-ts*1000)/60000); if(m<1)return'now'; if(m<60)return m+'m'; var h=Math.floor(m/60); if(h<24)return h+'h'; return Math.floor(h/24)+'d'; }
-  var learning = (typeof tasteReady === 'function') && tasteReady();
-  var html = '';
-  if (!learning) {
-    html += '<div class="home-foryou-hint">Tap stories you like \u2014 your feed learns and re-ranks itself for you.</div>';
+  function matchPct(p){
+    // map raw score to a friendly 60-99% band so it reads like a match
+    if (p <= 0) return null;
+    var pct = Math.min(99, 60 + Math.round(p * 3));
+    return pct;
   }
-  html += '<div class="home-news-card">';
-  ranked.slice(0, 12).forEach(function(s, idx){
-    var matched = (typeof storyMatchesFollows === 'function') && storyMatchesFollows(s);
-    // store the story JSON on the element so we can record the click
+  function catEmoji(c){ return c==='F1'?'\u{1F3CE}\uFE0F':(c==='BAYERN'?'\u{1F534}':(c==='SPL'?'\u{1F1F8}\u{1F1E6}':(c==='KSA'?'\u{1F4F0}':'\u26BD'))); }
+
+  var html = summaryHtml;
+  cards.slice(0, 14).forEach(function(c){
+    var s = c.rep;
+    var pct = matchPct(c.p);
     var payload = encodeURIComponent(JSON.stringify({ title:s.title, emb:s.emb||null }));
-    html += '<a class="home-news-row" href="' + s.url + '" target="_blank" rel="noopener" '
-      + 'onclick="homeOnStoryClick(\'' + payload + '\')">'
-      + '<span class="home-news-dot' + (matched?' follow':'') + '"></span>'
-      + '<span class="home-news-title">' + s.title + '</span>'
-      + '<span class="home-news-time">' + ago(s.pubTs) + '</span></a>';
+    html += '<a class="foryou-card" href="' + s.url + '" target="_blank" rel="noopener" onclick="homeOnStoryClick(\'' + payload + '\')">';
+    // top row: category + match badge + sources
+    html += '<div class="foryou-top">'
+      + '<span class="foryou-cat">' + catEmoji(s.cat) + ' ' + s.cat + '</span>'
+      + (pct ? '<span class="foryou-match">\u2728 ' + pct + '% match</span>' : '')
+      + (c.sources > 1 ? '<span class="foryou-sources">\u{1F4F0} ' + c.sources + ' sources</span>' : '')
+      + '<span class="foryou-time">' + ago(s.pubTs) + '</span>'
+      + '</div>';
+    html += '<div class="foryou-title">' + s.title + '</div>';
+    if (c.reason) html += '<div class="foryou-reason">' + c.reason + '</div>';
+    html += '</a>';
   });
-  html += '</div>';
   el.innerHTML = html;
+}
+
+// Why is this story shown? Returns a short reason or ''.
+function homeWhy(story) {
+  var title = (story.title || '').toLowerCase();
+  if (typeof loadPrefs === 'function') {
+    var p = loadPrefs();
+    var names = [].concat(p.f1Drivers||[], p.footballClubs||[]);
+    for (var i = 0; i < names.length; i++) {
+      if (title.indexOf(names[i].toLowerCase()) !== -1) return 'Because you follow ' + names[i];
+    }
+  }
+  // learned-interest reason
+  if (typeof loadTaste === 'function') {
+    var t = loadTaste();
+    var top = Object.keys(t.kw || {}).sort(function(a,b){ return t.kw[b]-t.kw[a]; })[0];
+    if (top && title.indexOf(top) !== -1) return 'Based on what you\u2019ve been reading';
+  }
+  return '';
+}
+
+// Cluster stories by embedding (if present) else title similarity.
+function homeClusterStories(stories) {
+  var clusters = [];
+  function words(t){ return new Set((t||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(function(w){return w.length>3;})); }
+  function sim(a,b){ if(!a.size||!b.size)return 0; var inter=0; a.forEach(function(x){ if(b.has(x))inter++; }); return inter/Math.min(a.size,b.size); }
+  stories.forEach(function(s){
+    var placed = false;
+    for (var i=0;i<clusters.length;i++){
+      var rep = clusters[i][0];
+      var same = false;
+      if (s.emb && rep.emb && typeof cosineSim === 'function') same = cosineSim(s.emb, rep.emb) >= 0.82;
+      else same = sim(words(s.title), words(rep.title)) >= 0.5;
+      if (same) { clusters[i].push(s); placed = true; break; }
+    }
+    if (!placed) clusters.push([s]);
+  });
+  return clusters;
+}
+
+// AI-style "3 things to know" summary card from the top stories.
+function homeWhatToKnow(cards) {
+  if (!cards.length) return '';
+  var top = cards.slice(0, 3).filter(function(c){ return c.rep && c.rep.title; });
+  if (!top.length) return '';
+  var items = top.map(function(c){
+    return '<li class="brief-li">' + c.rep.title + (c.sources>1?' <span class="brief-src">('+c.sources+' sources)</span>':'') + '</li>';
+  }).join('');
+  return '<div class="brief-card"><div class="brief-h">\u2728 What to know right now</div><ul class="brief-ul">' + items + '</ul></div>';
 }
 
 // Record a click into the taste engine, then let the link open.
