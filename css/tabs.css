@@ -557,3 +557,15 @@
 .f1x-silly-row .f1a-name{flex:1}
 .f1x-silly-status{font-size:9px;font-weight:700;padding:3px 7px;border-radius:5px}
 .f1x-silly-status.expiring{background:rgba(245,200,66,0.14);color:var(--gold)}
+
+/* ═══ F1 subtabs + spoiler lock ═══ */
+.f1-subnav{display:flex;gap:6px;padding:12px 14px 4px;position:sticky;top:0;z-index:5;background:var(--bg-base)}
+.f1-subbtn{flex:1;padding:9px 0;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.3px;background:var(--bg-card);color:var(--txt-secondary);border:1px solid var(--border-hi);border-radius:10px;cursor:pointer;transition:all 0.15s}
+.f1-subbtn.active{background:var(--f1-red);color:#fff;border-color:var(--f1-red)}
+.f1-spoiler-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 28px;margin:14px;background:var(--bg-card);border:1px dashed var(--border-hi);border-radius:16px}
+.f1-spoiler-icon{font-size:42px;margin-bottom:12px}
+.f1-spoiler-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:6px}
+.f1-spoiler-text{font-size:13px;color:var(--txt-secondary);line-height:1.5;margin-bottom:18px;max-width:260px}
+.f1-spoiler-btn{padding:12px 28px;background:var(--f1-red);color:#fff;border:0;border-radius:12px;font-size:15px;font-weight:700;font-family:'Rajdhani',sans-serif;cursor:pointer}
+.f1-spoiler-btn:active{opacity:0.85}
+.f1-relock-btn{display:block;margin:8px 14px 24px;padding:10px;width:calc(100% - 28px);background:transparent;color:var(--txt-muted);border:1px solid var(--border-hi);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer}
