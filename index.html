@@ -72,95 +72,133 @@
 <!-- ═══ F1 ══════════════════════════════════════════════ -->
 <div class="tab-panel" id="panel-f1">
 
-  <!-- GLANCEABLE WEEKEND STATUS STRIP -->
-  <div id="f1-status" class="f1-status idle" style="margin:12px 14px 0;"></div>
+  <!-- F1 SUBTAB SWITCHER -->
+  <div class="f1-subnav">
+    <button class="f1-subbtn active" id="f1subbtn-upnext" onclick="switchF1Sub('upnext')">Up Next</button>
+    <button class="f1-subbtn" id="f1subbtn-results" onclick="switchF1Sub('results')">Results</button>
+    <button class="f1-subbtn" id="f1subbtn-standings" onclick="switchF1Sub('standings')">Standings</button>
+  </div>
 
-  <!-- F1 COUNTDOWN CARD -->
-  <div style="padding:14px 14px 6px;">
-    <div class="cd-card">
-      <div class="cd-top">
-        <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
-        <div class="cd-title" id="f1-next-session"></div>
-        <div class="cd-session-name" id="f1-session-label">Loading...</div>
-        <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
+  <!-- ═══ SUBTAB: UP NEXT (spoiler-free) ═══ -->
+  <div id="f1sub-upnext" class="f1-sub">
+
+    <!-- GLANCEABLE WEEKEND STATUS STRIP -->
+    <div id="f1-status" class="f1-status idle" style="margin:12px 14px 0;"></div>
+
+    <!-- F1 COUNTDOWN CARD -->
+    <div style="padding:14px 14px 6px;">
+      <div class="cd-card">
+        <div class="cd-top">
+          <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
+          <div class="cd-title" id="f1-next-session"></div>
+          <div class="cd-session-name" id="f1-session-label">Loading...</div>
+          <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
+        </div>
+        <div class="cd-grid" id="f1-cd-grid">
+          <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
+          <div class="cd-seg"><div class="cd-num" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
+          <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
+          <div class="cd-seg"><div class="cd-num" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
+        </div>
+        <div class="cd-sessions" id="f1-cd-sub"></div>
       </div>
-      <div class="cd-grid" id="f1-cd-grid">
-        <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
-        <div class="cd-seg"><div class="cd-num" id="cd-hours">--</div><div class="cd-lbl">Hrs</div></div>
-        <div class="cd-seg"><div class="cd-num" id="cd-mins">--</div><div class="cd-lbl">Min</div></div>
-        <div class="cd-seg"><div class="cd-num" id="cd-secs">--</div><div class="cd-lbl">Sec</div></div>
+    </div>
+
+    <!-- NEXT RACE CIRCUIT CARD + WEATHER -->
+    <div id="f1-racecard" style="padding:0 14px 6px;"></div>
+
+    <!-- RACE WEEKEND SCHEDULE (within 2 days of a weekend) -->
+    <div id="f1-weekend-card" style="display:none;padding:0 14px 6px;"></div>
+
+    <!-- LOCAL SESSION TIMES + ADD TO CALENDAR -->
+    <div id="f1-times" style="padding:0 14px 6px;"></div>
+
+    <!-- CIRCUIT PREVIEW + WEEKEND WEATHER + HISTORY -->
+    <div id="f1-preview" style="padding:0 14px 20px;"></div>
+  </div>
+
+  <!-- ═══ SUBTAB: RESULTS (spoiler-locked) ═══ -->
+  <div id="f1sub-results" class="f1-sub" style="display:none;">
+    <div id="f1sub-results-cover" class="f1-spoiler-cover">
+      <div class="f1-spoiler-icon">\u{1F648}</div>
+      <div class="f1-spoiler-title">Results hidden</div>
+      <div class="f1-spoiler-text">Tap to reveal the last session results, recap, and F1 news.</div>
+      <button class="f1-spoiler-btn" onclick="revealF1('results')">Reveal Results</button>
+    </div>
+    <div id="f1sub-results-content" style="display:none;">
+      <!-- LIVE TIMING (during live sessions) -->
+      <div id="f1-live-timing" style="padding:12px 14px 6px;"></div>
+
+      <!-- RACE RECAP -->
+      <div id="f1-recap" style="padding:0 14px 6px;"></div>
+
+      <!-- LAST SESSION RESULTS -->
+      <div style="padding:0 14px 6px;">
+        <div class="card" id="f1-session-results" style="padding:0;overflow:hidden;min-height:48px;">
+          <div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading session results...</span></div>
+        </div>
       </div>
-      <div class="cd-sessions" id="f1-cd-sub"></div>
+
+      <!-- NEXT GRID (after qualifying) -->
+      <div id="f1-next-grid" style="padding:0 14px 6px;display:none;">
+        <div class="card" style="padding:0;overflow:hidden;"></div>
+      </div>
+
+      <!-- LAST RACE PODIUM (legacy, hidden) -->
+      <div id="f1-last-race" style="display:none;"></div>
+
+      <!-- F1 BREAKING NEWS -->
+      <div id="f1-news" style="padding:0 14px 20px;"></div>
+
+      <button class="f1-relock-btn" onclick="relockF1('results')">Hide results again</button>
     </div>
   </div>
 
-  <!-- NEXT RACE CIRCUIT CARD + WEATHER -->
-  <div id="f1-racecard" style="padding:0 14px 6px;"></div>
-
-  <!-- RACE RECAP (did I miss anything?) -->
-  <div id="f1-recap" style="padding:0 14px 6px;"></div>
-
-  <!-- F1 BREAKING NEWS (from feed pipeline) -->
-  <div id="f1-news" style="padding:0 14px 6px;"></div>
-
-  <!-- WHAT CHANGED / TITLE PICTURE / STREAKS / SILLY SEASON -->
-  <div id="f1-extras" style="padding:0 14px 6px;"></div>
-
-  <!-- SEASON STORY + RIVALRY + RECORDS -->
-  <div id="f1-story" style="padding:0 14px 6px;"></div>
-
-  <!-- RACE WEEKEND SCHEDULE (shown when within 2 days of a race weekend) -->
-  <div id="f1-weekend-card" style="display:none;padding:0 14px 6px;"></div>
-
-  <!-- LIVE TIMING (shown during live sessions via OpenF1) -->
-  <div id="f1-live-timing" style="padding:0 14px 6px;"></div>
-
-  <!-- LAST SESSION RESULTS -->
-  <div style="padding:0 14px 6px;">
-    <div class="card" id="f1-session-results" style="padding:0;overflow:hidden;min-height:48px;">
-      <div class="f1-api-loading"><div class="f1-spinner"></div><span>Loading session results...</span></div>
+  <!-- ═══ SUBTAB: STANDINGS (spoiler-locked) ═══ -->
+  <div id="f1sub-standings" class="f1-sub" style="display:none;">
+    <div id="f1sub-standings-cover" class="f1-spoiler-cover">
+      <div class="f1-spoiler-icon">\u{1F648}</div>
+      <div class="f1-spoiler-title">Standings hidden</div>
+      <div class="f1-spoiler-text">Tap to reveal championship standings, the title picture, and season analysis.</div>
+      <button class="f1-spoiler-btn" onclick="revealF1('standings')">Reveal Standings</button>
     </div>
-  </div>
-
-  <!-- NEXT GRID (shown after qualifying) -->
-  <div id="f1-next-grid" style="padding:0 14px 6px;display:none;">
-    <div class="card" style="padding:0;overflow:hidden;"></div>
-  </div>
-
-  <!-- LAST RACE PODIUM (legacy small podium, hidden now) -->
-  <div id="f1-last-race" style="display:none;"></div>
-
-  <!-- F1 STANDINGS -->
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;">
-    <p class="section-label" style="padding:6px 0 8px;">Championship</p>
-    <div class="standings-toggle">
-      <button id="standings-btn-driver" class="standings-btn active" onclick="switchStandingsView('driver')">Drivers</button>
-      <button id="standings-btn-constructor" class="standings-btn" onclick="switchStandingsView('constructor')">Teams</button>
-    </div>
-  </div>
-
-  <!-- CHAMPIONSHIP CONTEXT LINE -->
-  <div id="f1-championship-context" style="padding:0 14px 6px;"></div>
-
-  <div style="padding:0 14px 20px;">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">2026 Standings</span>
-        <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
+    <div id="f1sub-standings-content" style="display:none;">
+      <!-- STANDINGS HEADER -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0;">
+        <p class="section-label" style="padding:6px 0 8px;">Championship</p>
+        <div class="standings-toggle">
+          <button id="standings-btn-driver" class="standings-btn active" onclick="switchStandingsView('driver')">Drivers</button>
+          <button id="standings-btn-constructor" class="standings-btn" onclick="switchStandingsView('constructor')">Teams</button>
+        </div>
       </div>
-      <div id="f1-standings-body">
-        <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--f1-red)"></div><span>Loading...</span></div>
+
+      <!-- CHAMPIONSHIP CONTEXT LINE -->
+      <div id="f1-championship-context" style="padding:0 14px 6px;"></div>
+
+      <div style="padding:0 14px 6px;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">2026 Standings</span>
+            <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
+          </div>
+          <div id="f1-standings-body">
+            <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--f1-red)"></div><span>Loading...</span></div>
+          </div>
+        </div>
       </div>
+
+      <!-- TITLE PICTURE / STREAKS / SILLY SEASON -->
+      <div id="f1-extras" style="padding:0 14px 6px;"></div>
+
+      <!-- SEASON STORY + RIVALRY + RECORDS -->
+      <div id="f1-story" style="padding:0 14px 6px;"></div>
+
+      <!-- ANALYTICS -->
+      <div id="f1-analytics" style="padding:0 14px 6px;"></div>
+
+      <button class="f1-relock-btn" onclick="relockF1('standings')">Hide standings again</button>
     </div>
   </div>
-  <!-- F1 ANALYTICS (title math, gap trend, teammate H2H, form, strategy, on-this-day) -->
-  <div id="f1-analytics" style="padding:0 14px 6px;"></div>
-
-  <!-- LOCAL SESSION TIMES + ADD TO CALENDAR -->
-  <div id="f1-times" style="padding:0 14px 6px;"></div>
-
-  <!-- CIRCUIT PREVIEW + WEEKEND WEATHER + HISTORY -->
-  <div id="f1-preview" style="padding:0 14px 20px;"></div>
 
 </div>
 
@@ -261,39 +299,40 @@
 
 <div id="toast"></div>
 <!-- F1 -->
-<script src="js/f1/f1-config.js?v=1780446815"></script>
-<script src="js/f1/f1-calendar.js?v=1780446815"></script>
-<script src="js/f1/f1-circuits.js?v=1780446815"></script>
-<script src="js/f1/f1-fallback.js?v=1780446815"></script>
-<script src="js/f1/f1-weekend.js?v=1780446815"></script>
-<script src="js/f1/f1-livetiming.js?v=1780446815"></script>
-<script src="js/f1/f1-timing.js?v=1780446815"></script>
-<script src="js/f1/f1-status.js?v=1780446815"></script>
-<script src="js/f1/f1-standings.js?v=1780446815"></script>
-<script src="js/f1/f1-session.js?v=1780446815"></script>
-<script src="js/f1/f1-racecard.js?v=1780446815"></script>
-<script src="js/f1/f1-analytics.js?v=1780446815"></script>
-<script src="js/f1/f1-story.js?v=1780446815"></script>
-<script src="js/f1/f1-recap.js?v=1780446815"></script>
-<script src="js/f1/f1-weekend-times.js?v=1780446815"></script>
-<script src="js/f1/f1-preview.js?v=1780446815"></script>
-<script src="js/f1/f1-news.js?v=1780446815"></script>
-<script src="js/f1/f1-extras.js?v=1780446815"></script>
+<script src="js/f1/f1-config.js?v=1780447461"></script>
+<script src="js/f1/f1-calendar.js?v=1780447461"></script>
+<script src="js/f1/f1-circuits.js?v=1780447461"></script>
+<script src="js/f1/f1-fallback.js?v=1780447461"></script>
+<script src="js/f1/f1-weekend.js?v=1780447461"></script>
+<script src="js/f1/f1-livetiming.js?v=1780447461"></script>
+<script src="js/f1/f1-timing.js?v=1780447461"></script>
+<script src="js/f1/f1-status.js?v=1780447461"></script>
+<script src="js/f1/f1-subtabs.js?v=1780447461"></script>
+<script src="js/f1/f1-standings.js?v=1780447461"></script>
+<script src="js/f1/f1-session.js?v=1780447461"></script>
+<script src="js/f1/f1-racecard.js?v=1780447461"></script>
+<script src="js/f1/f1-analytics.js?v=1780447461"></script>
+<script src="js/f1/f1-story.js?v=1780447461"></script>
+<script src="js/f1/f1-recap.js?v=1780447461"></script>
+<script src="js/f1/f1-weekend-times.js?v=1780447461"></script>
+<script src="js/f1/f1-preview.js?v=1780447461"></script>
+<script src="js/f1/f1-news.js?v=1780447461"></script>
+<script src="js/f1/f1-extras.js?v=1780447461"></script>
 <!-- Football -->
-<script src="js/football/football-config.js?v=1780446815"></script>
-<script src="js/football/football-render.js?v=1780446815"></script>
-<script src="js/football/football-fetch.js?v=1780446815"></script>
-<script src="js/football/worldcup-data.js?v=1780446815"></script>
-<script src="js/football/worldcup.js?v=1780446815"></script>
+<script src="js/football/football-config.js?v=1780447461"></script>
+<script src="js/football/football-render.js?v=1780447461"></script>
+<script src="js/football/football-fetch.js?v=1780447461"></script>
+<script src="js/football/worldcup-data.js?v=1780447461"></script>
+<script src="js/football/worldcup.js?v=1780447461"></script>
 <!-- Feed -->
-<script src="js/feed/feed-utils.js?v=1780446815"></script>
-<script src="js/feed/feed-ticker.js?v=1780446815"></script>
-<script src="js/feed/feed-render.js?v=1780446815"></script>
-<script src="js/feed/feed-fetch.js?v=1780446815"></script>
+<script src="js/feed/feed-utils.js?v=1780447461"></script>
+<script src="js/feed/feed-ticker.js?v=1780447461"></script>
+<script src="js/feed/feed-render.js?v=1780447461"></script>
+<script src="js/feed/feed-fetch.js?v=1780447461"></script>
 <!-- Health (tab hidden — scripts disabled, files retained for later) -->
-<!-- <script src="js/health/health-data.js?v=1780446815"></script> -->
-<!-- <script src="js/health/health-render.js?v=1780446815"></script> -->
+<!-- <script src="js/health/health-data.js?v=1780447461"></script> -->
+<!-- <script src="js/health/health-render.js?v=1780447461"></script> -->
 <!-- Core -->
-<script src="js/core.js?v=1780446815"></script>
+<script src="js/core.js?v=1780447461"></script>
 </body>
 </html>

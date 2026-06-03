@@ -143,3 +143,11 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 ### Title Picture: real math + logical section order
 - Title Picture now shows actual championship math: points still available (rounds left × 25), and the exact swing P2 needs to take the lead (total + per-race average), or "clinched"/"complete" when decided. No more useless "1.7-race cushion" truism.
 - Reordered the F1 tab into a sensible flow: Status → Countdown → Next-race card → Recap → News → Title/Streaks/Silly-season → Season story → Standings → Analytics → Local times → Circuit preview/weather/history.
+
+## v23 — June 2, 2026
+
+### F1 tab → spoiler-safe subtabs
+- Split the F1 tab into three subtabs: **Up Next**, **Results**, **Standings**.
+- **Up Next** is the default and 100% spoiler-free: status, countdown, next-race card, your local session times + calendar, circuit preview, weekend weather, history. Safe to open anytime.
+- **Results** (recap, last session, grid, F1 news) and **Standings** (championship table, title picture, streaks, silly season, analysis) are spoiler-LOCKED by default — they show a "tap to reveal" cover so you're never spoiled if you haven't watched yet.
+- Lock resets ON every time you open the app. Each revealed section has a "hide again" button to re-lock.
