@@ -88,10 +88,15 @@ export default async function handler(req, res) {
         cacheKey,
         TTL.UPCOMING,
         async () => {
-          const sd = await fetchFromAPI(`/standings?league=${cfg.id}&season=${cfg.season}`, apiKey);
-          const resp = sd.response && sd.response[0];
-          const groups = (resp && resp.league && resp.league.standings) || [];
-          // standings is an array of arrays (groups); flatten first group for league tables
+          let sd = await fetchFromAPI(`/standings?league=${cfg.id}&season=${cfg.season}`, apiKey);
+          let resp = sd.response && sd.response[0];
+          let groups = (resp && resp.league && resp.league.standings) || [];
+          if (!groups.length) {
+            // try next season if the current one has no table yet
+            sd = await fetchFromAPI(`/standings?league=${cfg.id}&season=${cfg.season + 1}`, apiKey);
+            resp = sd.response && sd.response[0];
+            groups = (resp && resp.league && resp.league.standings) || [];
+          }
           const table = (groups[0] || []).map(simplifyStanding);
           return { league, standings: table, fetchedAt: Date.now() };
         }
@@ -116,7 +121,7 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // FIXTURES (default)
+    // FIXTURES (default) — always return BOTH today and next upcoming
     const cacheKey = 'cache:football:' + league + ':' + today;
     const { data, fromCache, ageSeconds } = await cached(
       cacheKey,
@@ -128,14 +133,28 @@ export default async function handler(req, res) {
         );
         const fixtures = (todayData.response || []).map(simplifyFixture);
 
+        // Always fetch the next scheduled fixtures too, so Upcoming is never empty
         let upcoming = [];
-        if (fixtures.length === 0) {
+        try {
           const upcomingData = await fetchFromAPI(
-            `/fixtures?league=${cfg.id}&season=${cfg.season}&next=5&timezone=Asia/Riyadh`,
+            `/fixtures?league=${cfg.id}&season=${cfg.season}&next=10&timezone=Asia/Riyadh`,
             apiKey
           );
           upcoming = (upcomingData.response || []).map(simplifyFixture);
+        } catch (e) { /* upcoming optional */ }
+
+        // If the current season has no upcoming fixtures yet (off-season / not
+        // scheduled), fall back to the next season so the tab still populates.
+        if (upcoming.length === 0) {
+          try {
+            const nextSeasonData = await fetchFromAPI(
+              `/fixtures?league=${cfg.id}&season=${cfg.season + 1}&next=10&timezone=Asia/Riyadh`,
+              apiKey
+            );
+            upcoming = (nextSeasonData.response || []).map(simplifyFixture);
+          } catch (e) { /* ignore */ }
         }
+
         return { league, fixtures, upcoming, fetchedAt: Date.now() };
       }
     );
