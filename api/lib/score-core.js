@@ -90,7 +90,7 @@ export async function scoreCategory(items, cat, apiKey) {
     if (!match) return { approved: [], cost, inputTokens, outputTokens };
 
     const scored = JSON.parse(match[0])
-      .filter(s => s.score >= 6)
+      .filter(s => s.score >= 5)
       .map(s => {
         const idx = parseInt(s.idx);
         if (isNaN(idx) || !items[idx]) return null;
