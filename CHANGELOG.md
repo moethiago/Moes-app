@@ -137,3 +137,9 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - (16) Rotating F1 history nugget.
 - (17) Circuit fun fact.
 - (18) Championship permutations in plain English.
+
+## v22 — June 2, 2026
+
+### Title Picture: real math + logical section order
+- Title Picture now shows actual championship math: points still available (rounds left × 25), and the exact swing P2 needs to take the lead (total + per-race average), or "clinched"/"complete" when decided. No more useless "1.7-race cushion" truism.
+- Reordered the F1 tab into a sensible flow: Status → Countdown → Next-race card → Recap → News → Title/Streaks/Silly-season → Season story → Standings → Analytics → Local times → Circuit preview/weather/history.
