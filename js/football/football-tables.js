@@ -24,9 +24,8 @@ function loadFootballTables() {
     var order = ['epl','laliga','seriea','bundesliga','ligue1','spl'];
     picker.innerHTML = order.map(function(key){
       var m = FT_LEAGUE_META[key];
-      return '<button class="ft-league-pill' + (key===_ftActiveLeague?' active':'') + '" data-key="' + key + '" onclick="switchFootballLeague(\'' + key + '\')">'
-        + '<span class="ft-league-flag">' + m.flag + '</span>'
-        + '<span class="ft-league-lbl">' + m.short + '</span></button>';
+      return '<button class="ft-league-pill' + (key===_ftActiveLeague?' active':'') + '" data-key="' + key + '" title="' + m.short + '" onclick="switchFootballLeague(\'' + key + '\')">'
+        + '<span class="ft-league-flag">' + m.flag + '</span></button>';
     }).join('');
     picker.dataset.built = '1';
   }
