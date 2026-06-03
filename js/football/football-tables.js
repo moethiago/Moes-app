@@ -7,16 +7,26 @@
 var _ftActiveLeague = 'epl';
 var _ftCache = {}; // league -> {standings, scorers}
 
+var FT_LEAGUE_META = {
+  epl:        { flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', short:'Premier League' },
+  laliga:     { flag:'🇪🇸', short:'La Liga' },
+  seriea:     { flag:'🇮🇹', short:'Serie A' },
+  bundesliga: { flag:'🇩🇪', short:'Bundesliga' },
+  ligue1:     { flag:'🇫🇷', short:'Ligue 1' },
+  spl:        { flag:'🇸🇦', short:'Saudi PL' },
+};
+
 function loadFootballTables() {
   var root = document.getElementById('football-tables-body');
   if (!root) return;
-  // build league picker once
   var picker = document.getElementById('ft-league-picker');
   if (picker && !picker.dataset.built) {
-    picker.innerHTML = FOOTBALL_LEAGUES.filter(function(l){
-      return ['epl','laliga','seriea','bundesliga','ligue1','spl'].indexOf(l.key) !== -1;
-    }).map(function(l){
-      return '<button class="ft-league-btn' + (l.key===_ftActiveLeague?' active':'') + '" data-key="' + l.key + '" onclick="switchFootballLeague(\'' + l.key + '\')">' + l.label + '</button>';
+    var order = ['epl','laliga','seriea','bundesliga','ligue1','spl'];
+    picker.innerHTML = order.map(function(key){
+      var m = FT_LEAGUE_META[key];
+      return '<button class="ft-league-pill' + (key===_ftActiveLeague?' active':'') + '" data-key="' + key + '" onclick="switchFootballLeague(\'' + key + '\')">'
+        + '<span class="ft-league-flag">' + m.flag + '</span>'
+        + '<span class="ft-league-lbl">' + m.short + '</span></button>';
     }).join('');
     picker.dataset.built = '1';
   }

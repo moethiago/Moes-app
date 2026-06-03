@@ -29,7 +29,23 @@ async function loadFootballToday() {
     }
   });
 
-  if (!any) html += '<div class="f1a-card"><div class="f1a-h">Today</div><div class="f1a-sub">No matches today. Check Upcoming.</div></div>';
+  // If nothing is on today, surface the soonest upcoming matches right here
+  if (!any) {
+    var shownUpcoming = false;
+    FOOTBALL_LEAGUES.forEach(function(league){
+      var data = byKey[league.key];
+      var up = (data && data.upcoming) || [];
+      if (up.length) {
+        html += renderLeagueBlock(league, { fixtures: [], upcoming: up.slice(0, 3) });
+        shownUpcoming = true;
+      }
+    });
+    if (shownUpcoming) {
+      html = '<div class="f1a-card"><div class="f1a-h">No matches today</div><div class="f1a-sub">Showing the next scheduled fixtures \u2014 full list in Upcoming.</div></div>' + html;
+    } else {
+      html += '<div class="f1a-card"><div class="f1a-h">Today</div><div class="f1a-sub">No matches today and no upcoming fixtures loaded yet.</div></div>';
+    }
+  }
   root.innerHTML = html;
 }
 
