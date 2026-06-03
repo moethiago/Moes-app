@@ -167,3 +167,12 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **Bracket** (spoiler-locked): knockout bracket that fills in as rounds complete.
 - **Results** (spoiler-locked): recent match results with winners highlighted.
 - Spoiler lock resets ON each visit; each section has a "hide again" button. Data from openfootball (CC0, no key). Flags per nation, host-city info.
+
+## v25 — June 2, 2026
+
+### Football tab — Today / Upcoming / Tables subtabs
+- Three subtabs: **Today**, **Upcoming**, **Tables** (no spoiler lock — football is year-round multi-league).
+- **Today**: a "Your Teams" tracker pinned on top (Bayern + Al-Hilal), then today's live/scheduled matches grouped by league.
+- **Upcoming**: each league's next fixtures.
+- **Tables**: scrollable league picker (EPL, La Liga, Serie A, Bundesliga, Ligue 1, Saudi Pro League) → full standings table with your team highlighted + top-4 zone, plus that league's top scorers.
+- Backend (`api/football.js`) extended with `?type=standings` and `?type=topscorers` (cached). New season set in leagues.js already.
