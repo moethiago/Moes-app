@@ -84,6 +84,7 @@
 <button class="btn" onclick="location.reload()">Run Again</button>
 <button class="btn alt" onclick="copyReport()">Copy Full Report</button>
 <button class="btn go" id="trigger-btn">Trigger /api/news Now</button>
+<button class="btn go" id="refresh-btn" style="background:#ff3366;">Full Refresh (clear + ingest + score)</button>
 
 <details>
   <summary>Raw log</summary>
@@ -586,6 +587,37 @@ document.getElementById('trigger-btn').addEventListener('click', function() {
     } catch (e) {
       alert('Got response but it was not JSON: ' + res.text.slice(0, 200));
     }
+  });
+});
+
+// FULL REFRESH: clear -> ingest -> score, one tap, with live status.
+document.getElementById('refresh-btn').addEventListener('click', function() {
+  var btn = this;
+  if (!confirm('Full Refresh wipes all stored stories, then re-pulls and re-scores everything fresh. Continue?')) return;
+  var SECRET = 'moes-deploy-2026';
+  var orig = 'Full Refresh (clear + ingest + score)';
+  btn.disabled = true;
+  btn.textContent = '1/3 Clearing...';
+  fetchWithTimeout(VERCEL + '/api/admin-clear?secret=' + SECRET, 60000).then(function(rc) {
+    var cleared = 0;
+    try { cleared = (JSON.parse(rc.text).cleared || {}).stories || 0; } catch(e) {}
+    btn.textContent = '2/3 Ingesting...';
+    return fetchWithTimeout(VERCEL + '/api/ingest', 90000).then(function(ri) {
+      var ingested = 0;
+      try { ingested = JSON.parse(ri.text).ingested || 0; } catch(e) {}
+      btn.textContent = '3/3 Scoring...';
+      return fetchWithTimeout(VERCEL + '/api/score', 120000).then(function(rs) {
+        var approved = 0, cost = 0;
+        try { var d = JSON.parse(rs.text); approved = d.approved || 0; cost = d.cost || 0; } catch(e) {}
+        btn.disabled = false;
+        btn.textContent = orig;
+        alert('Full Refresh done!\n\nCleared: ' + cleared + ' old stories\nIngested: ' + ingested + ' fresh\nApproved: ' + approved + '\nCost: $' + cost.toFixed(4) + '\n\nReload to see the updated checks.');
+      });
+    });
+  }).catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = orig;
+    alert('Full Refresh failed: ' + e);
   });
 });
 
