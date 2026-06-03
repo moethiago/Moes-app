@@ -34,7 +34,7 @@ function loadHome() {
   html += '</div>';
 
   // Your news
-  html += '<div class="home-section-title">News on who you follow</div>';
+  html += '<div class="home-section-title">For You</div>';
   html += '<div id="home-news"><div class="f1a-sub" style="padding:0 14px">Loading...</div></div>';
 
   // Quick links + follow editor
@@ -116,7 +116,7 @@ async function homeLoadFootballEvents() {
   } catch(e) {}
 }
 
-// News matching follows, from the feed pipeline.
+// "For You" — every story ranked by your personal taste profile.
 async function homeLoadNews() {
   var el = document.getElementById('home-news');
   if (!el) return;
@@ -127,22 +127,47 @@ async function homeLoadNews() {
   } catch(e) {}
   if (!stories.length && typeof parsedStoriesCache !== 'undefined') stories = parsedStoriesCache || [];
 
-  var mine = stories.filter(function(s){ return (typeof storyMatchesFollows === 'function') && storyMatchesFollows(s); });
-  if (!mine.length) {
-    el.innerHTML = '<div class="f1a-sub" style="padding:0 14px">No breaking news on your teams right now.</div>';
+  if (!stories.length) {
+    el.innerHTML = '<div class="f1a-sub" style="padding:0 14px">No news right now.</div>';
     return;
   }
-  mine.sort(function(a,b){ return (b.pubTs||0) - (a.pubTs||0); });
+
+  // Rank by personal taste if the engine is available; else newest first.
+  var ranked;
+  if (typeof rankForYou === 'function') {
+    ranked = rankForYou(stories.slice());
+  } else {
+    ranked = stories.slice().sort(function(a,b){ return (b.pubTs||0)-(a.pubTs||0); });
+  }
+
   function ago(ts){ var m=Math.floor((Date.now()-ts*1000)/60000); if(m<1)return'now'; if(m<60)return m+'m'; var h=Math.floor(m/60); if(h<24)return h+'h'; return Math.floor(h/24)+'d'; }
-  var html = '<div class="home-news-card">';
-  mine.slice(0, 6).forEach(function(s){
-    html += '<a class="home-news-row" href="' + s.url + '" target="_blank" rel="noopener">'
-      + '<span class="home-news-dot"></span>'
+  var learning = (typeof tasteReady === 'function') && tasteReady();
+  var html = '';
+  if (!learning) {
+    html += '<div class="home-foryou-hint">Tap stories you like \u2014 your feed learns and re-ranks itself for you.</div>';
+  }
+  html += '<div class="home-news-card">';
+  ranked.slice(0, 12).forEach(function(s, idx){
+    var matched = (typeof storyMatchesFollows === 'function') && storyMatchesFollows(s);
+    // store the story JSON on the element so we can record the click
+    var payload = encodeURIComponent(JSON.stringify({ title:s.title, emb:s.emb||null }));
+    html += '<a class="home-news-row" href="' + s.url + '" target="_blank" rel="noopener" '
+      + 'onclick="homeOnStoryClick(\'' + payload + '\')">'
+      + '<span class="home-news-dot' + (matched?' follow':'') + '"></span>'
       + '<span class="home-news-title">' + s.title + '</span>'
       + '<span class="home-news-time">' + ago(s.pubTs) + '</span></a>';
   });
   html += '</div>';
   el.innerHTML = html;
+}
+
+// Record a click into the taste engine, then let the link open.
+function homeOnStoryClick(payload) {
+  try {
+    var story = JSON.parse(decodeURIComponent(payload));
+    if (typeof recordClick === 'function') recordClick(story);
+  } catch(e) {}
+  return true; // allow navigation
 }
 
 // One-line brief assembled from the pieces.
