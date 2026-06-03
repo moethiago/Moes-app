@@ -45,16 +45,25 @@ export const TRUSTED_SOURCES = [
   { url:'https://www.reddit.com/r/saudiarabia/top/.rss?t=day&limit=10',   cat:'KSA',      weight:6  },
 ];
 
-// Curated accounts that BREAK news first — monitored via TwitterAPI.io.
-// Quality over quantity: only the handles that genuinely break stories.
+// Curated "hub" accounts — a breaker + an aggregator per topic that
+// already collect everything for that topic. Quality over quantity:
+// following the hubs gives the signal of 20 accounts without the noise.
+// Confirmed with Moaath.
 export const TWITTER_ACCOUNTS = [
-  { handle:'FabrizioRomano', cat:'FOOTBALL', weight:9 },
-  { handle:'David_Ornstein', cat:'FOOTBALL', weight:10 },
-  { handle:'F1',             cat:'F1',        weight:10 },
-  { handle:'ScuderiaFerrari',cat:'F1',        weight:9  },
-  { handle:'FCBayern',       cat:'BAYERN',    weight:10 },
-  { handle:'Alhilal_FC',     cat:'SPL',       weight:10 },
-  { handle:'SPL',            cat:'SPL',       weight:8  },
+  // F1
+  { handle:'F1',            cat:'F1',       weight:10 },
+  { handle:'planet_f1',     cat:'F1',       weight:8  },
+  // Football (general) — aggregator hubs
+  { handle:'433',           cat:'FOOTBALL', weight:8  },
+  { handle:'bleacherreport',cat:'FOOTBALL', weight:8  },
+  // Bayern
+  { handle:'iMiaSanMia',    cat:'BAYERN',   weight:10 },
+  { handle:'FCBayernEN',    cat:'BAYERN',   weight:9  },
+  // SPL / Saudi football
+  { handle:'koorashow_ksa', cat:'SPL',      weight:10 },
+  // KSA news / economy
+  { handle:'azk_sa',        cat:'KSA',      weight:9  },
+  { handle:'thesaudi_post', cat:'KSA',      weight:9  },
 ];
 
 export const CATEGORIES = ['F1','FOOTBALL','BAYERN','SPL','KSA'];
