@@ -151,3 +151,19 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **Up Next** is the default and 100% spoiler-free: status, countdown, next-race card, your local session times + calendar, circuit preview, weekend weather, history. Safe to open anytime.
 - **Results** (recap, last session, grid, F1 news) and **Standings** (championship table, title picture, streaks, silly season, analysis) are spoiler-LOCKED by default — they show a "tap to reveal" cover so you're never spoiled if you haven't watched yet.
 - Lock resets ON every time you open the app. Each revealed section has a "hide again" button to re-lock.
+
+## v24 — June 2, 2026
+
+### Subtab fixes
+- Fixed the spoiler-cover showing literal "\u{1F648}" text — now displays the actual 🙈 emoji (HTML doesn't read JS escapes).
+- Fixed uneven subtab buttons — all three (Up Next / Results / Standings) are now exactly equal width whether active or not.
+
+## v24 — June 2, 2026
+
+### World Cup tab — full rebuild, spoiler-safe subtabs (better than F1)
+- Four subtabs: Up Next, Groups, Bracket, Results.
+- **Up Next** (spoiler-free, default): next-match countdown, your-team tracker (Saudi Arabia) with next fixture + add-to-calendar, and upcoming matches in your local time, each with a one-tap calendar button.
+- **Groups** (spoiler-locked): live standings tables computed for all 12 groups (A–L), qualification zone highlighted, your team's row highlighted gold.
+- **Bracket** (spoiler-locked): knockout bracket that fills in as rounds complete.
+- **Results** (spoiler-locked): recent match results with winners highlighted.
+- Spoiler lock resets ON each visit; each section has a "hide again" button. Data from openfootball (CC0, no key). Flags per nation, host-city info.

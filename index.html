@@ -214,12 +214,62 @@
 
 <!-- ═══ WORLD CUP ═══════════════════════════════════════ -->
 <div class="tab-panel" id="panel-worldcup">
-  <p class="section-label" style="padding-left:14px;padding-top:14px;">🏆 World Cup 2026</p>
-  <div style="padding:0 14px 20px;">
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div id="worldcup-fixtures" style="min-height:80px;"></div>
+
+  <!-- WC SUBTAB SWITCHER -->
+  <div class="f1-subnav">
+    <button class="f1-subbtn active" id="wcsubbtn-upnext" onclick="switchWCSub('upnext')">Up Next</button>
+    <button class="f1-subbtn" id="wcsubbtn-groups" onclick="switchWCSub('groups')">Groups</button>
+    <button class="f1-subbtn" id="wcsubbtn-bracket" onclick="switchWCSub('bracket')">Bracket</button>
+    <button class="f1-subbtn" id="wcsubbtn-results" onclick="switchWCSub('results')">Results</button>
+  </div>
+
+  <!-- ═══ SUBTAB: UP NEXT (spoiler-free) ═══ -->
+  <div id="wcsub-upnext" class="f1-sub">
+    <div id="wc-upnext-body" style="padding:12px 14px 20px;min-height:80px;"></div>
+  </div>
+
+  <!-- ═══ SUBTAB: GROUPS (spoiler-locked) ═══ -->
+  <div id="wcsub-groups" class="f1-sub" style="display:none;">
+    <div id="wcsub-groups-cover" class="f1-spoiler-cover">
+      <div class="f1-spoiler-icon">🙈</div>
+      <div class="f1-spoiler-title">Group tables hidden</div>
+      <div class="f1-spoiler-text">Tap to reveal live group standings (these show match results).</div>
+      <button class="f1-spoiler-btn" onclick="revealWC('groups')">Reveal Groups</button>
+    </div>
+    <div id="wcsub-groups-content" style="display:none;">
+      <div id="wc-groups-body" style="padding:12px 14px 6px;"></div>
+      <button class="f1-relock-btn" onclick="relockWC('groups')">Hide groups again</button>
     </div>
   </div>
+
+  <!-- ═══ SUBTAB: BRACKET (spoiler-locked) ═══ -->
+  <div id="wcsub-bracket" class="f1-sub" style="display:none;">
+    <div id="wcsub-bracket-cover" class="f1-spoiler-cover">
+      <div class="f1-spoiler-icon">🙈</div>
+      <div class="f1-spoiler-title">Bracket hidden</div>
+      <div class="f1-spoiler-text">Tap to reveal the knockout bracket and results.</div>
+      <button class="f1-spoiler-btn" onclick="revealWC('bracket')">Reveal Bracket</button>
+    </div>
+    <div id="wcsub-bracket-content" style="display:none;">
+      <div id="wc-bracket-body" style="padding:12px 14px 6px;"></div>
+      <button class="f1-relock-btn" onclick="relockWC('bracket')">Hide bracket again</button>
+    </div>
+  </div>
+
+  <!-- ═══ SUBTAB: RESULTS (spoiler-locked) ═══ -->
+  <div id="wcsub-results" class="f1-sub" style="display:none;">
+    <div id="wcsub-results-cover" class="f1-spoiler-cover">
+      <div class="f1-spoiler-icon">🙈</div>
+      <div class="f1-spoiler-title">Results hidden</div>
+      <div class="f1-spoiler-text">Tap to reveal recent match results.</div>
+      <button class="f1-spoiler-btn" onclick="revealWC('results')">Reveal Results</button>
+    </div>
+    <div id="wcsub-results-content" style="display:none;">
+      <div id="wc-results-body" style="padding:12px 14px 6px;"></div>
+      <button class="f1-relock-btn" onclick="relockWC('results')">Hide results again</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ HEALTH (HIDDEN — re-enable by restoring nav button + removing display:none) ═══ -->
@@ -299,40 +349,45 @@
 
 <div id="toast"></div>
 <!-- F1 -->
-<script src="js/f1/f1-config.js?v=1780447794"></script>
-<script src="js/f1/f1-calendar.js?v=1780447794"></script>
-<script src="js/f1/f1-circuits.js?v=1780447794"></script>
-<script src="js/f1/f1-fallback.js?v=1780447794"></script>
-<script src="js/f1/f1-weekend.js?v=1780447794"></script>
-<script src="js/f1/f1-livetiming.js?v=1780447794"></script>
-<script src="js/f1/f1-timing.js?v=1780447794"></script>
-<script src="js/f1/f1-status.js?v=1780447794"></script>
-<script src="js/f1/f1-subtabs.js?v=1780447794"></script>
-<script src="js/f1/f1-standings.js?v=1780447794"></script>
-<script src="js/f1/f1-session.js?v=1780447794"></script>
-<script src="js/f1/f1-racecard.js?v=1780447794"></script>
-<script src="js/f1/f1-analytics.js?v=1780447794"></script>
-<script src="js/f1/f1-story.js?v=1780447794"></script>
-<script src="js/f1/f1-recap.js?v=1780447794"></script>
-<script src="js/f1/f1-weekend-times.js?v=1780447794"></script>
-<script src="js/f1/f1-preview.js?v=1780447794"></script>
-<script src="js/f1/f1-news.js?v=1780447794"></script>
-<script src="js/f1/f1-extras.js?v=1780447794"></script>
+<script src="js/f1/f1-config.js?v=1780448696"></script>
+<script src="js/f1/f1-calendar.js?v=1780448696"></script>
+<script src="js/f1/f1-circuits.js?v=1780448696"></script>
+<script src="js/f1/f1-fallback.js?v=1780448696"></script>
+<script src="js/f1/f1-weekend.js?v=1780448696"></script>
+<script src="js/f1/f1-livetiming.js?v=1780448696"></script>
+<script src="js/f1/f1-timing.js?v=1780448696"></script>
+<script src="js/f1/f1-status.js?v=1780448696"></script>
+<script src="js/f1/f1-subtabs.js?v=1780448696"></script>
+<script src="js/f1/f1-standings.js?v=1780448696"></script>
+<script src="js/f1/f1-session.js?v=1780448696"></script>
+<script src="js/f1/f1-racecard.js?v=1780448696"></script>
+<script src="js/f1/f1-analytics.js?v=1780448696"></script>
+<script src="js/f1/f1-story.js?v=1780448696"></script>
+<script src="js/f1/f1-recap.js?v=1780448696"></script>
+<script src="js/f1/f1-weekend-times.js?v=1780448696"></script>
+<script src="js/f1/f1-preview.js?v=1780448696"></script>
+<script src="js/f1/f1-news.js?v=1780448696"></script>
+<script src="js/f1/f1-extras.js?v=1780448696"></script>
 <!-- Football -->
-<script src="js/football/football-config.js?v=1780447794"></script>
-<script src="js/football/football-render.js?v=1780447794"></script>
-<script src="js/football/football-fetch.js?v=1780447794"></script>
-<script src="js/football/worldcup-data.js?v=1780447794"></script>
-<script src="js/football/worldcup.js?v=1780447794"></script>
+<script src="js/football/football-config.js?v=1780448696"></script>
+<script src="js/football/football-render.js?v=1780448696"></script>
+<script src="js/football/football-fetch.js?v=1780448696"></script>
+<script src="js/football/worldcup-data.js?v=1780448696"></script>
+<script src="js/football/wc-data.js?v=1780448696"></script>
+<script src="js/football/wc-engine.js?v=1780448696"></script>
+<script src="js/football/wc-upnext.js?v=1780448696"></script>
+<script src="js/football/wc-groups.js?v=1780448696"></script>
+<script src="js/football/wc-results.js?v=1780448696"></script>
+<script src="js/football/wc-subtabs.js?v=1780448696"></script>
 <!-- Feed -->
-<script src="js/feed/feed-utils.js?v=1780447794"></script>
-<script src="js/feed/feed-ticker.js?v=1780447794"></script>
-<script src="js/feed/feed-render.js?v=1780447794"></script>
-<script src="js/feed/feed-fetch.js?v=1780447794"></script>
+<script src="js/feed/feed-utils.js?v=1780448696"></script>
+<script src="js/feed/feed-ticker.js?v=1780448696"></script>
+<script src="js/feed/feed-render.js?v=1780448696"></script>
+<script src="js/feed/feed-fetch.js?v=1780448696"></script>
 <!-- Health (tab hidden — scripts disabled, files retained for later) -->
-<!-- <script src="js/health/health-data.js?v=1780447794"></script> -->
-<!-- <script src="js/health/health-render.js?v=1780447794"></script> -->
+<!-- <script src="js/health/health-data.js?v=1780448696"></script> -->
+<!-- <script src="js/health/health-render.js?v=1780448696"></script> -->
 <!-- Core -->
-<script src="js/core.js?v=1780447794"></script>
+<script src="js/core.js?v=1780448696"></script>
 </body>
 </html>
