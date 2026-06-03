@@ -6,6 +6,7 @@
 import { TRUSTED_SOURCES, CATEGORIES, assignCategory } from './lib/sources.js';
 import { fetchSource, storyId } from './lib/ingest-core.js';
 import { kvReady, kvGet, kvSet } from './lib/kv.js';
+import { embedText } from './lib/embed-core.js';
 
 const INGEST_MAX_AGE_H = 18;
 const STORY_TTL        = 48 * 3600; // 48h TTL on each story
@@ -64,7 +65,12 @@ export default async function handler(req, res) {
         continue;
       }
 
-      // New story — write it
+      // New story — embed its title for semantic dedup (best-effort)
+      let embedding = null;
+      try {
+        embedding = await embedText(it.title, process.env.GEMINI_API_KEY);
+      } catch (e) { /* embedding optional; dedup falls back to text */ }
+
       const storyObj = {
         id:          it.id,
         title:       it.title,
@@ -75,6 +81,7 @@ export default async function handler(req, res) {
         firstSeenAt: now,
         score:       null,    // unscored
         rewritten:   null,
+        embedding:   embedding,  // number[] | null
       };
 
       // Write the story

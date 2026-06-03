@@ -3,8 +3,10 @@
 // Frontend calls this on page load
 // ============================================================
 
-import { CATEGORIES } from './lib/sources.js';
+import { CATEGORIES, TRUSTED_SOURCES } from './lib/sources.js';
 import { kvReady, kvPipeline, zrevrange } from './lib/kv.js';
+import { rankFeed } from './lib/rank-core.js';
+import { clusterByEmbedding } from './lib/embed-core.js';
 
 const MAX_PER_CAT = 12;
 
@@ -42,17 +44,29 @@ export default async function handler(req, res) {
     const jsonResults = await kvPipeline(allIds.map(id => ['GET', 'story:' + id]));
     const stories = jsonResults
       .map(j => { try { return JSON.parse(j); } catch { return null; } })
-      .filter(s => s && s.score && s.score >= 6);
+      .filter(s => s && s.score && s.score >= 5);
 
-    // Group by category, take top N per cat, sorted by publishedAt desc
+    // Source-weight lookup from TRUSTED_SOURCES (by sourceUrl).
+    const weightByUrl = {};
+    for (const src of TRUSTED_SOURCES) weightByUrl[src.url] = src.weight || 5;
+    const sourceWeightOf = s => weightByUrl[s.sourceUrl] || 5;
+
+    // Group by category, then dedup + blended-rank each category.
     const final = [];
     for (const cat of CATEGORIES) {
-      const items = stories
-        .filter(s => s.cat === cat)
-        .sort((a, b) => b.publishedAt - a.publishedAt)
+      const catStories = stories.filter(s => s.cat === cat);
+      const ranked = rankFeed(catStories, sourceWeightOf, {
+        cosThreshold: 0.85,
+        simThreshold: 0.5,
+        clusterByEmbedding,
+      });
+      // Big-story rescue + noise cut: keep score>=6 always; a score-5 story
+      // survives only if 2+ independent sources corroborate it.
+      const kept = ranked
+        .filter(s => (s.score >= 6) || (s._corroboration >= 2))
         .slice(0, MAX_PER_CAT);
-      perCat[cat] = items.length;
-      for (const s of items) {
+      perCat[cat] = kept.length;
+      for (const s of kept) {
         final.push({
           title:     s.rewritten || s.title,
           url:       s.url,
@@ -60,6 +74,7 @@ export default async function handler(req, res) {
           score:     s.score,
           pubTs:     s.publishedAt,
           firstSeen: s.firstSeenAt,
+          sources:   s._corroboration || 1,
         });
       }
     }
