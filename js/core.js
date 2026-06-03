@@ -49,7 +49,7 @@ function switchTab(tab) {
 
   if (tab === 'football' && !loaded.football) {
     loaded.football = true;
-    try { buildFootballSection(); } catch(e) { console.warn('football:scores', e); }
+    try { if (typeof initFootballSubtabs === 'function') initFootballSubtabs(); } catch(e) { console.warn('football', e); }
   }
 
   if (tab === 'worldcup' && !loaded.worldcup) {
