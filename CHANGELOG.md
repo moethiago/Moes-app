@@ -250,3 +250,7 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - Added elite, first-to-break RSS feeds: Motorsport, The Race, PlanetF1 (F1); ESPN, OneFootball (football); a dedicated Bayern feed. Quality outlets, not just more volume.
 - New curated Twitter/X layer via TwitterAPI.io: monitors a handpicked list of accounts that genuinely break news (Fabrizio Romano, David Ornstein, @F1, Scuderia Ferrari, FC Bayern, Al-Hilal, SPL) every ingest cycle. Replies and retweets are filtered out; tweets map into the same pipeline (embed -> score -> dedup -> rank).
 - Needs TWITTERAPI_IO_KEY env var; no-ops cleanly without it. Cost ~$1-3/month pay-as-you-go (~$0.15/1000 tweets), free starter credit to test.
+
+## v36 — June 2, 2026
+### Curated hub accounts (confirmed)
+- Twitter/X sources finalised to hub accounts per topic: F1 (@F1, @planet_f1), Football (@433, @bleacherreport), Bayern (@iMiaSanMia, @FCBayernEN), SPL (@koorashow_ksa), KSA (@azk_sa, @thesaudi_post). 9 accounts total — lean cost (~$2/mo), wide coverage via aggregators. Arabic tweets are rephrased by the AI scorer like any other source.
