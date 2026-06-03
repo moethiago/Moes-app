@@ -191,3 +191,7 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 ### Flag pills + robust news
 - League picker redesigned as clean circular flag buttons (flag in a circle, label beneath, blue ring when active) instead of the ugly white blobs. Swapped the England tag-emoji (which fails to render on iOS) for a reliable flag.
 - Football News tab now always queries the feed API directly (not just the in-memory cache), falls back to cache, and shows a clear explanatory message when the pipeline has no football stories scored yet — instead of a blank screen.
+
+## v28 — June 2, 2026
+### Flag-only league picker
+- Removed league name labels from the Tables picker — now just clean flag circles (name shows on long-press via title). Flags enlarged.
