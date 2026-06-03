@@ -244,3 +244,9 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - For You re-ranks by the types you actually engage with — e.g. if you keep opening transfers and ignoring match previews, transfers rise and previews fade, across F1 and football alike.
 - Each card shows its type tag; once learned, the brief shows "Tuned to you: more transfers, contracts…".
 - Duplicate stories still collapse into one card with a source count.
+
+## v35 — June 2, 2026
+### Intake upgrade — quality sources + curated Twitter/X breaking news
+- Added elite, first-to-break RSS feeds: Motorsport, The Race, PlanetF1 (F1); ESPN, OneFootball (football); a dedicated Bayern feed. Quality outlets, not just more volume.
+- New curated Twitter/X layer via TwitterAPI.io: monitors a handpicked list of accounts that genuinely break news (Fabrizio Romano, David Ornstein, @F1, Scuderia Ferrari, FC Bayern, Al-Hilal, SPL) every ingest cycle. Replies and retweets are filtered out; tweets map into the same pipeline (embed -> score -> dedup -> rank).
+- Needs TWITTERAPI_IO_KEY env var; no-ops cleanly without it. Cost ~$1-3/month pay-as-you-go (~$0.15/1000 tweets), free starter credit to test.
