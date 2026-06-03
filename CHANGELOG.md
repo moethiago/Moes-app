@@ -202,3 +202,11 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - Added a "Best Third-Place Teams" board: ranks all 12 third-placed teams by Pts/GD/GF and marks the 8 that qualify IN vs OUT — fully computed, live.
 - Third-place R32 slots are labelled by their group cluster (FIFA resolves the exact pairing via 495 scenarios only after all groups finish, so we show the pool honestly rather than guessing).
 - Once the real knockout matches exist in the feed, they render with live scores below the projected bracket.
+
+## v30 — June 2, 2026
+### News pipeline rebuild — semantic dedup + smart ranking
+- **Semantic dedup (kills repeats):** stories are now embedded (Google Gemini embeddings, free tier) at ingest, and near-duplicates are clustered by cosine similarity (0.85). "Verstappen wins Monaco" and "Max takes Monaco victory" collapse into one; unrelated same-entity stories stay separate. Falls back to entity-weighted title similarity if embeddings are unavailable.
+- **Never miss big stories:** cross-source corroboration boost. A cluster covered by multiple independent sources is surfaced and even rescues score-5 stories (kept only if 2+ sources corroborate).
+- **Better ordering:** blended rank = aiScore x sourceWeight x timeDecay (8h half-life) x corroboration, replacing the old publishedAt sort.
+- **Less noise:** weak single-source low-score stories are dropped after dedup.
+- Requires GEMINI_API_KEY env var on the backend for embeddings (free at aistudio.google.com). Without it, dedup still works via the title-similarity fallback.
