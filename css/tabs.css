@@ -618,13 +618,11 @@
 .wc-res-score{font-family:'JetBrains Mono',monospace;font-weight:700;color:#fff}
 
 /* ═══ Football tab: tables, scorers, your teams ═══ */
-.ft-league-picker{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.ft-league-picker{display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
 .ft-league-picker::-webkit-scrollbar{display:none}
-.ft-league-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:0;cursor:pointer;padding:0;width:60px}
-.ft-league-flag{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:50%;font-size:28px;background:var(--bg-card);border:2px solid var(--border-hi);transition:all 0.15s}
-.ft-league-pill.active .ft-league-flag{border-color:var(--ig-blue);box-shadow:0 0 0 3px rgba(79,156,249,0.25);transform:scale(1.05)}
-.ft-league-lbl{font-size:9px;font-weight:600;color:var(--txt-muted);text-align:center;line-height:1.1;white-space:nowrap}
-.ft-league-pill.active .ft-league-lbl{color:#fff;font-weight:700}
+.ft-league-pill{flex-shrink:0;display:flex;align-items:center;justify-content:center;background:none;border:0;cursor:pointer;padding:0}
+.ft-league-flag{display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;font-size:30px;background:var(--bg-card);border:2px solid var(--border-hi);transition:all 0.15s}
+.ft-league-pill.active .ft-league-flag{border-color:var(--ig-blue);box-shadow:0 0 0 3px rgba(79,156,249,0.3);transform:scale(1.08)}
 .ft-tbl-head{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;padding:4px 0;border-bottom:1px solid var(--border-hi)}
 .ft-tbl-logo{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:2px}
 .ft-scorer-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
