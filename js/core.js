@@ -3,9 +3,18 @@ document.addEventListener('DOMContentLoaded', function() {
   try { startCountdown(); } catch(e) { console.warn('sports:countdown', e); }
   try { renderNewsFeed(); } catch(e) { console.warn('feed:render', e); }
 
+  // Home is the default tab — build it now.
+  try { if (typeof loadHome === 'function') { loaded.home = true; loadHome(); } } catch(e) { console.warn('home', e); }
+  try { if (typeof notifyInit === 'function') notifyInit(); } catch(e) { console.warn('notify', e); }
+
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
   }, 300);
+
+  // Once news finishes loading, refresh Home's personalized news if Home is open.
+  setTimeout(function() {
+    try { if (loaded.home && typeof homeLoadNews === 'function') homeLoadNews(); } catch(e) {}
+  }, 2500);
 });
 
 function startClock() {
@@ -19,7 +28,7 @@ function startClock() {
 }
 
 // Track which sport tabs have already loaded (lazy-load once)
-var loaded = { f1:false, football:false, worldcup:false };
+var loaded = { home:false, f1:false, football:false, worldcup:false };
 
 function switchTab(tab) {
   if (tab === 'health') return; // Health tab hidden for now
@@ -36,6 +45,11 @@ function switchTab(tab) {
   if (activeBtn)   activeBtn.classList.add('active');
   var sw = document.getElementById('scroll-wrap');
   if (sw) sw.scrollTop = 0;
+
+  if (tab === 'home' && !loaded.home) {
+    loaded.home = true;
+    try { if (typeof loadHome === 'function') loadHome(); } catch(e) { console.warn('home', e); }
+  }
 
   if (tab === 'f1' && !loaded.f1) {
     loaded.f1 = true;
