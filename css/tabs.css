@@ -682,3 +682,22 @@
 .home-alert-on{font-size:13px;color:#34d399;padding:12px 14px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);border-radius:12px}
 .home-foryou-hint{margin:0 14px 10px;padding:10px 12px;font-size:12px;color:var(--cyan);background:rgba(34,211,238,0.07);border:1px solid rgba(34,211,238,0.18);border-radius:10px;line-height:1.4}
 .home-news-dot.follow{background:var(--gold)}
+
+/* ═══ For You — AI-native cards ═══ */
+.brief-card{margin:0 14px 14px;padding:16px;border-radius:16px;background:linear-gradient(150deg,rgba(124,92,255,0.18),rgba(34,211,238,0.08));border:1px solid rgba(124,92,255,0.3)}
+.brief-h{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;letter-spacing:0.3px}
+.brief-ul{margin:0;padding:0;list-style:none}
+.brief-li{font-size:13px;color:var(--txt-primary);line-height:1.45;padding:6px 0 6px 16px;position:relative;border-bottom:1px solid rgba(255,255,255,0.06)}
+.brief-li:last-child{border-bottom:0}
+.brief-li:before{content:'';position:absolute;left:0;top:13px;width:6px;height:6px;border-radius:50%;background:var(--cyan)}
+.brief-src{color:var(--txt-muted);font-size:11px}
+.foryou-card{display:block;margin:0 14px 10px;padding:14px;border-radius:16px;background:var(--bg-card);border:1px solid var(--border-hi);text-decoration:none;transition:all 0.15s}
+.foryou-card:active{transform:scale(0.985);border-color:var(--cyan)}
+.foryou-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.foryou-cat{font-size:10px;font-weight:700;color:var(--txt-secondary);text-transform:uppercase;letter-spacing:0.5px}
+.foryou-match{font-size:10px;font-weight:700;color:#7c5cff;background:rgba(124,92,255,0.15);padding:2px 8px;border-radius:20px}
+.foryou-sources{font-size:10px;font-weight:700;color:var(--gold);background:rgba(245,200,66,0.12);padding:2px 8px;border-radius:20px}
+.foryou-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);margin-left:auto}
+.foryou-title{font-size:15px;font-weight:600;color:#fff;line-height:1.35}
+.foryou-reason{margin-top:8px;font-size:11px;color:var(--cyan);display:flex;align-items:center;gap:5px}
+.foryou-reason:before{content:'\2192';opacity:0.7}
