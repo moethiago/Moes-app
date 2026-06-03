@@ -54,7 +54,7 @@ function switchTab(tab) {
 
   if (tab === 'worldcup' && !loaded.worldcup) {
     loaded.worldcup = true;
-    try { if (typeof loadWorldCup === 'function') loadWorldCup(); } catch(e) { console.warn('worldcup', e); }
+    try { if (typeof initWCSubtabs === 'function') initWCSubtabs(); } catch(e) { console.warn('worldcup', e); }
   }
 }
 
