@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Moe's App — Diagnostic v3</title>
+<title>Moe's App — Diagnostic v4</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -239,52 +239,61 @@ function checkFile(name, path, requiredKeywords) {
 // ==================================================================
 function runAll() {
   document.getElementById('ts').textContent = 'Started ' + new Date().toLocaleString();
-  logRaw('Diagnostic v3 started. UA: ' + navigator.userAgent.slice(0, 80));
+  logRaw('Diagnostic v4 started. UA: ' + navigator.userAgent.slice(0, 80));
 
   var chain = Promise.resolve()
 
-  // FILE INTEGRITY
+  // FILE INTEGRITY — F1
   .then(function() { return checkFile('f1-config.js',       '/js/f1/f1-config.js',
     ['SESSION_DURATION', 'TEAM_COLORS']); })
   .then(function() { return checkFile('f1-calendar.js',     '/js/f1/f1-calendar.js',
     ['F1_CALENDAR']); })
   .then(function() { return checkFile('f1-fallback.js',     '/js/f1/f1-fallback.js',
     ['F1_STANDINGS_FALLBACK', 'F1_CONSTRUCTORS_FALLBACK']); })
-  .then(function() { return checkFile('f1-timing.js',       '/js/f1/f1-timing.js',
-    ['startCountdown', 'getCurrentSession', 'getNextRaceAndSession']); })
-  .then(function() { return checkFile('f1-livetiming.js',   '/js/f1/f1-livetiming.js',
-    ['fetchOpenF1Live', 'renderLiveTiming', 'startLiveTiming']); })
   .then(function() { return checkFile('f1-standings.js',    '/js/f1/f1-standings.js',
     ['renderDriverStandings', 'loadF1Data']); })
-  .then(function() { return checkFile('f1-weekend.js',      '/js/f1/f1-weekend.js',
-    ['renderWeekendCard', 'loadLastRaceResult']); })
-  .then(function() { return checkFile('f1-session.js',      '/js/f1/f1-session.js',
-    ['initSessionSection', 'fetchAndRenderResults', 'fetchAndRenderGrid']); })
-  .then(function() { return checkFile('f1-circuits.js',     '/js/f1/f1-circuits.js',
-    ['F1_CIRCUITS', 'getCircuitInfo']); })
-  .then(function() { return checkFile('f1-racecard.js',     '/js/f1/f1-racecard.js',
-    ['loadNextRaceCard', 'openDriverDetail']); })
-  .then(function() { return checkFile('f1-analytics.js',    '/js/f1/f1-analytics.js',
-    ['loadF1Analytics', 'renderTitleMath']); })
+  .then(function() { return checkFile('f1-subtabs.js',      '/js/f1/f1-subtabs.js',
+    ['switchF1Sub', 'initF1Subtabs']); })
+
+  // FILE INTEGRITY — Home / AI personalization
+  .then(function() { return checkFile('home.js',            '/js/home/home.js',
+    ['loadHome', 'homeLoadNews', 'homeClusterStories']); })
+  .then(function() { return checkFile('taste.js',           '/js/home/taste.js',
+    ['classifyStory', 'recordOpen', 'typeScore', 'STORY_TYPES']); })
+  .then(function() { return checkFile('notify.js',          '/js/home/notify.js',
+    ['notifyInit', 'notifyEnable']); })
+
+  // FILE INTEGRITY — Football (subtabs)
   .then(function() { return checkFile('football-config.js', '/js/football/football-config.js',
     ['FOOTBALL_LEAGUES', 'BACKEND_URL']); })
-  .then(function() { return checkFile('football-fetch.js',  '/js/football/football-fetch.js',
-    ['buildFootballSection', 'loadAllFootball']); })
-  .then(function() { return checkFile('worldcup-data.js',   '/js/football/worldcup-data.js',
-    ['WORLDCUP_FALLBACK']); })
-  .then(function() { return checkFile('worldcup.js',        '/js/football/worldcup.js',
-    ['loadWorldCup', 'renderWCSection']); })
-  .then(function() { return checkFile('feed-utils.js',      '/js/feed/feed-utils.js',
-    ['timeAgo', 'makeWireItem']); })
+  .then(function() { return checkFile('football-subtabs.js','/js/football/football-subtabs.js',
+    ['switchFootballSub', 'initFootballSubtabs']); })
+  .then(function() { return checkFile('football-tables.js', '/js/football/football-tables.js',
+    ['loadFootballTables', 'FT_LEAGUE_META']); })
+  .then(function() { return checkFile('football-views.js',  '/js/football/football-views.js',
+    ['loadFootballToday', 'loadFootballUpcoming']); })
+  .then(function() { return checkFile('football-news.js',   '/js/football/football-news.js',
+    ['loadFootballNews']); })
+
+  // FILE INTEGRITY — World Cup (subtabs + auto-bracket)
+  .then(function() { return checkFile('wc-engine.js',       '/js/football/wc-engine.js',
+    ['wcLoad', 'wcGroupTable', 'wcKnockout']); })
+  .then(function() { return checkFile('wc-subtabs.js',      '/js/football/wc-subtabs.js',
+    ['switchWCSub', 'initWCSubtabs']); })
+  .then(function() { return checkFile('wc-bracket-engine.js','/js/football/wc-bracket-engine.js',
+    ['wcQualifiers', 'wcR32Template', 'wcResolveSlot']); })
+  .then(function() { return checkFile('wc-groups.js',       '/js/football/wc-groups.js',
+    ['loadWCGroups', 'loadWCBracket']); })
+
+  // FILE INTEGRITY — Feed + core
   .then(function() { return checkFile('feed-render.js',     '/js/feed/feed-render.js',
     ['renderNewsFeed', 'setFeedFilter']); })
   .then(function() { return checkFile('feed-fetch.js',      '/js/feed/feed-fetch.js',
     ['loadNewsFeed']); })
-
   .then(function() { return checkFile('core.js',            '/js/core.js',
-    ['switchTab', 'startClock']); })
+    ['switchTab', 'startClock', 'loadHome']); })
   .then(function() { return checkFile('index.html',         '/index.html',
-    ['f1/f1-calendar.js', 'feed/feed-fetch.js', 'football/worldcup.js', 'panel-f1', 'panel-football', 'panel-worldcup']); })
+    ['js/home/home.js', 'js/home/taste.js', 'js/football/wc-bracket-engine.js', 'panel-home', 'panel-f1', 'panel-football', 'panel-worldcup']); })
 
   // FEED CONTENT + PIPELINE STATS
   .then(function() {
@@ -310,6 +319,43 @@ function runAll() {
       var detail   = 'Oldest: ' + oldest.toFixed(1) + 'h | Per cat: ' + JSON.stringify(perCat);
       var fix      = status === 'warn' ? 'Cron may not be running. Use Trigger button below.' : null;
       record('Feed API (/api/feed)', status, msg, detail, fix);
+    });
+  })
+
+  // NEW: dedup + embeddings health (v30+)
+  .then(function() {
+    return fetchJSON(VERCEL + '/api/feed', 12000).then(function(res) {
+      var stories = (res.data && res.data.stories) || [];
+      if (!stories.length) { record('Dedup + embeddings', 'warn', 'no stories to check', null, null); return; }
+      var withEmb = stories.filter(function(s){ return s.emb && s.emb.length; }).length;
+      var withSrc = stories.filter(function(s){ return typeof s.sources !== 'undefined'; }).length;
+      var multiSrc = stories.filter(function(s){ return (s.sources||1) > 1; }).length;
+      if (!withSrc) {
+        record('Dedup + embeddings', 'fail', 'old backend — no "sources" field', null,
+          'Deploy the new api/feed.js to Vercel.');
+      } else if (!withEmb) {
+        record('Dedup + embeddings', 'warn', withSrc + ' stories have sources, but 0 have embeddings',
+          'GEMINI_API_KEY missing or stories pre-date it.',
+          'Set GEMINI_API_KEY in Vercel; new stories get embeddings on next ingest.');
+      } else {
+        record('Dedup + embeddings', 'pass',
+          withEmb + '/' + stories.length + ' embedded, ' + multiSrc + ' merged clusters', null, null);
+      }
+    });
+  })
+
+  // NEW: Twitter/X intake (v35+)
+  .then(function() {
+    return fetchJSON(VERCEL + '/api/feed', 12000).then(function(res) {
+      var stories = (res.data && res.data.stories) || [];
+      var fromX = stories.filter(function(s){ return (s.url||'').indexOf('x.com/') !== -1; }).length;
+      if (fromX > 0) {
+        record('Twitter/X intake', 'pass', fromX + ' stories from curated X accounts', null, null);
+      } else {
+        record('Twitter/X intake', 'warn', 'no X-sourced stories in feed',
+          'Either TWITTERAPI_IO_KEY not set, or accounts had nothing new this window.',
+          'Set TWITTERAPI_IO_KEY in Vercel and run /api/ingest.');
+      }
     });
   })
   .then(function() {
@@ -338,6 +384,25 @@ function runAll() {
       var fx = (res.data.fixtures || []).length;
       var up = (res.data.upcoming || []).length;
       record('Vercel /api/football', 'pass', fx + ' live fixtures, ' + up + ' upcoming', null, null);
+    });
+  })
+
+  // NEW: football tables/standings endpoint (v25+)
+  .then(function() {
+    return fetchJSON(VERCEL + '/api/football?league=epl&type=standings', 12000).then(function(res) {
+      if (!res.ok) {
+        record('Football tables (?type=standings)', 'fail', res.error || 'HTTP ' + res.status,
+          null, 'Deploy the new api/football.js to Vercel.');
+        return;
+      }
+      var t = (res.data && res.data.standings) || [];
+      if (!t.length) {
+        record('Football tables (?type=standings)', 'warn', 'endpoint OK but 0 rows',
+          'Season may be between cycles; backend falls forward automatically.', null);
+      } else {
+        record('Football tables (?type=standings)', 'pass',
+          t.length + ' rows, leader: ' + (t[0].team || '?'), null, null);
+      }
     });
   })
 
