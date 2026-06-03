@@ -58,18 +58,30 @@ async function renderGapAndPermutations() {
   var sl = data && data.MRData && data.MRData.StandingsTable && data.MRData.StandingsTable.StandingsLists[0];
   if (!sl || sl.DriverStandings.length < 2) return;
   var round = parseInt(sl.round);
+  var TOTAL_ROUNDS = 24;            // 2026 calendar rounds
+  var roundsLeft = Math.max(0, TOTAL_ROUNDS - round);
+  var maxPerRound = 25;            // win = 25 (sprint points extra, ignored for a clean bound)
+  var ptsAvailable = roundsLeft * maxPerRound;
+
   var leader = sl.DriverStandings[0];
   var p2 = sl.DriverStandings[1];
-  var gap = parseFloat(leader.points) - parseFloat(p2.points);
+  var lp = parseFloat(leader.points), pp = parseFloat(p2.points);
+  var gap = lp - pp;
   var ln = leader.Driver.familyName, p2n = p2.Driver.familyName;
-  var racesToClear = Math.ceil(gap / 25);
-  var html = '<div class="f1a-card"><div class="f1a-h">\u{1F4D0} Title Picture</div>'
-    + '<div class="f1x-line"><strong>' + ln + '</strong> leads <strong>' + p2n + '</strong> by ' + gap + ' pts</div>'
-    + '<div class="f1x-line">A ' + (gap/25).toFixed(1) + '-race cushion (' + racesToClear + ' wins of margin).</div>';
-  // plain-english permutation
-  if (gap > 0) {
-    var need = 26 - (gap % 26 === 0 ? 26 : gap % 26);
-    html += '<div class="f1x-perm">If ' + p2n + ' outscores ' + ln + ' by ' + (gap+1) + ' over the rest of the season, the lead flips.</div>';
+
+  var html = '<div class="f1a-card"><div class="f1a-h">\u{1F4D0} Title Picture \u00b7 after R' + round + '</div>'
+    + '<div class="f1x-line"><strong>' + ln + '</strong> leads by <strong>' + gap + '</strong> pts</div>'
+    + '<div class="f1x-line">' + roundsLeft + ' rounds left \u00b7 <strong>' + ptsAvailable + '</strong> pts still available</div>';
+
+  if (roundsLeft === 0) {
+    html += '<div class="f1x-perm">Season complete \u2014 ' + ln + ' is champion.</div>';
+  } else if (gap > ptsAvailable) {
+    html += '<div class="f1x-perm">' + ln + ' has clinched: even a perfect run can\u2019t let ' + p2n + ' catch up.</div>';
+  } else {
+    // exact swing P2 needs: must outscore leader by (gap+1) across remaining rounds
+    var swingNeeded = gap + 1;
+    var perRound = (swingNeeded / roundsLeft);
+    html += '<div class="f1x-perm">' + p2n + ' must outscore ' + ln + ' by <strong>' + swingNeeded + '</strong> pts over the final ' + roundsLeft + ' rounds (avg +' + perRound.toFixed(1) + '/race) to take the lead.</div>';
   }
   html += '</div>';
   xAppend(html);
