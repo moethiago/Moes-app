@@ -3,10 +3,11 @@
 // NO Claude calls. Safe to run every 30 minutes.
 // ============================================================
 
-import { TRUSTED_SOURCES, CATEGORIES, assignCategory } from './lib/sources.js';
+import { TRUSTED_SOURCES, TWITTER_ACCOUNTS, CATEGORIES, assignCategory } from './lib/sources.js';
 import { fetchSource, storyId } from './lib/ingest-core.js';
 import { kvReady, kvGet, kvSet } from './lib/kv.js';
 import { embedText } from './lib/embed-core.js';
+import { fetchTwitterAccounts } from './lib/twitter-core.js';
 
 const INGEST_MAX_AGE_H = 18;
 const STORY_TTL        = 48 * 3600; // 48h TTL on each story
@@ -18,10 +19,21 @@ export default async function handler(req, res) {
   if (!kvReady()) return res.status(500).json({ error: 'KV not configured' });
 
   try {
-    // 1. Pull every trusted source in parallel
-    const allItems = (
+    // 1. Pull every trusted RSS source in parallel
+    const rssItems = (
       await Promise.all(TRUSTED_SOURCES.map(s => fetchSource(s, INGEST_MAX_AGE_H)))
     ).flat();
+
+    // 1b. Pull curated breaking-news Twitter/X accounts (TwitterAPI.io).
+    //     No-ops cleanly if TWITTERAPI_IO_KEY isn't set.
+    let twitterItems = [];
+    try {
+      twitterItems = await fetchTwitterAccounts(
+        TWITTER_ACCOUNTS, process.env.TWITTERAPI_IO_KEY, INGEST_MAX_AGE_H
+      );
+    } catch (e) { /* twitter optional */ }
+
+    const allItems = rssItems.concat(twitterItems);
 
     if (!allItems.length) {
       return res.status(200).json({ ok: true, phase: 'ingest', ingested: 0, candidates: 0 });
