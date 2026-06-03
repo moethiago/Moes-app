@@ -560,7 +560,7 @@
 
 /* ═══ F1 subtabs + spoiler lock ═══ */
 .f1-subnav{display:flex;gap:6px;padding:12px 14px 4px;position:sticky;top:0;z-index:5;background:var(--bg-base)}
-.f1-subbtn{flex:1;padding:9px 0;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.3px;background:var(--bg-card);color:var(--txt-secondary);border:1px solid var(--border-hi);border-radius:10px;cursor:pointer;transition:all 0.15s}
+.f1-subbtn{flex:1 1 0;min-width:0;padding:9px 0;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.3px;background:var(--bg-card);color:var(--txt-secondary);border:1px solid var(--border-hi);border-radius:10px;cursor:pointer;transition:background 0.15s,color 0.15s;text-align:center;box-sizing:border-box;line-height:1.2}
 .f1-subbtn.active{background:var(--f1-red);color:#fff;border-color:var(--f1-red)}
 .f1-spoiler-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 28px;margin:14px;background:var(--bg-card);border:1px dashed var(--border-hi);border-radius:16px}
 .f1-spoiler-icon{font-size:42px;margin-bottom:12px}
