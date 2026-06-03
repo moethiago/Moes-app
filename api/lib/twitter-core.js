@@ -22,7 +22,11 @@ async function fetchAccountTweets(account, apiKey, maxAgeHours) {
     clearTimeout(timer);
     if (!res.ok) return [];
     var data = await res.json();
-    var tweets = (data && (data.tweets || data.data)) || [];
+    // Response shapes vary: {tweets:[...]} or {data:{tweets:[...]}} or {data:[...]}
+    var tweets = [];
+    if (Array.isArray(data.tweets)) tweets = data.tweets;
+    else if (data.data && Array.isArray(data.data.tweets)) tweets = data.data.tweets;
+    else if (Array.isArray(data.data)) tweets = data.data;
     var now = Date.now();
     var maxAge = (maxAgeHours || 12) * 3600 * 1000;
     var out = [];
