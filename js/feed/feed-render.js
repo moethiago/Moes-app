@@ -1,42 +1,56 @@
 // ============================================================
-// feed-render.js — filter state + render the news list
+// feed-render.js — single news home. All approved stories,
+// auto-grouped into category sections, newest-first, no cap.
+// No filter pills. This is the only place news lives now.
 // ============================================================
 
-var currentFilter = 'ALL';
 var parsedStoriesCache = [];
 
-function setFeedFilter(cat, el) {
-  currentFilter = cat;
-  document.querySelectorAll('.fpill').forEach(function(p) { p.classList.remove('active'); });
-  if (el) el.classList.add('active');
-  renderNewsFeed();
-}
+// Display order + labels + emoji for each category section.
+var FEED_SECTIONS = [
+  { cat:'F1',       label:'Formula 1',       icon:'\u{1F3CE}\uFE0F' },
+  { cat:'FOOTBALL', label:'Football',        icon:'\u26BD' },
+  { cat:'BAYERN',   label:'Bayern Munich',   icon:'\u{1F534}' },
+  { cat:'SPL',      label:'Saudi Football',  icon:'\u{1F1F8}\u{1F1E6}' },
+  { cat:'KSA',      label:'Saudi News',      icon:'\u{1F4F0}' },
+];
 
 function renderNewsFeed() {
   var container = document.getElementById('critical-posts');
   if (!container) return;
 
-  var source   = parsedStoriesCache.slice();
-  // F1 and football news now live in their own tabs; the feed shows only
-  // non-sport categories in ALL, but still lets a specific filter through.
-  var FEED_HIDDEN_IN_ALL = ['F1', 'FOOTBALL', 'SPL'];
-  var filtered = currentFilter === 'ALL'
-    ? source.filter(function(s) { return FEED_HIDDEN_IN_ALL.indexOf(s.cat) === -1; })
-    : source.filter(function(s) { return s.cat === currentFilter; });
-
-  filtered.sort(function(a, b) { return (b.pubTs || 0) - (a.pubTs || 0); });
-
-  var shown = filtered.slice(0, 30);
-  if (!shown.length) {
-    container.innerHTML = '<div class="empty-state">No stories in this category yet</div>';
-    setTickerContent(source.slice(0,10).map(function(s) { return s.title; }));
+  var source = parsedStoriesCache.slice();
+  if (!source.length) {
+    container.innerHTML = '<div class="empty-state">Loading news...</div>';
     return;
   }
 
   var html = '';
-  shown.forEach(function(s) {
-    html += makeWireItem(s.title, s.pubTs, s.url);
+  var tickerTitles = [];
+
+  FEED_SECTIONS.forEach(function(sec) {
+    var items = source.filter(function(s) { return s.cat === sec.cat; });
+    if (!items.length) return;
+    items.sort(function(a, b) { return (b.pubTs || 0) - (a.pubTs || 0); });
+
+    html += '<div class="feed-section">'
+      + '<div class="feed-section-head"><span class="feed-section-icon">' + sec.icon + '</span>'
+      + '<span class="feed-section-title">' + sec.label + '</span>'
+      + '<span class="feed-section-count">' + items.length + '</span></div>';
+    items.forEach(function(s) {
+      html += makeWireItem(s.title, s.pubTs, s.url);
+      if (tickerTitles.length < 12) tickerTitles.push(s.title);
+    });
+    html += '</div>';
   });
+
+  if (!html) {
+    container.innerHTML = '<div class="empty-state">No news right now. Pull to refresh.</div>';
+    return;
+  }
   container.innerHTML = html;
-  setTickerContent(shown.map(function(s) { return s.title; }));
+  setTickerContent(tickerTitles);
 }
+
+// kept for any old callers; filter pills are gone now.
+function setFeedFilter() { renderNewsFeed(); }
