@@ -235,3 +235,12 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **What to know:** an AI-style summary card at the top ("✨ What to know right now") with the top 3 stories.
 - **Why you're seeing it:** each card shows a reason ("Because you follow Ferrari" / "Based on what you've been reading").
 - Richer card design replacing the plain list — category tag, source count, match %, reason line.
+
+## v34 — June 2, 2026
+### Truly AI-native For You — learns the TYPE of news you want
+- Removed the Follow chips entirely. The whole app is already your interests; no need to pick teams.
+- The app now classifies every story by TYPE: transfer, contract, result, injury, preview, team news, manager move, analysis, business, race weekend.
+- It learns SILENTLY from behaviour: opening a story boosts its type(s); stories shown but skipped get a gentle negative. No buttons, no setup.
+- For You re-ranks by the types you actually engage with — e.g. if you keep opening transfers and ignoring match previews, transfers rise and previews fade, across F1 and football alike.
+- Each card shows its type tag; once learned, the brief shows "Tuned to you: more transfers, contracts…".
+- Duplicate stories still collapse into one card with a source count.
