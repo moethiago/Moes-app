@@ -210,3 +210,12 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **Better ordering:** blended rank = aiScore x sourceWeight x timeDecay (8h half-life) x corroboration, replacing the old publishedAt sort.
 - **Less noise:** weak single-source low-score stories are dropped after dedup.
 - Requires GEMINI_API_KEY env var on the backend for embeddings (free at aistudio.google.com). Without it, dedup still works via the title-similarity fallback.
+
+## v31 — June 2, 2026
+### Personalized Home — brief, follows, alerts
+- New **Home tab** (now the default landing screen) that makes the app yours.
+- **Daily brief:** a one-line auto-summary of your sports day (next F1 session timing, etc.).
+- **Your next events:** your next F1 session and your followed clubs' next matches, in your local time, tap to jump to the tab.
+- **News on who you follow:** breaking stories filtered to the drivers/clubs you follow.
+- **Follow system:** tap chips to follow F1 drivers and football clubs; everything personalizes instantly. Stored on your device.
+- **Alerts:** opt-in browser notifications that give a heads-up ~30 min before a followed F1 session or club match (works while the app is open/recent).
