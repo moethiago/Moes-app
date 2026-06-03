@@ -1,31 +1,32 @@
 /* ── CARDS ───────────────────────────────────────────── */
 .card{background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);overflow:hidden;margin-bottom:12px}
 .card-header{padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.card-title{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt-secondary)}
-.section-label{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--txt-muted);padding:14px 0 8px}
+.card-title{font-family:'Archivo Black',sans-serif;font-weight:600;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt-secondary)}
+.section-label{font-family:'Archivo Black',sans-serif;font-size:13px;font-weight:900;letter-spacing:-0.2px;text-transform:uppercase;color:var(--txt-primary);padding:14px 0 8px}
 
 /* ── BUTTONS ─────────────────────────────────────────── */
-.btn-refresh{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.5px;padding:5px 12px;border-radius:6px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer}
+.btn-refresh{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 14px;border-radius:0;border:2px solid var(--volt);background:transparent;color:var(--volt);cursor:pointer;text-transform:uppercase;transition:all 0.1s}
+.btn-refresh:active{background:var(--volt);color:#000}
 
 /* ── FILTER PILLS ───────────────────────────────────── */
 .filter-row{display:flex;gap:6px;overflow-x:auto;padding:12px 14px;scrollbar-width:none;border-bottom:1px solid var(--border)}
 .filter-row::-webkit-scrollbar{display:none}
-.fpill{flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;letter-spacing:0.5px;-webkit-text-fill-color:var(--txt-secondary)}
+.fpill{flex-shrink:0;font-family:'Space Mono',monospace;font-size:10px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;letter-spacing:0.5px;-webkit-text-fill-color:var(--txt-secondary)}
 .fpill.active{background:linear-gradient(135deg,var(--ig-blue),var(--purple));color:#fff;-webkit-text-fill-color:#fff;border-color:transparent}
 
 /* ── INPUTS ──────────────────────────────────────────── */
 .log-form{padding:12px 16px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border)}
 .log-form-row{display:flex;gap:8px}
-.log-input{flex:1;background:var(--bg-raised);border:1px solid var(--border-hi);border-radius:var(--r-sm);color:var(--txt-primary);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none;-webkit-appearance:none}
+.log-input{flex:1;background:var(--bg-raised);border:1px solid var(--border-hi);border-radius:var(--r-sm);color:var(--txt-primary);font-family:'Archivo',sans-serif;font-size:14px;padding:10px 12px;outline:none;-webkit-appearance:none}
 .log-input::placeholder{color:var(--txt-muted)}
 .log-input:focus{border-color:var(--ig-blue)}
 .log-input.small{max-width:80px;text-align:center}
-.log-btn{background:linear-gradient(135deg,var(--ig-blue),var(--purple));border:none;border-radius:var(--r-sm);color:#fff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;padding:10px 16px;cursor:pointer;white-space:nowrap}
+.log-btn{background:linear-gradient(135deg,var(--ig-blue),var(--purple));border:none;border-radius:var(--r-sm);color:#fff;font-family:'Archivo Black',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;padding:10px 16px;cursor:pointer;white-space:nowrap}
 .log-btn.red{background:linear-gradient(135deg,var(--f1-red),var(--f1-orange))}
 
 /* ── TICKER ──────────────────────────────────────────── */
-.ticker-wrap{overflow:hidden;background:var(--bg-void);border-bottom:1px solid var(--border);height:28px;display:flex;align-items:center;padding:0 14px;gap:8px}
-.ticker-label{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--f1-red);letter-spacing:1px;flex-shrink:0}
-.ticker-text{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--txt-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.ticker-wrap{overflow:hidden;background:#000;border-bottom:2px solid var(--border-hard);height:30px;display:flex;align-items:center;padding:0 14px;gap:10px}
+.ticker-label{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;color:#000;background:var(--volt);padding:3px 7px;letter-spacing:1px;flex-shrink:0;text-transform:uppercase}
+.ticker-text{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--txt-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 @keyframes tickerFadeIn{from{opacity:0}to{opacity:1}}
 .ticker-text.fade{animation:tickerFadeIn 0.4s ease}
