@@ -10,11 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     try { loadNewsFeed(); } catch(e) { console.warn('feed:rss', e); }
   }, 300);
-
-  // Once news finishes loading, refresh Home's personalized news if Home is open.
-  setTimeout(function() {
-    try { if (loaded.home && typeof homeLoadNews === 'function') homeLoadNews(); } catch(e) {}
-  }, 2500);
 });
 
 function startClock() {
@@ -49,6 +44,10 @@ function switchTab(tab) {
   if (tab === 'home' && !loaded.home) {
     loaded.home = true;
     try { if (typeof loadHome === 'function') loadHome(); } catch(e) { console.warn('home', e); }
+  }
+
+  if (tab === 'feed') {
+    try { if (typeof loadNewsFeed === 'function') loadNewsFeed(); } catch(e) { console.warn('feed', e); }
   }
 
   if (tab === 'f1' && !loaded.f1) {
