@@ -64,16 +64,11 @@ export default async function handler(req, res) {
 
     for (const it of batch) {
       const key = 'story:' + it.id;
-      // Direct raw check — bypasses any JSON parsing issues
-      const checkUrl = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL)
-        + '/get/' + encodeURIComponent(key);
-      const checkRes = await fetch(checkUrl, {
-        headers: { 'Authorization': 'Bearer ' + (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN) }
-      });
-      const checkData = await checkRes.json();
-      console.log('KEY CHECK:', key.slice(0,20), 'result:', JSON.stringify(checkData));
-      // result is null means key does not exist
-      if (checkData.result !== null) {
+      // Use the SAME POST pipeline method as writes/clears so all three
+      // operations address KV identically (the old GET-by-URL-path could
+      // disagree with pipeline DEL, causing phantom "already exists").
+      const existing = await kvCall(['GET', key]);
+      if (existing !== null && existing !== undefined) {
         continue;
       }
 
