@@ -17,3 +17,10 @@ var FOOTBALL_LEAGUES = [
 ];
 
 var footballTimer = null;
+
+// Teams to track in the "Your Teams" section of Today/Upcoming.
+// Match by substring on the team name returned by the API.
+var FOOTBALL_MY_TEAMS = [
+  { name: 'Bayern', league: 'bundesliga', label: 'Bayern Munich' },
+  { name: 'Al-Hilal', league: 'spl', label: 'Al-Hilal' },
+];
