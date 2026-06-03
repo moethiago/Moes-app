@@ -17,8 +17,11 @@ function renderNewsFeed() {
   if (!container) return;
 
   var source   = parsedStoriesCache.slice();
+  // F1 and football news now live in their own tabs; the feed shows only
+  // non-sport categories in ALL, but still lets a specific filter through.
+  var FEED_HIDDEN_IN_ALL = ['F1', 'FOOTBALL', 'SPL'];
   var filtered = currentFilter === 'ALL'
-    ? source
+    ? source.filter(function(s) { return FEED_HIDDEN_IN_ALL.indexOf(s.cat) === -1; })
     : source.filter(function(s) { return s.cat === currentFilter; });
 
   filtered.sort(function(a, b) { return (b.pubTs || 0) - (a.pubTs || 0); });
