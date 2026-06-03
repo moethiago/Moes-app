@@ -14,22 +14,28 @@ export async function embedText(text, apiKey) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(GEMINI_EMBED_URL + '?key=' + apiKey, {
+    const res = await fetch(GEMINI_EMBED_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       signal: ctrl.signal,
       body: JSON.stringify({
-        model: 'models/gemini-embedding-001',
         content: { parts: [{ text }] },
-        // smaller dims = cheaper storage, plenty for short-headline dedup
-        outputDimensionality: 768,
         taskType: 'SEMANTIC_SIMILARITY',
+        outputDimensionality: 768,
       }),
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // surface the reason in logs to make failures debuggable
+      try { console.warn('Gemini embed failed', res.status, (await res.text()).slice(0, 200)); } catch (e) {}
+      return null;
+    }
     const data = await res.json();
-    const vec = data?.embedding?.values;
+    const vec = (data && data.embedding && data.embedding.values) ||
+                (data && data.embeddings && data.embeddings[0] && data.embeddings[0].values);
     return Array.isArray(vec) ? vec : null;
   } catch (e) {
     return null;
