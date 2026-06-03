@@ -67,7 +67,13 @@ export default async function handler(req, res) {
         .slice(0, MAX_PER_CAT);
       perCat[cat] = kept.length;
       for (const s of kept) {
+        // Compact the embedding (round to 3dp) so the client can compute a
+        // personal taste-match without a huge payload. null if no vector.
+        var emb = Array.isArray(s.embedding)
+          ? s.embedding.map(function(x){ return Math.round(x * 1000) / 1000; })
+          : null;
         final.push({
+          id:        s.id,
           title:     s.rewritten || s.title,
           url:       s.url,
           cat:       s.cat,
@@ -75,6 +81,7 @@ export default async function handler(req, res) {
           pubTs:     s.publishedAt,
           firstSeen: s.firstSeenAt,
           sources:   s._corroboration || 1,
+          emb:       emb,
         });
       }
     }
