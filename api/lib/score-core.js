@@ -40,18 +40,20 @@ MUST relate to FC Bayern Munich men's first team.
 Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
   SPL: () => `You are the Saudi Pro League editor. Today is ${NOW_STR()}.${COMMON_RULES}
+Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clear English. Judge them by the same bar as English ones; do NOT reject a story just because it was Arabic.
 10 = title clinched, major signing confirmed
 8-9 = result with title impact naming Al Hilal/Nassr/Ittihad/Ahli, sacking
 6-7 = any concrete development naming a specific SPL club (result, signing, statement, confirmed talks)
 0-5 = REJECT: opinion, clickbait, stories not naming a specific SPL team
-Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+Return stories scoring 6+. JSON: [{"idx":0,"title":"English rewrite max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 
   KSA: () => `You are the Saudi Arabia editor (economy, PIF, Vision 2030). Today is ${NOW_STR()}.${COMMON_RULES}
+Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clear English. Judge them by the same bar as English ones; do NOT reject a story just because it was Arabic.
 10 = multi-billion deal with figures, major royal decree with economic impact
 8-9 = PIF announcement with numbers, Vision 2030 milestone with data
 6-7 = any concrete economic/policy development (investment, initiative, deal, official announcement)
 0-5 = REJECT: pure opinion, religious/Hajj logistics, fluff tourism pieces with no substance, clickbait
-Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+Return stories scoring 6+. JSON: [{"idx":0,"title":"English rewrite max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
 };
 
 export async function scoreCategory(items, cat, apiKey) {
