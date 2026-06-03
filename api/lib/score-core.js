@@ -13,7 +13,8 @@ SCORING PHILOSOPHY:
 - Approve any genuine, concrete development from a trusted source: results, signings, sackings, injuries, official statements, confirmed talks, real reporting with a named subject.
 - Reject ONLY: pure opinion/columns, ratings/rankings listicles, "X reacts" reaction pieces, clickbait, vague speculation with no concrete subject, and obvious duplicates.
 - When unsure but the story names a real team/person and a real event, lean APPROVE (score 6-7).
-- Be generous with volume; be strict on junk.`;
+- Be generous with volume; be strict on junk.
+- A candidate whose source begins with "x.com/" is a tweet from a TRUSTED curated account. Be lenient with these: include them and give a score of at least 4 unless they are pure spam/ads. Still rewrite their title into a clean English headline.`;
 
 const PROMPTS = {
   F1: () => `You are the F1 editor. Today is ${NOW_STR()}.${COMMON_RULES}
@@ -58,7 +59,10 @@ Return stories scoring 6+. JSON: [{"idx":0,"title":"English rewrite max 12 words
 
 export async function scoreCategory(items, cat, apiKey) {
   if (!apiKey || !items.length) return { approved: [], cost: 0, inputTokens: 0, outputTokens: 0 };
-  const lines = items.map((item, i) => i + ' | ' + item.title).join('\n');
+  const lines = items.map((item, i) => {
+    const src = (item.sourceUrl || '').indexOf('x.com/') !== -1 ? ' [source: ' + item.sourceUrl + ']' : '';
+    return i + ' | ' + item.title + src;
+  }).join('\n');
   const prompt = (PROMPTS[cat] || PROMPTS.FOOTBALL)() + '\n\nCandidates:\n' + lines + '\n\nReturn ONLY valid JSON.';
 
   try {
@@ -92,7 +96,6 @@ export async function scoreCategory(items, cat, apiKey) {
     if (!match) return { approved: [], cost, inputTokens, outputTokens };
 
     const scored = JSON.parse(match[0])
-      .filter(s => s.score >= 5)
       .map(s => {
         const idx = parseInt(s.idx);
         if (isNaN(idx) || !items[idx]) return null;
@@ -102,7 +105,13 @@ export async function scoreCategory(items, cat, apiKey) {
           rewritten: (s.title && s.title.trim()) || items[idx].title,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      // Tweets come from curated, trusted accounts — let them through at a
+      // lower bar (>=3). Everything else keeps the normal bar (>=5).
+      .filter(s => {
+        const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
+        return isTweet ? s.score >= 3 : s.score >= 5;
+      });
 
     return { approved: scored, cost, inputTokens, outputTokens };
   } catch (e) {
