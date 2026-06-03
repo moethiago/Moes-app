@@ -219,3 +219,11 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **News on who you follow:** breaking stories filtered to the drivers/clubs you follow.
 - **Follow system:** tap chips to follow F1 drivers and football clubs; everything personalizes instantly. Stored on your device.
 - **Alerts:** opt-in browser notifications that give a heads-up ~30 min before a followed F1 session or club match (works while the app is open/recent).
+
+## v32 — June 2, 2026
+### AI-native "For You" — the feed learns from you
+- Home's news is now a **For You** feed that ranks every story by how well it matches you.
+- **Implicit learning:** opening a story trains the app — it averages that story's Gemini embedding into a personal "taste vector" and counts keywords. No setup needed.
+- **Personal score** = explicit follows (x5) + learned keywords + semantic taste-match (cosine similarity to your taste vector x10). So if you keep opening McLaren stories, Norris news surfaces even if you never followed him.
+- Backend now exposes each story's id + a compact embedding so ranking happens on-device (your data stays yours, server cache stays shared/fast).
+- Stories matching your explicit follows get a gold dot. A hint shows until the app has learned enough.
