@@ -176,3 +176,12 @@ Note: team radio was considered but F1 cut radio data for 2026 (OpenF1 confirms 
 - **Upcoming**: each league's next fixtures.
 - **Tables**: scrollable league picker (EPL, La Liga, Serie A, Bundesliga, Ligue 1, Saudi Pro League) → full standings table with your team highlighted + top-4 zone, plus that league's top scorers.
 - Backend (`api/football.js`) extended with `?type=standings` and `?type=topscorers` (cached). New season set in leagues.js already.
+
+## v26 — June 2, 2026
+
+### Feed cleanup + football news + tables polish + season fix
+- Feed tab now shows only: All, Bayern, Saudi News. Removed F1, Football, and Saudi Football pills (those live in their own tabs now). The ALL view hides F1/FOOTBALL/SPL so the feed stays focused on Bayern + Saudi news.
+- Football tab: new **News** subtab combining Football + Saudi football + Bayern news from the pipeline (the biggest story pinned, tagged by type).
+- Tables subtab: league buttons replaced with clean flag pills (flag + short name, highlighted when active).
+- Fixed empty Today/Upcoming: backend now ALWAYS returns both today's fixtures and the next 10 upcoming (independently), and falls forward to the next season automatically. Season corrected to 2025 (API-Football labels the 2025-26 season as "2025"); the fall-forward picks up 2026-27 fixtures as they're scheduled. Today subtab now shows the next upcoming matches when nothing is on today.
+- Standings + scorers endpoints also fall forward a season if the current one has no data yet.

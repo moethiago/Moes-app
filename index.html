@@ -59,10 +59,7 @@
   </div>
   <div class="filter-row">
     <span class="fpill active" onclick="setFeedFilter('ALL',this)">All</span>
-    <span class="fpill" onclick="setFeedFilter('F1',this)">🏎 F1</span>
-    <span class="fpill" onclick="setFeedFilter('FOOTBALL',this)">⚽ Football</span>
     <span class="fpill" onclick="setFeedFilter('BAYERN',this)">🔴 Bayern</span>
-    <span class="fpill" onclick="setFeedFilter('SPL',this)">🇸🇦 Saudi Football</span>
     <span class="fpill" onclick="setFeedFilter('KSA',this)">📰 Saudi News</span>
   </div>
   <div id="critical-posts" style="padding:0 14px 14px;"></div>
@@ -210,6 +207,7 @@
     <button class="f1-subbtn active" id="ftsubbtn-today" onclick="switchFootballSub('today')">Today</button>
     <button class="f1-subbtn" id="ftsubbtn-upcoming" onclick="switchFootballSub('upcoming')">Upcoming</button>
     <button class="f1-subbtn" id="ftsubbtn-tables" onclick="switchFootballSub('tables')">Tables</button>
+    <button class="f1-subbtn" id="ftsubbtn-news" onclick="switchFootballSub('news')">News</button>
   </div>
 
   <!-- ═══ SUBTAB: TODAY ═══ -->
@@ -226,6 +224,11 @@
   <div id="ftsub-tables" class="f1-sub" style="display:none;">
     <div id="ft-league-picker" class="ft-league-picker" style="padding:12px 14px 0;"></div>
     <div id="football-tables-body" style="padding:8px 14px 20px;min-height:120px;"></div>
+  </div>
+
+  <!-- ═══ SUBTAB: NEWS ═══ -->
+  <div id="ftsub-news" class="f1-sub" style="display:none;">
+    <div id="football-news-body" style="padding:12px 14px 20px;min-height:120px;"></div>
   </div>
 
 </div>
@@ -367,48 +370,49 @@
 
 <div id="toast"></div>
 <!-- F1 -->
-<script src="js/f1/f1-config.js?v=1780449463"></script>
-<script src="js/f1/f1-calendar.js?v=1780449463"></script>
-<script src="js/f1/f1-circuits.js?v=1780449463"></script>
-<script src="js/f1/f1-fallback.js?v=1780449463"></script>
-<script src="js/f1/f1-weekend.js?v=1780449463"></script>
-<script src="js/f1/f1-livetiming.js?v=1780449463"></script>
-<script src="js/f1/f1-timing.js?v=1780449463"></script>
-<script src="js/f1/f1-status.js?v=1780449463"></script>
-<script src="js/f1/f1-subtabs.js?v=1780449463"></script>
-<script src="js/f1/f1-standings.js?v=1780449463"></script>
-<script src="js/f1/f1-session.js?v=1780449463"></script>
-<script src="js/f1/f1-racecard.js?v=1780449463"></script>
-<script src="js/f1/f1-analytics.js?v=1780449463"></script>
-<script src="js/f1/f1-story.js?v=1780449463"></script>
-<script src="js/f1/f1-recap.js?v=1780449463"></script>
-<script src="js/f1/f1-weekend-times.js?v=1780449463"></script>
-<script src="js/f1/f1-preview.js?v=1780449463"></script>
-<script src="js/f1/f1-news.js?v=1780449463"></script>
-<script src="js/f1/f1-extras.js?v=1780449463"></script>
+<script src="js/f1/f1-config.js?v=1780487632"></script>
+<script src="js/f1/f1-calendar.js?v=1780487632"></script>
+<script src="js/f1/f1-circuits.js?v=1780487632"></script>
+<script src="js/f1/f1-fallback.js?v=1780487632"></script>
+<script src="js/f1/f1-weekend.js?v=1780487632"></script>
+<script src="js/f1/f1-livetiming.js?v=1780487632"></script>
+<script src="js/f1/f1-timing.js?v=1780487632"></script>
+<script src="js/f1/f1-status.js?v=1780487632"></script>
+<script src="js/f1/f1-subtabs.js?v=1780487632"></script>
+<script src="js/f1/f1-standings.js?v=1780487632"></script>
+<script src="js/f1/f1-session.js?v=1780487632"></script>
+<script src="js/f1/f1-racecard.js?v=1780487632"></script>
+<script src="js/f1/f1-analytics.js?v=1780487632"></script>
+<script src="js/f1/f1-story.js?v=1780487632"></script>
+<script src="js/f1/f1-recap.js?v=1780487632"></script>
+<script src="js/f1/f1-weekend-times.js?v=1780487632"></script>
+<script src="js/f1/f1-preview.js?v=1780487632"></script>
+<script src="js/f1/f1-news.js?v=1780487632"></script>
+<script src="js/f1/f1-extras.js?v=1780487632"></script>
 <!-- Football -->
-<script src="js/football/football-config.js?v=1780449463"></script>
-<script src="js/football/football-render.js?v=1780449463"></script>
-<script src="js/football/football-fetch.js?v=1780449463"></script>
-<script src="js/football/football-views.js?v=1780449463"></script>
-<script src="js/football/football-tables.js?v=1780449463"></script>
-<script src="js/football/football-subtabs.js?v=1780449463"></script>
-<script src="js/football/worldcup-data.js?v=1780449463"></script>
-<script src="js/football/wc-data.js?v=1780449463"></script>
-<script src="js/football/wc-engine.js?v=1780449463"></script>
-<script src="js/football/wc-upnext.js?v=1780449463"></script>
-<script src="js/football/wc-groups.js?v=1780449463"></script>
-<script src="js/football/wc-results.js?v=1780449463"></script>
-<script src="js/football/wc-subtabs.js?v=1780449463"></script>
+<script src="js/football/football-config.js?v=1780487632"></script>
+<script src="js/football/football-render.js?v=1780487632"></script>
+<script src="js/football/football-fetch.js?v=1780487632"></script>
+<script src="js/football/football-views.js?v=1780487632"></script>
+<script src="js/football/football-tables.js?v=1780487632"></script>
+<script src="js/football/football-news.js?v=1780487632"></script>
+<script src="js/football/football-subtabs.js?v=1780487632"></script>
+<script src="js/football/worldcup-data.js?v=1780487632"></script>
+<script src="js/football/wc-data.js?v=1780487632"></script>
+<script src="js/football/wc-engine.js?v=1780487632"></script>
+<script src="js/football/wc-upnext.js?v=1780487632"></script>
+<script src="js/football/wc-groups.js?v=1780487632"></script>
+<script src="js/football/wc-results.js?v=1780487632"></script>
+<script src="js/football/wc-subtabs.js?v=1780487632"></script>
 <!-- Feed -->
-<script src="js/feed/feed-utils.js?v=1780449463"></script>
-<script src="js/feed/feed-ticker.js?v=1780449463"></script>
-<script src="js/feed/feed-render.js?v=1780449463"></script>
-<script src="js/feed/feed-fetch.js?v=1780449463"></script>
+<script src="js/feed/feed-utils.js?v=1780487632"></script>
+<script src="js/feed/feed-ticker.js?v=1780487632"></script>
+<script src="js/feed/feed-render.js?v=1780487632"></script>
+<script src="js/feed/feed-fetch.js?v=1780487632"></script>
 <!-- Health (tab hidden — scripts disabled, files retained for later) -->
-<!-- <script src="js/health/health-data.js?v=1780449463"></script> -->
-<!-- <script src="js/health/health-render.js?v=1780449463"></script> -->
+<!-- <script src="js/health/health-data.js?v=1780487632"></script> -->
+<!-- <script src="js/health/health-render.js?v=1780487632"></script> -->
 <!-- Core -->
-<script src="js/core.js?v=1780449463"></script>
+<script src="js/core.js?v=1780487632"></script>
 </body>
 </html>
