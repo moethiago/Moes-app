@@ -95,9 +95,12 @@ export default async function handler(req, res) {
         log('twitter:fetch', false, '@' + acct.handle + ' HTTP ' + r.status + ': ' + (await r.text()).slice(0, 200));
       } else {
         const d = await r.json();
-        const tweets = (d && (d.tweets || d.data)) || [];
+        let tweets = [];
+        if (Array.isArray(d.tweets)) tweets = d.tweets;
+        else if (d.data && Array.isArray(d.data.tweets)) tweets = d.data.tweets;
+        else if (Array.isArray(d.data)) tweets = d.data;
         log('twitter:fetch', tweets.length > 0, '@' + acct.handle + ' returned ' + tweets.length + ' tweets'
-          + (tweets[0] ? ' (latest: "' + String(tweets[0].text || '').slice(0, 50) + '...")' : ''));
+          + (tweets[0] ? ' (latest: "' + String(tweets[0].text || '').slice(0, 50) + '...")' : ' — raw keys: ' + Object.keys(d).join(',')));
       }
     } catch (e) {
       log('twitter:fetch', false, 'threw: ' + e.message);
