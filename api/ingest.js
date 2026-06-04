@@ -60,15 +60,25 @@ export default async function handler(req, res) {
     // 4. Check each story individually — is it already in KV?
     const now = Math.floor(Date.now() / 1000);
     let ingested = 0;
+    let requeued = 0;
     const ingestedPerCat = {};
 
     for (const it of batch) {
       const key = 'story:' + it.id;
-      // Use the SAME POST pipeline method as writes/clears so all three
-      // operations address KV identically (the old GET-by-URL-path could
-      // disagree with pipeline DEL, causing phantom "already exists").
       const existing = await kvCall(['GET', key]);
       if (existing !== null && existing !== undefined) {
+        // Story exists. Normally we skip — BUT if it somehow has no score yet
+        // (e.g. category index / unscored set was cleared, or a prior score
+        // pass missed it), make sure it's back in the queue so it can't get
+        // orphaned. This prevents "stories in store but nothing to score".
+        try {
+          const obj = typeof existing === 'string' ? JSON.parse(existing) : existing;
+          if (obj && (obj.score === null || obj.score === undefined)) {
+            await kvCall(['ZADD', 'cat:' + obj.cat, String(obj.publishedAt || it.publishedAt), obj.id]);
+            await kvCall(['SADD', 'unscored:' + obj.cat, obj.id]);
+            requeued++;
+          }
+        } catch (e) { /* ignore parse issues */ }
         continue;
       }
 
@@ -114,6 +124,7 @@ export default async function handler(req, res) {
     await logRun({
       phase:      'ingest',
       ingested,
+      requeued,
       candidates: batch.length,
       perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
@@ -123,6 +134,7 @@ export default async function handler(req, res) {
       ok:         true,
       phase:      'ingest',
       ingested,
+      requeued,
       candidates: batch.length,
       perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
