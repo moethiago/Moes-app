@@ -1,63 +1,62 @@
 /* ── SPORTS SECTION DIVIDER ─────────────────────────────── */
 .sports-divider{display:flex;align-items:center;gap:12px;padding:8px 14px}
 .sports-divider::before,.sports-divider::after{content:'';flex:1;height:1px;background:var(--border-hi)}
-.sports-divider-label{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt-muted);white-space:nowrap}
+.sports-divider-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt-muted);white-space:nowrap}
 
 /* ── F1 SESSION PILLS ───────────────────────────────────── */
-.cd-session-name{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.cd-session-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:1px;text-transform:uppercase;margin-top:4px}
 .cd-sessions{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06)}
-.session-pill{font-family:'Space Mono',monospace;font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,0,45,0.3);background:rgba(232,0,45,0.08);color:var(--f1-red);letter-spacing:0.5px;text-transform:uppercase}
+.session-pill{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid rgba(232,0,45,0.3);background:rgba(232,0,45,0.08);color:var(--f1-red);letter-spacing:0.5px;text-transform:uppercase}
 .session-pill.past{border-color:rgba(255,255,255,0.06);background:transparent;color:var(--txt-muted)}
 .session-pill.live-now{border-color:rgba(232,0,45,0.6);background:rgba(232,0,45,0.15);color:var(--f1-red);font-weight:800}
 
 /* ── LEAGUE TAB ROW ─────────────────────────────────────── */
 .league-tab-row{display:flex;gap:6px;overflow-x:auto;padding:0 14px 10px;scrollbar-width:none}
 .league-tab-row::-webkit-scrollbar{display:none}
-.league-tab{flex-shrink:0;font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:6px 14px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;letter-spacing:0.5px;-webkit-text-fill-color:var(--txt-secondary)}
-.league-tab.active{background:linear-gradient(135deg,var(--epl-green),var(--ig-blue));color:#fff;-webkit-text-fill-color:#fff;border-color:transparent}
+.league-tab{flex-shrink:0;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:6px 14px;border-radius:20px;border:1px solid var(--border-hi);background:var(--bg-raised);color:var(--txt-secondary);cursor:pointer;letter-spacing:0.5px;-webkit-text-fill-color:var(--txt-secondary)}
+.league-tab.active{background:var(--bg-card);color:var(--amber);-webkit-text-fill-color:var(--amber);border-color:var(--amber)}
 
 /* ════ FEED TAB ════════════════════════════════════════ */
-.wire-item{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;gap:11px;cursor:pointer;transition:all 0.1s}
+.wire-item{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:11px;cursor:pointer;transition:all 0.1s}
 .wire-item:last-child{border-bottom:none}
-.wire-item:active{background:var(--volt);color:#000}
-.wire-item:active .wire-headline,.wire-item:active .wire-headline strong,.wire-item:active .wire-source,.wire-item:active .wire-time{color:#000}
-.wire-bullet{color:var(--volt);font-size:13px;line-height:1.4;flex-shrink:0;margin-top:1px;font-family:'Space Mono',monospace}
-.wire-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
-.wire-headline{font-size:14px;line-height:1.4;color:var(--txt-primary);font-weight:600}
+.wire-item:active{background:var(--bg-card)}
+.wire-bullet{color:var(--amber);font-size:12px;line-height:1.4;flex-shrink:0;margin-top:2px;font-family:'IBM Plex Mono',monospace}
+.wire-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.wire-headline{font-size:14px;line-height:1.3;color:var(--txt-primary);font-weight:600}
 .wire-headline strong{color:#fff;font-weight:800}
-.wire-meta{display:flex;gap:10px;align-items:center}
-.wire-source{font-family:'Space Mono',monospace;font-size:10px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px}
-.wire-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--volt-dim)}
+.wire-meta{display:flex;gap:9px;align-items:center}
+.wire-source{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--amber-dim);text-transform:uppercase;letter-spacing:0.5px;font-weight:600}
+.wire-time{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px}
 
 /* ════ SPORTS TAB ══════════════════════════════════════ */
-.league-badge{font-size:9px;font-weight:600;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;background:var(--bg-raised);color:var(--txt-secondary);border:1px solid var(--border-hi)}
-.f1-std-header{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted)}
+.league-badge{font-size:9px;font-weight:600;font-family:'IBM Plex Mono',monospace;padding:2px 7px;border-radius:4px;letter-spacing:1px;text-transform:uppercase;background:var(--bg-raised);color:var(--txt-secondary);border:1px solid var(--border-hi)}
+.f1-std-header{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted)}
 .f1-std-row{display:grid;grid-template-columns:28px 28px 1fr 36px 52px;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center}
 .f1-std-row:last-child{border-bottom:none}
 .f1-pos{font-family:'Archivo Black',sans-serif;font-weight:700;font-size:16px;text-align:center}
 .f1-pos.p1,.f1-pos.p2,.f1-pos.p3{color:var(--txt-primary)}
-.f1-num{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:10px;font-weight:600}
+.f1-num{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600}
 .f1-driver-info{display:flex;flex-direction:column;gap:2px;min-width:0}
 .f1-driver-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .f1-con-bar{height:3px;border-radius:2px;background:var(--bg-hover);overflow:hidden;margin-top:3px}
 .f1-con-fill{height:100%;border-radius:2px;transition:width 0.6s ease}
-.f1-wins{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold);text-align:right}
-.f1-pts{font-family:'Space Mono',monospace;font-size:12px;font-weight:600;text-align:right}
-.f1-last-updated{text-align:center;padding:8px;font-size:10px;color:var(--txt-muted);font-family:'Space Mono',monospace;border-top:1px solid var(--border)}
+.f1-wins{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);text-align:right}
+.f1-pts{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;text-align:right}
+.f1-last-updated{text-align:center;padding:8px;font-size:10px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace;border-top:1px solid var(--border)}
 .f1-api-loading{display:flex;align-items:center;gap:10px;padding:24px 16px;color:var(--txt-muted);font-size:13px}
 .cd-card{background:linear-gradient(135deg,#130005,#0d0f18);border-radius:var(--r-lg);border:1px solid rgba(232,0,45,0.2);overflow:hidden}
 .cd-top{padding:16px 16px 12px}
-.cd-label{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--f1-red);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.cd-label{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--f1-red);text-transform:uppercase;display:flex;align-items:center;gap:5px;margin-bottom:6px}
 .cd-title{font-family:'Archivo Black',sans-serif;font-size:18px;font-weight:700;color:#fff;line-height:1.2}
-.cd-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--txt-muted);margin-top:3px}
+.cd-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt-muted);margin-top:3px}
 .cd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 16px}
 .cd-seg{background:rgba(255,255,255,0.04);border:1px solid var(--border-hi);border-radius:10px;padding:10px 6px;text-align:center}
-.cd-num{font-family:'Space Mono',monospace;font-size:24px;font-weight:600;color:#fff;line-height:1}
+.cd-num{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:#fff;line-height:1}
 .cd-lbl{font-size:9px;color:var(--txt-muted);text-transform:uppercase;font-weight:600;margin-top:3px}
 
 /* ── STANDINGS TOGGLE ───────────────────────────────────── */
 .standings-toggle{display:flex;gap:4px;background:var(--bg-raised);border-radius:8px;padding:3px;border:1px solid var(--border)}
-.standings-btn{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--txt-muted);cursor:pointer;letter-spacing:0.5px}
+.standings-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:none;background:transparent;color:var(--txt-muted);cursor:pointer;letter-spacing:0.5px}
 .standings-btn.active{background:var(--f1-red);color:#fff}
 
 /* ── FOOTBALL FIXTURES ──────────────────────────────────── */
@@ -73,8 +72,8 @@
 .fxt-score{display:flex;gap:6px;align-items:center;font-family:'Archivo Black',sans-serif;font-weight:700;font-size:20px;color:var(--txt-primary)}
 .fxt-score.fxt-score-live{color:var(--epl-green)}
 .fxt-score-sep{color:var(--txt-muted);font-size:14px}
-.fxt-kickoff{font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-muted)}
-.fxt-status{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px}
+.fxt-kickoff{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.fxt-status{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.5px}
 .fxt-status.live{background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3)}
 .fxt-status.ht{background:rgba(255,165,0,0.15);color:orange;border:1px solid rgba(255,165,0,0.3)}
 .fxt-status.ft{background:var(--bg-raised);color:var(--txt-muted);border:1px solid var(--border)}
@@ -86,10 +85,10 @@
 .fxt-league-block:last-child{margin-bottom:0}
 .fxt-league-header{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-raised);border-bottom:1px solid var(--border)}
 .fxt-league-flag{font-size:14px}
-.fxt-league-name{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--txt-muted)}
-.fxt-live-badge{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3);margin-left:auto}
-.fxt-upcoming-label{padding:8px 16px;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
-.fxt-upcoming-date{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ig-blue)}
+.fxt-league-name{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--txt-muted)}
+.fxt-live-badge{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(56,211,106,0.15);color:var(--epl-green);border:1px solid rgba(56,211,106,0.3);margin-left:auto}
+.fxt-upcoming-label{padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
+.fxt-upcoming-date{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--ig-blue)}
 
 /* ════ HEALTH TAB ══════════════════════════════════════ */
 .ring-card{background:var(--bg-card);border-radius:var(--r-lg);border:1px solid var(--border);padding:20px 16px;margin-bottom:12px}
@@ -111,7 +110,7 @@
 .food-log-list,.set-list{padding:0 16px 12px;display:flex;flex-direction:column;gap:4px}
 .food-item,.set-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg-raised);border-radius:var(--r-sm);border:1px solid var(--border)}
 .food-item-name,.set-exercise{font-size:13px;font-weight:500;flex:1}
-.food-item-kcal{font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-secondary)}
+.food-item-kcal{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-secondary)}
 .food-del,.set-del{background:none;border:none;color:var(--txt-muted);cursor:pointer;font-size:16px;padding:0 4px}
 .workout-stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 16px}
 .wk-stat{background:var(--bg-raised);border-radius:var(--r-sm);padding:12px;text-align:center;border:1px solid var(--border)}
@@ -128,9 +127,9 @@
 .wk-sess:last-child{border-bottom:none}
 .wk-sess.past{opacity:0.4}
 .wk-sess.live{background:rgba(232,0,45,0.08)}
-.wk-sess-name{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--txt-primary);letter-spacing:0.3px}
+.wk-sess-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--txt-primary);letter-spacing:0.3px}
 .wk-sess.live .wk-sess-name{color:var(--f1-red)}
-.wk-sess-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--txt-muted)}
+.wk-sess-time{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt-muted)}
 
 /* ── CHAMPIONSHIP CONTEXT ───────────────────────────────── */
 .f1-context{font-size:12px;color:var(--txt-secondary);padding:4px 2px 8px;font-family:'Archivo',sans-serif}
@@ -140,18 +139,18 @@
 
 /* ── LAST RACE PODIUM ───────────────────────────────────── */
 .f1-last-race-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
-.f1-last-race-title{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);margin-bottom:12px}
+.f1-last-race-title{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);margin-bottom:12px}
 .f1-podium{display:flex;gap:8px}
 .f1-podium-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--bg-raised);border-radius:var(--r-sm);padding:10px 6px;border:1px solid var(--border)}
 .f1-podium-medal{font-size:18px;line-height:1}
 .f1-podium-name{font-family:'Archivo Black',sans-serif;font-size:14px;font-weight:700;text-align:center}
-.f1-podium-team{font-size:9px;color:var(--txt-muted);text-align:center;font-family:'Space Mono',monospace}
+.f1-podium-team{font-size:9px;color:var(--txt-muted);text-align:center;font-family:'IBM Plex Mono',monospace}
 
 /* ── OPENF1 LIVE TIMING TOWER ───────────────────────────── */
 .f1-timing-card{background:linear-gradient(135deg,#130005,#0d0f18);border:1px solid rgba(232,0,45,0.25);border-radius:var(--r-lg);overflow:hidden}
 .f1-timing-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(232,0,45,0.15)}
-.f1-timing-title{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:0.5px}
-.f1-timing-lap{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--txt-muted)}
+.f1-timing-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--f1-red);letter-spacing:0.5px}
+.f1-timing-lap{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--txt-muted)}
 .f1-timing-list{display:flex;flex-direction:column}
 .f1-timing-row{display:grid;grid-template-columns:28px 4px 1fr auto;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
 .f1-timing-row:last-child{border-bottom:none}
@@ -161,12 +160,12 @@
 .f1-timing-pos.p3{color:#cd7f32}
 .f1-timing-team-bar{width:4px;height:28px;border-radius:2px}
 .f1-timing-name{font-size:13px;font-weight:600;color:var(--txt-primary)}
-.f1-timing-gap{font-family:'Space Mono',monospace;font-size:11px;color:var(--txt-muted);text-align:right}
-.f1-timing-footer{text-align:center;padding:8px;font-size:10px;color:var(--txt-muted);font-family:'Space Mono',monospace;border-top:1px solid rgba(255,255,255,0.06)}
+.f1-timing-gap{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt-muted);text-align:right}
+.f1-timing-footer{text-align:center;padding:8px;font-size:10px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace;border-top:1px solid rgba(255,255,255,0.06)}
 
 /* ── WORLD CUP ──────────────────────────────────────────── */
-.wc-section-label{padding:8px 16px;font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
-.wc-group-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--txt-muted)}
+.wc-section-label{padding:8px 16px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--txt-muted);background:var(--bg-raised);border-bottom:1px solid var(--border)}
+.wc-group-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--txt-muted)}
 
 /* ── F1 SESSION RESULTS ──────────────────────────────── */
 .f1-sess-header {
@@ -174,7 +173,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px 8px;
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -203,13 +202,13 @@
   text-overflow: ellipsis;
 }
 .f1-sess-time {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   color: var(--txt-muted);
   white-space: nowrap;
 }
 .f1-sess-gap {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   color: var(--txt-muted);
   text-align: right;
@@ -217,7 +216,7 @@
 }
 .f1-sess-gap.pole { color: #ff3366; font-weight: 700; }
 .f1-sess-pts {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   color: #00ff88;
 }
@@ -242,7 +241,7 @@
 /* ── F1 RACE GRID (visual two-column) ────────────────── */
 .f1-grid-header {
   padding: 10px 14px 8px;
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -269,7 +268,7 @@
 .f1-grid-slot.top3 { background: rgba(255,255,255,0.07); }
 .f1-grid-slot.empty { background: transparent; }
 .f1-grid-pos {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 13px;
   font-weight: 700;
   color: var(--txt-muted);
@@ -293,12 +292,12 @@
   text-overflow: ellipsis;
 }
 .f1-grid-time {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   color: var(--txt-muted);
 }
 .f1-grid-num {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
   font-weight: 700;
   opacity: 0.8;
@@ -309,7 +308,7 @@
   color: #555;
   text-align: center;
   padding: 0 0 8px;
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -334,13 +333,13 @@
 
 /* ═══ F1 SUPER TAB — analytics, race card, driver modal ═══ */
 .f1a-card{background:var(--bg-card);border:1px solid var(--border-hi);border-radius:14px;padding:14px;margin-bottom:12px}
-.f1a-h{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--txt-primary);margin-bottom:8px}
+.f1a-h{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.5px;color:var(--txt-primary);margin-bottom:8px}
 .f1a-sub{font-size:11px;color:var(--txt-secondary);margin:4px 0}
 .f1a-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
 .f1a-row:last-child{border-bottom:0}
-.f1a-pos{width:20px;color:var(--txt-muted);font-family:'Space Mono',monospace;font-size:12px}
+.f1a-pos{width:20px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace;font-size:12px}
 .f1a-name{flex:1;font-weight:600}
-.f1a-pts{font-family:'Space Mono',monospace;font-weight:700;margin-right:6px}
+.f1a-pts{font-family:'IBM Plex Mono',monospace;font-weight:700;margin-right:6px}
 .f1a-tag{font-size:9px;font-weight:700;padding:3px 7px;border-radius:10px;letter-spacing:0.3px;white-space:nowrap}
 .f1a-tag.lead{background:#1c3a24;color:#34d399}
 .f1a-tag.alive{background:#2a2410;color:#fbbf24}
@@ -350,7 +349,7 @@
 .f1a-bars{display:flex;align-items:flex-end;gap:6px;height:72px;padding:8px 0}
 .f1a-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
 .f1a-bar{width:100%;max-width:22px;background:linear-gradient(180deg,#4f9cf9,#a78bfa);border-radius:3px 3px 0 0}
-.f1a-bar-lbl{font-size:8px;color:var(--txt-muted);font-family:'Space Mono',monospace}
+.f1a-bar-lbl{font-size:8px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace}
 /* teammate h2h */
 .f1a-h2h{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .f1a-h2h:last-child{border-bottom:0}
@@ -362,7 +361,7 @@
 .f1a-form-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .f1a-form-row:last-child{border-bottom:0}
 .f1a-form-dots{display:flex;gap:4px}
-.f1a-form-dot{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'Space Mono',monospace}
+.f1a-form-dot{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace}
 .f1a-form-dot.win{background:#a98a16;color:#fff}
 .f1a-form-dot.pod{background:#1c3a24;color:#34d399}
 .f1a-form-dot.pts{background:#1a2a3a;color:#4f9cf9}
@@ -371,11 +370,11 @@
 .f1a-strat-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
 .f1a-strat-row:last-child{border-bottom:0}
 .f1a-strat-stops{font-weight:700;color:var(--cyan);white-space:nowrap}
-.f1a-strat-laps{font-size:10px;color:var(--txt-muted);font-family:'Space Mono',monospace;flex:1;text-align:right}
+.f1a-strat-laps{font-size:10px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace;flex:1;text-align:right}
 /* race card */
 .f1-rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
 .f1-rc-stat{background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 4px;text-align:center}
-.f1-rc-v{font-size:18px;font-weight:700;font-family:'Space Mono',monospace}
+.f1-rc-v{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace}
 .f1-rc-l{font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
 .f1-rc-record{font-size:11px;color:var(--txt-muted);padding-top:4px}
 .f1-rc-weather{font-size:12px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)}
@@ -386,11 +385,11 @@
 .f1-modal-title{font-size:20px;font-weight:700;margin-bottom:14px}
 .f1-modal-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .f1-ms{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 4px;text-align:center}
-.f1-ms-v{font-size:18px;font-weight:700;font-family:'Space Mono',monospace}
+.f1-ms-v{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace}
 .f1-ms-l{font-size:8px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;margin-top:2px}
 .f1-modal-results{margin-top:6px}
 .f1-mr-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px}
-.f1-mr-pos{font-family:'Space Mono',monospace;font-weight:700}
+.f1-mr-pos{font-family:'IBM Plex Mono',monospace;font-weight:700}
 .f1-mr-pos.win{color:#fbbf24}
 .f1-mr-pos.pod{color:#34d399}
 
@@ -400,7 +399,7 @@
 .f1-rivalry{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
 .f1-riv-side{flex:1}
 .f1-riv-name{font-size:14px;font-weight:700}
-.f1-riv-pts{font-size:26px;font-weight:800;font-family:'Space Mono',monospace}
+.f1-riv-pts{font-size:26px;font-weight:800;font-family:'IBM Plex Mono',monospace}
 .f1-riv-vs{font-size:11px;color:var(--txt-muted);padding:0 12px;font-weight:700}
 .f1-riv-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:6px 0}
 .f1-riv-fill-l{height:100%}
@@ -413,7 +412,7 @@
 .f1-cmp-head{display:flex;justify-content:space-between;font-size:12px;font-weight:700;padding:6px 0;color:#fff}
 .f1-cmp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .f1-cmp-row:last-child{border-bottom:0}
-.f1-cmp-val{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;width:60px;text-align:center;color:var(--txt-muted)}
+.f1-cmp-val{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;width:60px;text-align:center;color:var(--txt-muted)}
 .f1-cmp-val.win{color:#34d399}
 .f1-cmp-lbl{flex:1;text-align:center;font-size:11px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.5px}
 /* predict podium */
@@ -431,7 +430,7 @@
 .f1-recap-pod-info{flex:1;display:flex;flex-direction:column}
 .f1-recap-pod-name{font-weight:700;font-size:14px}
 .f1-recap-pod-team{font-size:10px;color:var(--txt-muted)}
-.f1-recap-pod-time{font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.f1-recap-pod-time{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-muted)}
 .f1-recap-fl{font-size:12px;padding:8px 0 4px;color:var(--txt-primary)}
 .f1-recap-fl strong{color:#a78bfa}
 .f1-recap-dnf{font-size:12px;padding:4px 0;color:#f87171}
@@ -442,7 +441,7 @@
 .f1-move.same{color:#666}
 
 /* ═══ F1 SUPER TAB — polish & team badges ═══ */
-.f1-team-badge{display:inline-block;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;padding:2px 5px;border-radius:4px;margin-left:6px;vertical-align:middle;line-height:1.3}
+.f1-team-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;padding:2px 5px;border-radius:4px;margin-left:6px;vertical-align:middle;line-height:1.3}
 /* elevate analytics cards: subtle gradient, depth, smoother borders */
 .f1a-card{background:linear-gradient(160deg,var(--bg-card),var(--bg-base));border:1px solid var(--border-hi);border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,0.25);position:relative;overflow:hidden}
 .f1a-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
@@ -464,7 +463,7 @@
 .f1a-form-dot.pod{background:linear-gradient(135deg,#1c3a24,#0e2718);color:#34d399}
 .f1a-form-dot.pts{background:rgba(79,156,249,0.15);color:#4f9cf9}
 /* title-math tags: cleaner pills */
-.f1a-tag{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.3px;min-width:32px;text-align:center}
+.f1a-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.3px;min-width:32px;text-align:center}
 .f1a-tag.lead{background:linear-gradient(135deg,#f5c842,#d4a017);color:#1a1a1a}
 .f1a-tag.alive{background:rgba(245,200,66,0.12);color:var(--gold)}
 .f1a-tag.dead{background:rgba(255,255,255,0.05);color:var(--txt-muted)}
@@ -487,7 +486,7 @@
 .f1-logo-wrap{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex-shrink:0}
 .f1-logo-wrap .f1-team-logo{height:30px;width:30px;border-radius:7px;padding:3px}
 .f1-logo-wrap .f1-team-badge{margin:0}
-.f1-team-badge{display:inline-block;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;padding:2px 5px;border-radius:4px;vertical-align:middle;line-height:1.3}
+.f1-team-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.5px;padding:2px 5px;border-radius:4px;vertical-align:middle;line-height:1.3}
 
 /* teammate h2h 3-col alignment */
 .f1a-h2h-left{text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -513,7 +512,7 @@
 .f1-time-row:last-child{border-bottom:0}
 .f1-time-name{flex:1;font-size:13px;font-weight:600}
 .f1-time-anti{font-size:9px;color:var(--gold);font-weight:700;margin-left:4px}
-.f1-time-when{font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-secondary)}
+.f1-time-when{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-secondary)}
 .f1-time-cal{background:var(--cyan);color:#fff;border:0;border-radius:6px;font-size:10px;font-weight:700;padding:5px 9px;cursor:pointer}
 .f1-time-cal:active{opacity:0.8}
 /* ═══ Circuit preview ═══ */
@@ -528,7 +527,7 @@
 .f1-wx-day{flex:1;background:rgba(255,255,255,0.03);border-radius:8px;padding:7px 2px;text-align:center}
 .f1-wx-dow{font-size:9px;color:var(--txt-muted);font-weight:700}
 .f1-wx-icon{font-size:15px;margin:2px 0}
-.f1-wx-temp{font-size:12px;font-weight:700;font-family:'Space Mono',monospace}
+.f1-wx-temp{font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace}
 .f1-wx-rain{font-size:9px;color:var(--cyan)}
 /* history */
 .f1-hist-card{border-left:3px solid var(--purple)}
@@ -543,7 +542,7 @@
 .f1-news-row:last-child{border-bottom:0}
 .f1-news-dot{color:var(--f1-red)}
 .f1-news-title{flex:1;font-size:12px;color:var(--txt-primary);line-height:1.3}
-.f1-news-time{font-size:10px;color:var(--txt-muted);font-family:'Space Mono',monospace}
+.f1-news-time{font-size:10px;color:var(--txt-muted);font-family:'IBM Plex Mono',monospace}
 /* ═══ Extras: changed/streaks/silly/permutations ═══ */
 .f1x-changed{border-left:3px solid #34d399}
 .f1x-change{font-size:13px;padding:4px 0;color:var(--txt-primary)}
@@ -560,9 +559,10 @@
 .f1x-silly-status.expiring{background:rgba(245,200,66,0.14);color:var(--gold)}
 
 /* ═══ F1 subtabs + spoiler lock ═══ */
-.f1-subnav{display:flex;gap:6px;padding:12px 14px 4px;position:sticky;top:0;z-index:5;background:var(--bg-base)}
-.f1-subbtn{flex:1 1 0;min-width:0;padding:9px 0;font-family:'Archivo Black',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.3px;background:var(--bg-card);color:var(--txt-secondary);border:1px solid var(--border-hi);border-radius:10px;cursor:pointer;transition:background 0.15s,color 0.15s;text-align:center;box-sizing:border-box;line-height:1.2}
-.f1-subbtn.active{background:var(--f1-red);color:#fff;border-color:var(--f1-red)}
+.f1-subnav{display:flex;gap:0;margin:14px 16px 4px;padding:0;position:sticky;top:0;z-index:5;background:var(--bg-base);border:1px solid var(--border)}
+.f1-subbtn{flex:1 1 0;min-width:0;padding:10px 0;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;background:transparent;color:var(--txt-secondary);border:none;border-right:1px solid var(--border);border-radius:0;cursor:pointer;transition:all 0.12s;text-align:center;box-sizing:border-box;line-height:1.2}
+.f1-subbtn:last-child{border-right:none}
+.f1-subbtn.active{background:var(--amber);color:#000;border-color:var(--amber)}
 .f1-spoiler-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 28px;margin:14px;background:var(--bg-card);border:1px dashed var(--border-hi);border-radius:16px}
 .f1-spoiler-icon{font-size:42px;margin-bottom:12px}
 .f1-spoiler-title{font-family:'Archivo Black',sans-serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:6px}
@@ -577,7 +577,7 @@
 .wc-next-team{font-size:15px;font-weight:700;color:#fff}
 .wc-next-vs{font-size:11px;color:var(--txt-muted);font-weight:700}
 .wc-next-meta{text-align:center;font-size:11px;color:var(--txt-secondary)}
-.wc-next-when{text-align:center;font-family:'Space Mono',monospace;font-size:13px;color:var(--cyan);margin-top:8px;font-weight:700}
+.wc-next-when{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--cyan);margin-top:8px;font-weight:700}
 .wc-myteam-card{border-left:3px solid var(--gold)}
 .wc-myteam-next{font-size:14px;color:var(--txt-primary);margin:4px 0}
 .wc-myteam-when{font-size:12px;color:var(--txt-secondary);margin-bottom:8px}
@@ -586,16 +586,16 @@
 .wc-up-teams{font-size:13px;color:var(--txt-primary);flex:1;min-width:0}
 .wc-up-v{color:var(--txt-muted);font-size:11px;margin:0 2px}
 .wc-up-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.wc-up-when{font-family:'Space Mono',monospace;font-size:11px;color:var(--txt-secondary)}
+.wc-up-when{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt-secondary)}
 .wc-up-cal{background:var(--cyan);color:#fff;border:0;border-radius:6px;width:24px;height:24px;font-size:14px;font-weight:700;cursor:pointer;line-height:1}
 /* group tables */
 .wc-grp-card{padding:12px}
 .wc-grp-head{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;font-size:9px;color:var(--txt-muted);text-transform:uppercase;letter-spacing:0.3px;padding:4px 0;border-bottom:1px solid var(--border-hi)}
 .wc-grp-row{display:grid;grid-template-columns:22px 1fr 20px 20px 20px 20px 28px 30px;gap:2px;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px}
 .wc-grp-row:last-child{border-bottom:0}
-.wc-grp-pos{color:var(--txt-muted);font-family:'Space Mono',monospace}
+.wc-grp-pos{color:var(--txt-muted);font-family:'IBM Plex Mono',monospace}
 .wc-grp-team{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wc-grp-n{text-align:center;font-family:'Space Mono',monospace;color:var(--txt-secondary)}
+.wc-grp-n{text-align:center;font-family:'IBM Plex Mono',monospace;color:var(--txt-secondary)}
 .wc-grp-pts{color:#fff;font-weight:700}
 .wc-grp-row.wc-qual{background:linear-gradient(90deg,rgba(52,211,153,0.08),transparent)}
 .wc-grp-row.wc-qual .wc-grp-pos{color:#34d399;font-weight:700}
@@ -608,7 +608,7 @@
 .wc-ko-team{flex:1;font-weight:600}
 .wc-ko-right{text-align:right}
 .wc-ko-v{color:var(--txt-muted);font-size:11px}
-.wc-ko-score{font-family:'Space Mono',monospace;font-weight:700;color:var(--cyan)}
+.wc-ko-score{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--cyan)}
 /* results */
 .wc-results-card{border-left:3px solid var(--gold)}
 .wc-res-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
@@ -616,7 +616,7 @@
 .wc-res-team{flex:1;color:var(--txt-secondary)}
 .wc-res-team.win{color:#fff;font-weight:700}
 .wc-res-right{text-align:right}
-.wc-res-score{font-family:'Space Mono',monospace;font-weight:700;color:#fff}
+.wc-res-score{font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff}
 
 /* ═══ Football tab: tables, scorers, your teams ═══ */
 .ft-league-picker{display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
@@ -628,15 +628,15 @@
 .ft-tbl-logo{width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:2px}
 .ft-scorer-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .ft-scorer-row:last-child{border-bottom:0}
-.ft-scorer-rank{width:20px;text-align:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.ft-scorer-rank{width:20px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-muted)}
 .ft-scorer-name{flex:1;font-size:13px;font-weight:600}
 .ft-scorer-team{font-weight:400;color:var(--txt-muted);font-size:11px}
-.ft-scorer-goals{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--ig-blue)}
+.ft-scorer-goals{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--ig-blue)}
 .ft-myteam-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .ft-myteam-row:last-child{border-bottom:0}
 .ft-myteam-match{font-size:13px;font-weight:600}
-.ft-myteam-when{font-family:'Space Mono',monospace;font-size:11px;color:var(--txt-secondary)}
-.ft-myteam-score{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:#fff}
+.ft-myteam-when{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt-secondary)}
+.ft-myteam-score{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:#fff}
 .ft-myteam-score.live{color:var(--f1-red)}
 
 /* ═══ WC bracket auto-fill ═══ */
@@ -645,45 +645,45 @@
 .wc-ko-team:not(.wc-ko-set){color:var(--txt-muted)}
 .wc-third-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
 .wc-third-row:last-child{border-bottom:0}
-.wc-third-rank{width:18px;text-align:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--txt-muted)}
+.wc-third-rank{width:18px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--txt-muted)}
 .wc-third-team{flex:1;font-size:13px;font-weight:600}
 .wc-third-grp{color:var(--txt-muted);font-weight:400;font-size:11px}
-.wc-third-pts{font-family:'Space Mono',monospace;font-size:11px;color:var(--txt-secondary)}
+.wc-third-pts{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt-secondary)}
 .wc-third-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(52,211,153,0.15);color:#34d399}
 .wc-third-badge.out{background:rgba(255,255,255,0.05);color:var(--txt-muted)}
 .wc-third-out{opacity:0.5}
 
 /* ═══ Home tab ═══ */
 .home-hero{padding:20px 16px 8px}
-.home-greeting{font-family:'Archivo Black',sans-serif;font-size:30px;font-weight:900;color:#fff;line-height:1.0;letter-spacing:-1px;text-transform:none}
-.home-brief{margin-top:10px;font-size:14px;color:var(--txt-secondary);line-height:1.5;font-family:'Space Mono',monospace}
-.home-section-title{font-family:'Archivo Black',sans-serif;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0;color:var(--volt);padding:22px 14px 10px}
-.home-event{display:flex;align-items:center;gap:12px;margin:0 14px 8px;padding:15px;background:var(--bg-card);border:2px solid var(--border-hi);border-left:5px solid var(--volt);border-radius:0;cursor:pointer;transition:all 0.1s}
+.home-greeting{font-family:'Archivo Black',sans-serif;font-size:30px;font-weight:900;color:#fff;line-height:1.0;letter-spacing:-1px;text-transform:uppercase}
+.home-brief{margin-top:10px;font-size:14px;color:var(--txt-secondary);line-height:1.5;font-family:'IBM Plex Mono',monospace}
+.home-section-title{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--volt);padding:22px 14px 10px}
+.home-event{display:flex;align-items:center;gap:12px;margin:0 14px 8px;padding:15px;background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:0;cursor:pointer;transition:all 0.1s}
 .home-event:active{background:var(--volt)}
 .home-event:active .home-event-title,.home-event:active .home-event-when,.home-event:active .home-event-arrow{color:#000}
 .home-event-icon{font-size:24px;flex-shrink:0}
 .home-event-info{flex:1;min-width:0}
 .home-event-title{font-size:15px;font-weight:800;color:#fff}
-.home-event-when{font-size:12px;color:var(--txt-secondary);margin-top:3px;font-family:'Space Mono',monospace}
+.home-event-when{font-size:12px;color:var(--txt-secondary);margin-top:3px;font-family:'IBM Plex Mono',monospace}
 .home-event-arrow{color:var(--txt-muted);font-size:22px;flex-shrink:0}
-.home-alert-btn{width:100%;padding:15px;font-size:13px;font-weight:700;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;background:transparent;color:var(--volt);border:2px solid var(--volt);border-radius:0;cursor:pointer}
+.home-alert-btn{width:100%;padding:15px;font-size:13px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:1px;background:transparent;color:var(--volt);border:2px solid var(--volt);border-radius:0;cursor:pointer}
 .home-alert-btn:active{background:var(--volt);color:#000}
-.home-alert-on{font-size:12px;color:var(--volt);padding:13px 14px;background:transparent;border:2px solid var(--border-hi);border-left:5px solid var(--volt);border-radius:0;font-family:'Space Mono',monospace}
+.home-alert-on{font-size:12px;color:var(--volt);padding:13px 14px;background:transparent;border:2px solid var(--border-hi);border-left:5px solid var(--volt);border-radius:0;font-family:'IBM Plex Mono',monospace}
 .brief-learned{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;color:var(--cyan)}
 
 /* Feed grouped sections (single news home) */
-.feed-section{margin-bottom:22px}
-.feed-section-head{display:flex;align-items:center;gap:10px;padding:10px 14px;position:sticky;top:0;background:#000;z-index:2;border-left:5px solid var(--volt);border-bottom:2px solid var(--border-hard)}
-.feed-section-icon{font-size:16px}
-.feed-section-title{font-family:'Archivo Black',sans-serif;font-weight:900;font-size:17px;letter-spacing:-0.3px;color:var(--txt-primary);text-transform:uppercase}
-.feed-section-count{margin-left:auto;font-family:'Space Mono',monospace;font-weight:700;font-size:11px;color:#000;background:var(--volt);padding:3px 9px;border-radius:0}
+.feed-section{margin-bottom:20px}
+.feed-section-head{display:flex;align-items:center;gap:9px;padding:14px 16px 7px;position:sticky;top:0;background:var(--bg-base);z-index:2}
+.feed-section-icon{font-size:15px}
+.feed-section-title{font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;letter-spacing:2px;color:var(--txt-primary);text-transform:uppercase}
+.feed-section-count{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;color:#000;background:var(--amber);padding:2px 9px;border-radius:0}
+.feed-section-head::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:2px;background:var(--border)}
+.feed-section-head::before{content:'';position:absolute;left:16px;bottom:0;width:42px;height:2px;background:var(--amber);z-index:1}
 
-/* ════ BRUTALIST OVERRIDES — flatten cards, kill rounded/navy slop ════ */
+/* ════ HEAVY METAL OVERRIDES — flatten cards, amber accents ════ */
 .cd-card,.f1-timing-card,.f1a-card,.f1-rc-stat,.f1a-stat,.fxt-card,.match-card,.std-card,
 .wc-card,.home-hero,.home-event-card,.league-tab,.ft-pill{border-radius:0 !important}
-.cd-card,.f1-timing-card,.f1a-card{background:var(--bg-card) !important;border:2px solid var(--border-hi) !important}
+.cd-card,.f1-timing-card,.f1a-card{background:var(--bg-card) !important;border:1px solid var(--border) !important;border-left:3px solid var(--amber) !important}
 .f1a-card::before{display:none !important}
-/* league/filter pills -> hard volt when active */
-.league-tab.active,.ft-pill.active{background:var(--volt) !important;color:#000 !important;-webkit-text-fill-color:#000 !important;border:2px solid var(--volt) !important}
-/* section card containers flatten */
+.league-tab.active,.ft-pill.active{background:var(--bg-card) !important;color:var(--amber) !important;-webkit-text-fill-color:var(--amber) !important;border:2px solid var(--amber) !important}
 .card,.panel-card,.list-card{border-radius:0 !important}
