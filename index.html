@@ -7,9 +7,9 @@
 <title>Moe's App</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Archivo+Black&family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/base.css?v=1780584329">
-<link rel="stylesheet" href="css/components.css?v=1780584329">
-<link rel="stylesheet" href="css/tabs.css?v=1780584329">
+<link rel="stylesheet" href="css/base.css?v=1780584662">
+<link rel="stylesheet" href="css/components.css?v=1780584662">
+<link rel="stylesheet" href="css/tabs.css?v=1780584662">
 </head>
 <body>
 <div id="app">
@@ -93,7 +93,7 @@
           <div class="cd-label"><span class="pulse"></span><span id="f1-next-track">Loading...</span></div>
           <div class="cd-title" id="f1-next-session"></div>
           <div class="cd-session-name" id="f1-session-label">Loading...</div>
-          <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
+          <div class="cd-live-banner" id="f1-live-banner" style="display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:rgba(232,0,45,0.12);border-radius:8px;border:1px solid rgba(232,0,45,0.3);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--f1-red);"></div>
         </div>
         <div class="cd-grid" id="f1-cd-grid">
           <div class="cd-seg"><div class="cd-num" id="cd-days">--</div><div class="cd-lbl">Days</div></div>
@@ -107,9 +107,6 @@
 
     <!-- NEXT RACE CIRCUIT CARD + WEATHER -->
     <div id="f1-racecard" style="padding:0 14px 6px;"></div>
-
-    <!-- RACE WEEKEND SCHEDULE (within 2 days of a weekend) -->
-    <div id="f1-weekend-card" style="display:none;padding:0 14px 6px;"></div>
 
     <!-- LOCAL SESSION TIMES + ADD TO CALENDAR -->
     <div id="f1-times" style="padding:0 14px 6px;"></div>
@@ -177,7 +174,7 @@
         <div class="card">
           <div class="card-header">
             <span class="card-title">2026 Standings</span>
-            <span id="f1-standings-round" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
+            <span id="f1-standings-round" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--txt-muted);">2026</span>
           </div>
           <div id="f1-standings-body">
             <div class="f1-api-loading"><div class="f1-spinner" style="border-top-color:var(--f1-red)"></div><span>Loading...</span></div>
@@ -365,52 +362,52 @@
 
 <div id="toast"></div>
 <!-- F1 -->
-<script src="js/f1/f1-config.js?v=1780583841"></script>
-<script src="js/f1/f1-calendar.js?v=1780583841"></script>
-<script src="js/f1/f1-circuits.js?v=1780583841"></script>
-<script src="js/f1/f1-fallback.js?v=1780583841"></script>
-<script src="js/f1/f1-weekend.js?v=1780583841"></script>
-<script src="js/f1/f1-livetiming.js?v=1780583841"></script>
-<script src="js/f1/f1-timing.js?v=1780583841"></script>
-<script src="js/f1/f1-status.js?v=1780583841"></script>
-<script src="js/f1/f1-subtabs.js?v=1780583841"></script>
-<script src="js/f1/f1-standings.js?v=1780583841"></script>
-<script src="js/f1/f1-session.js?v=1780583841"></script>
-<script src="js/f1/f1-racecard.js?v=1780583841"></script>
-<script src="js/f1/f1-analytics.js?v=1780583841"></script>
-<script src="js/f1/f1-story.js?v=1780583841"></script>
-<script src="js/f1/f1-recap.js?v=1780583841"></script>
-<script src="js/f1/f1-weekend-times.js?v=1780583841"></script>
-<script src="js/f1/f1-preview.js?v=1780583841"></script>
-<script src="js/f1/f1-extras.js?v=1780583841"></script>
+<script src="js/f1/f1-config.js?v=1780584662"></script>
+<script src="js/f1/f1-calendar.js?v=1780584662"></script>
+<script src="js/f1/f1-circuits.js?v=1780584662"></script>
+<script src="js/f1/f1-fallback.js?v=1780584662"></script>
+<script src="js/f1/f1-weekend.js?v=1780584662"></script>
+<script src="js/f1/f1-livetiming.js?v=1780584662"></script>
+<script src="js/f1/f1-timing.js?v=1780584662"></script>
+<script src="js/f1/f1-status.js?v=1780584662"></script>
+<script src="js/f1/f1-subtabs.js?v=1780584662"></script>
+<script src="js/f1/f1-standings.js?v=1780584662"></script>
+<script src="js/f1/f1-session.js?v=1780584662"></script>
+<script src="js/f1/f1-racecard.js?v=1780584662"></script>
+<script src="js/f1/f1-analytics.js?v=1780584662"></script>
+<script src="js/f1/f1-story.js?v=1780584662"></script>
+<script src="js/f1/f1-recap.js?v=1780584662"></script>
+<script src="js/f1/f1-weekend-times.js?v=1780584662"></script>
+<script src="js/f1/f1-preview.js?v=1780584662"></script>
+<script src="js/f1/f1-extras.js?v=1780584662"></script>
 <!-- Football -->
-<script src="js/football/football-config.js?v=1780583841"></script>
-<script src="js/football/football-render.js?v=1780583841"></script>
-<script src="js/football/football-fetch.js?v=1780583841"></script>
-<script src="js/football/football-views.js?v=1780583841"></script>
-<script src="js/football/football-tables.js?v=1780583841"></script>
-<script src="js/football/football-subtabs.js?v=1780583841"></script>
-<script src="js/football/worldcup-data.js?v=1780583841"></script>
-<script src="js/football/wc-data.js?v=1780583841"></script>
-<script src="js/football/wc-engine.js?v=1780583841"></script>
-<script src="js/football/wc-bracket-engine.js?v=1780583841"></script>
-<script src="js/football/wc-upnext.js?v=1780583841"></script>
-<script src="js/football/wc-groups.js?v=1780583841"></script>
-<script src="js/football/wc-results.js?v=1780583841"></script>
-<script src="js/football/wc-subtabs.js?v=1780583841"></script>
+<script src="js/football/football-config.js?v=1780584662"></script>
+<script src="js/football/football-render.js?v=1780584662"></script>
+<script src="js/football/football-fetch.js?v=1780584662"></script>
+<script src="js/football/football-views.js?v=1780584662"></script>
+<script src="js/football/football-tables.js?v=1780584662"></script>
+<script src="js/football/football-subtabs.js?v=1780584662"></script>
+<script src="js/football/worldcup-data.js?v=1780584662"></script>
+<script src="js/football/wc-data.js?v=1780584662"></script>
+<script src="js/football/wc-engine.js?v=1780584662"></script>
+<script src="js/football/wc-bracket-engine.js?v=1780584662"></script>
+<script src="js/football/wc-upnext.js?v=1780584662"></script>
+<script src="js/football/wc-groups.js?v=1780584662"></script>
+<script src="js/football/wc-results.js?v=1780584662"></script>
+<script src="js/football/wc-subtabs.js?v=1780584662"></script>
 <!-- Feed -->
-<script src="js/feed/feed-utils.js?v=1780583841"></script>
-<script src="js/feed/feed-ticker.js?v=1780583841"></script>
-<script src="js/feed/feed-render.js?v=1780583841"></script>
-<script src="js/feed/feed-fetch.js?v=1780583841"></script>
+<script src="js/feed/feed-utils.js?v=1780584662"></script>
+<script src="js/feed/feed-ticker.js?v=1780584662"></script>
+<script src="js/feed/feed-render.js?v=1780584662"></script>
+<script src="js/feed/feed-fetch.js?v=1780584662"></script>
 <!-- Health (tab hidden — scripts disabled, files retained for later) -->
-<!-- <script src="js/health/health-data.js?v=1780583841"></script> -->
-<!-- <script src="js/health/health-render.js?v=1780583841"></script> -->
+<!-- <script src="js/health/health-data.js?v=1780584662"></script> -->
+<!-- <script src="js/health/health-render.js?v=1780584662"></script> -->
 <!-- Core -->
-<script src="js/home/prefs.js?v=1780583841"></script>
-<script src="js/home/taste.js?v=1780583841"></script>
-<script src="js/home/notify.js?v=1780583841"></script>
-<script src="js/home/home.js?v=1780583841"></script>
-<script src="js/core.js?v=1780583841"></script>
+<script src="js/home/prefs.js?v=1780584662"></script>
+<script src="js/home/taste.js?v=1780584662"></script>
+<script src="js/home/notify.js?v=1780584662"></script>
+<script src="js/home/home.js?v=1780584662"></script>
+<script src="js/core.js?v=1780584662"></script>
 </body>
 </html>
