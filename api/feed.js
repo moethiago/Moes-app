@@ -46,40 +46,28 @@ export default async function handler(req, res) {
       .map(j => { try { return JSON.parse(j); } catch { return null; } })
       .filter(s => {
         if (!s || !s.score) return false;
-        const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
-        return isTweet ? s.score >= 3 : s.score >= 5;
+        return s.score >= 5;  // same bar for all; rewrite gave each a fair shot
       });
 
-    // Source-weight lookup from TRUSTED_SOURCES (by sourceUrl).
     const weightByUrl = {};
     for (const src of TRUSTED_SOURCES) weightByUrl[src.url] = src.weight || 5;
     const sourceWeightOf = s => weightByUrl[s.sourceUrl] || 5;
 
-    // Group by category, then dedup + blended-rank each category.
+    // Per category: dedup (kill repeats) but keep EVERYTHING approved,
+    // ordered NEWEST-FIRST. No cap, no cross-source ranking battle.
     const final = [];
     for (const cat of CATEGORIES) {
       const catStories = stories.filter(s => s.cat === cat);
-      const ranked = rankFeed(catStories, sourceWeightOf, {
+      // dedup via the ranker (clusters near-duplicates, picks best rep)
+      const deduped = rankFeed(catStories, sourceWeightOf, {
         cosThreshold: 0.85,
         simThreshold: 0.5,
         clusterByEmbedding,
       });
-      // Big-story rescue + noise cut: keep score>=6 always; a score-5 story
-      // survives only if 2+ independent sources corroborate it.
-      const kept = ranked
-        .filter(s => {
-          const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
-          if (isTweet) return s.score >= 3;            // trusted curated accounts
-          return (s.score >= 6) || (s._corroboration >= 2);
-        })
-        .slice(0, MAX_PER_CAT);
-      perCat[cat] = kept.length;
-      for (const s of kept) {
-        // Compact the embedding (round to 3dp) so the client can compute a
-        // personal taste-match without a huge payload. null if no vector.
-        var emb = Array.isArray(s.embedding)
-          ? s.embedding.map(function(x){ return Math.round(x * 1000) / 1000; })
-          : null;
+      // re-sort newest-first (rankFeed sorts by blended score; we want recency)
+      deduped.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+      perCat[cat] = deduped.length;
+      for (const s of deduped) {
         final.push({
           id:        s.id,
           title:     s.rewritten || s.title,
@@ -89,7 +77,6 @@ export default async function handler(req, res) {
           pubTs:     s.publishedAt,
           firstSeen: s.firstSeenAt,
           sources:   s._corroboration || 1,
-          emb:       emb,
         });
       }
     }
