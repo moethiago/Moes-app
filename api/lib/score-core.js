@@ -8,13 +8,25 @@
 const NOW_STR = () => new Date().toUTCString();
 
 const COMMON_RULES = `
-SCORING PHILOSOPHY:
-- Judge the underlying EVENT, not the headline's wording. Hedge words like "could", "set to", "linked", "in talks" do NOT auto-reject — many real confirmed stories are written that way.
-- Approve any genuine, concrete development from a trusted source: results, signings, sackings, injuries, official statements, confirmed talks, real reporting with a named subject.
-- Reject ONLY: pure opinion/columns, ratings/rankings listicles, "X reacts" reaction pieces, clickbait, vague speculation with no concrete subject, and obvious duplicates.
-- When unsure but the story names a real team/person and a real event, lean APPROVE (score 6-7).
-- Be generous with volume; be strict on junk.
-- A candidate whose source begins with "x.com/" is a tweet from a TRUSTED curated account. Be lenient with these: include them and give a score of at least 4 unless they are pure spam/ads. Still rewrite their title into a clean English headline.`;
+PROCESS — follow this ORDER for every candidate (critical):
+STEP 1 — REWRITE FIRST. Before judging, rewrite the headline into an objective, factual news-wire version. Strip clickbait, hype, emotional verbs, and vague hooks. Expose the REAL subject the original may be hiding. Translate any Arabic to English. Use ONLY facts present in the headline/source — never invent names, numbers, or outcomes.
+STEP 2 — THEN SCORE the REWRITTEN version (not the original). Judge whether the clean, factual story describes real news. This prevents good stories from being rejected just because their original headline was baity.
+STEP 3 — KEEP or REJECT based on the rewrite.
+
+REWRITING RULES:
+- Remove emotional/sensational verbs: "slams","destroys","blasts","shocking","devastating","erupts","breaks silence","in tears". State the plain action instead.
+- Un-hide vague hooks: "one insider says X" -> state X directly; "this changes everything" -> state what changed. If you cannot identify the real subject from the text, the rewrite is impossible -> REJECT.
+- Convert questions to statements only if the answer is in the text; otherwise REJECT.
+
+REJECT (score 0) AFTER attempting the rewrite if:
+- The rewritten story has no clear WHO / WHAT / WHEN — i.e. no concrete, named, verifiable development.
+- It is a personal anecdote with no hard news ("how I quit my job"), an opinion/column, a rating/ranking listicle, or a "fans react" piece.
+- The only content was the hook itself and nothing factual remains after stripping it.
+
+SCORING the clean rewrite:
+- Approve any genuine, concrete development from a trusted source: results, signings, sackings, injuries, official statements, confirmed talks, real reporting with a named subject. Hedge words ("could","set to","in talks") are fine if the event is real.
+- A candidate whose source begins with "x.com/" is a tweet from a TRUSTED curated account. Still rewrite it the same way and score it; reject only if nothing factual survives the rewrite.
+- Be generous with real developments; be strict on fluff that survives rewriting.`;
 
 const PROMPTS = {
   F1: () => `You are the F1 editor. Today is ${NOW_STR()}.${COMMON_RULES}
@@ -22,7 +34,7 @@ const PROMPTS = {
 8-9 = contract news, team principal/staff change, factory or technical news with substance
 6-7 = any concrete F1 development naming a driver/team (result, update, statement, confirmed talks)
 0-5 = REJECT: opinion columns, driver rating lists, "fans react", pure clickbait, contentless speculation
-Return stories scoring 6+. JSON: [{"idx":0,"title":"rewritten max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+For each story that survives: "title" = your objective factual REWRITE (max 12 words), "score" = score of that rewrite. JSON: [{"idx":0,"title":"...","score":8}]. Return [] if nothing survives the rewrite.`,
 
   FOOTBALL: () => `You are the Football editor. Today is ${NOW_STR()}.${COMMON_RULES}
 Top 5 European leagues + Champions League focus.
@@ -30,7 +42,7 @@ Top 5 European leagues + Champions League focus.
 8-9 = transfer/loan with player+club named, ban, big match result, managerial change
 6-7 = any concrete development naming a club/player (result, injury, lineup, confirmed talks, official statement)
 0-5 = REJECT: opinion/columns, player rating lists, "fans react", pure clickbait, vague rumour with no named subject
-Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+For each story that survives: "title" = your objective factual REWRITE (max 12 words), "score" = score of that rewrite. JSON: [{"idx":0,"title":"...","score":8}]. Return [] if nothing survives the rewrite.`,
 
   BAYERN: () => `You are the Bayern Munich editor. Today is ${NOW_STR()}.${COMMON_RULES}
 MUST relate to FC Bayern Munich men's first team.
@@ -38,7 +50,7 @@ MUST relate to FC Bayern Munich men's first team.
 8-9 = injury with timeline, big match result, contract confirmed
 6-7 = any concrete Bayern first-team development (result, lineup, statement, confirmed talks)
 0-5 = REJECT: women's team, U19/youth, Germany NT-only stories, opinion, clickbait
-Return stories scoring 6+. JSON: [{"idx":0,"title":"max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+For each story that survives: "title" = your objective factual REWRITE (max 12 words), "score" = score of that rewrite. JSON: [{"idx":0,"title":"...","score":8}]. Return [] if nothing survives the rewrite.`,
 
   SPL: () => `You are the Saudi Pro League editor. Today is ${NOW_STR()}.${COMMON_RULES}
 Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clear English. Judge them by the same bar as English ones; do NOT reject a story just because it was Arabic.
@@ -46,7 +58,7 @@ Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clea
 8-9 = result with title impact naming Al Hilal/Nassr/Ittihad/Ahli, sacking
 6-7 = any concrete development naming a specific SPL club (result, signing, statement, confirmed talks)
 0-5 = REJECT: opinion, clickbait, stories not naming a specific SPL team
-Return stories scoring 6+. JSON: [{"idx":0,"title":"English rewrite max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+For each story that survives: "title" = your objective factual English REWRITE (max 12 words), "score" = score of that rewrite. JSON: [{"idx":0,"title":"...","score":8}]. Return [] if nothing survives the rewrite.`,
 
   KSA: () => `You are the Saudi Arabia editor (economy, PIF, Vision 2030). Today is ${NOW_STR()}.${COMMON_RULES}
 Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clear English. Judge them by the same bar as English ones; do NOT reject a story just because it was Arabic.
@@ -54,7 +66,7 @@ Some headlines arrive in Arabic — TRANSLATE them and write the "title" in clea
 8-9 = PIF announcement with numbers, Vision 2030 milestone with data
 6-7 = any concrete economic/policy development (investment, initiative, deal, official announcement)
 0-5 = REJECT: pure opinion, religious/Hajj logistics, fluff tourism pieces with no substance, clickbait
-Return stories scoring 6+. JSON: [{"idx":0,"title":"English rewrite max 12 words","score":8}]. Return [] only if genuinely nothing qualifies.`,
+For each story that survives: "title" = your objective factual English REWRITE (max 12 words), "score" = score of that rewrite. JSON: [{"idx":0,"title":"...","score":8}]. Return [] if nothing survives the rewrite.`,
 };
 
 export async function scoreCategory(items, cat, apiKey) {
@@ -110,7 +122,7 @@ export async function scoreCategory(items, cat, apiKey) {
       // lower bar (>=3). Everything else keeps the normal bar (>=5).
       .filter(s => {
         const isTweet = (s.sourceUrl || '').indexOf('x.com/') !== -1;
-        return isTweet ? s.score >= 3 : s.score >= 5;
+        return s.score >= 5;  // same bar for all; rewrite gave each a fair shot
       });
 
     return { approved: scored, cost, inputTokens, outputTokens };
