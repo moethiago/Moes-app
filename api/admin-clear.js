@@ -48,11 +48,12 @@ export default async function handler(req, res) {
     } while (cursor !== '0' && guard < 100);
 
     const catKeys = (CATEGORIES || []).map(c => 'cat:' + c);
+    const unscoredKeys = (CATEGORIES || []).map(c => 'unscored:' + c);
 
     if (dry) {
       return res.status(200).json({
         ok: true, dryRun: true,
-        wouldDelete: { stories: storyKeys.length, catIndexes: catKeys.length },
+        wouldDelete: { stories: storyKeys.length, catIndexes: catKeys.length, unscoredSets: unscoredKeys.length },
       });
     }
 
@@ -62,12 +63,15 @@ export default async function handler(req, res) {
       const chunk = storyKeys.slice(i, i + 100);
       if (chunk.length) { await kvCall(['DEL', ...chunk]); deleted += chunk.length; }
     }
-    // 3. Clear category indexes
+    // 3. Clear category indexes AND the unscored queues (critical: otherwise
+    //    stale unscored IDs block fresh stories via dedup, and only some
+    //    categories re-populate).
     for (const ck of catKeys) await kvCall(['DEL', ck]);
+    for (const uk of unscoredKeys) await kvCall(['DEL', uk]);
 
     return res.status(200).json({
       ok: true,
-      cleared: { stories: deleted, catIndexes: catKeys.length },
+      cleared: { stories: deleted, catIndexes: catKeys.length, unscoredSets: unscoredKeys.length },
       next: 'Run /api/ingest now, then /api/score, to repopulate fresh.',
     });
   } catch (e) {
