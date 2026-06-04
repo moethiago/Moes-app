@@ -9,6 +9,10 @@ import { kvReady, kvGet, kvSet } from './lib/kv.js';
 import { embedText } from './lib/embed-core.js';
 import { fetchTwitterAccounts } from './lib/twitter-core.js';
 
+// Allow up to 60s (Vercel default is 10s). Ingest does many network calls.
+export const config = { maxDuration: 60 };
+
+
 const INGEST_MAX_AGE_H = 18;
 const STORY_TTL        = 48 * 3600; // 48h TTL on each story
 
@@ -57,62 +61,70 @@ export default async function handler(req, res) {
 
     console.log('Total candidates after dedup:', batch.length);
 
-    // 4. Check each story individually — is it already in KV?
+    // 4. Batch-check existence in PARALLEL (was sequential — caused timeouts)
     const now = Math.floor(Date.now() / 1000);
     let ingested = 0;
     let requeued = 0;
     const ingestedPerCat = {};
 
-    for (const it of batch) {
-      const key = 'story:' + it.id;
-      const existing = await kvCall(['GET', key]);
+    const existResults = await Promise.all(
+      batch.map(it => kvCall(['GET', 'story:' + it.id]).catch(() => null))
+    );
+
+    const newOnes = [];
+    const requeueOps = [];
+    for (let i = 0; i < batch.length; i++) {
+      const it = batch[i];
+      const existing = existResults[i];
       if (existing !== null && existing !== undefined) {
-        // Story exists. Normally we skip — BUT if it somehow has no score yet
-        // (e.g. category index / unscored set was cleared, or a prior score
-        // pass missed it), make sure it's back in the queue so it can't get
-        // orphaned. This prevents "stories in store but nothing to score".
+        // exists — re-queue if it's still unscored so it can't get orphaned
         try {
           const obj = typeof existing === 'string' ? JSON.parse(existing) : existing;
           if (obj && (obj.score === null || obj.score === undefined)) {
-            await kvCall(['ZADD', 'cat:' + obj.cat, String(obj.publishedAt || it.publishedAt), obj.id]);
-            await kvCall(['SADD', 'unscored:' + obj.cat, obj.id]);
+            requeueOps.push(['ZADD', 'cat:' + obj.cat, String(obj.publishedAt || it.publishedAt), obj.id]);
+            requeueOps.push(['SADD', 'unscored:' + obj.cat, obj.id]);
             requeued++;
           }
-        } catch (e) { /* ignore parse issues */ }
+        } catch (e) {}
         continue;
       }
+      newOnes.push(it);
+    }
 
-      // New story — embed its title for semantic dedup (best-effort)
-      let embedding = null;
-      try {
-        embedding = await embedText(it.title, process.env.GEMINI_API_KEY);
-      } catch (e) { /* embedding optional; dedup falls back to text */ }
+    // Hobby-tier functions are killed at ~10s. Embedding is the slow part,
+    // so cap how many NEW stories we process per run; the rest are caught
+    // on the next cron cycle (every 30 min). Freshest first.
+    const MAX_NEW_PER_RUN = 25;
+    newOnes.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+    const deferred = Math.max(0, newOnes.length - MAX_NEW_PER_RUN);
+    const toProcess = newOnes.slice(0, MAX_NEW_PER_RUN);
 
+    // Embed all NEW stories in PARALLEL (the slow part — was one-by-one)
+    const embeddings = await Promise.all(
+      toProcess.map(it =>
+        embedText(it.title, process.env.GEMINI_API_KEY).catch(() => null)
+      )
+    );
+
+    // Build all writes, then fire them together
+    const writeOps = [...requeueOps];
+    const setPromises = [];
+    for (let i = 0; i < toProcess.length; i++) {
+      const it = toProcess[i];
       const storyObj = {
-        id:          it.id,
-        title:       it.title,
-        url:         it.url,
-        sourceUrl:   it.sourceUrl,
-        cat:         it.cat,
-        publishedAt: it.publishedAt,
-        firstSeenAt: now,
-        score:       null,    // unscored
-        rewritten:   null,
-        embedding:   embedding,  // number[] | null
+        id: it.id, title: it.title, url: it.url, sourceUrl: it.sourceUrl,
+        cat: it.cat, publishedAt: it.publishedAt, firstSeenAt: now,
+        score: null, rewritten: null, embedding: embeddings[i],
       };
-
-      // Write the story
-      await kvSet(key, storyObj, STORY_TTL);
-
-      // Add to category sorted set (score = publishedAt for time ordering)
-      await kvCall(['ZADD', 'cat:' + it.cat, String(it.publishedAt), it.id]);
-
-      // Add to unscored set for the score worker
-      await kvCall(['SADD', 'unscored:' + it.cat, it.id]);
-
+      setPromises.push(kvSet('story:' + it.id, storyObj, STORY_TTL));
+      writeOps.push(['ZADD', 'cat:' + it.cat, String(it.publishedAt), it.id]);
+      writeOps.push(['SADD', 'unscored:' + it.cat, it.id]);
       ingested++;
       ingestedPerCat[it.cat] = (ingestedPerCat[it.cat] || 0) + 1;
     }
+    await Promise.all(setPromises);
+    // fire index + queue ops in parallel batches
+    await Promise.all(writeOps.map(op => kvCall(op).catch(() => null)));
 
     // 5. Trim old stories from sorted sets (older than 48h, matching story TTL)
     const cutoff = now - 48 * 3600;
@@ -125,6 +137,7 @@ export default async function handler(req, res) {
       phase:      'ingest',
       ingested,
       requeued,
+      deferred,
       candidates: batch.length,
       perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
@@ -135,6 +148,7 @@ export default async function handler(req, res) {
       phase:      'ingest',
       ingested,
       requeued,
+      deferred,
       candidates: batch.length,
       perCat:     ingestedPerCat,
       durationMs: Date.now() - started,
