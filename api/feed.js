@@ -8,7 +8,6 @@ import { kvReady, kvPipeline, zrevrange } from './lib/kv.js';
 import { rankFeed } from './lib/rank-core.js';
 import { clusterByEmbedding } from './lib/embed-core.js';
 
-const MAX_PER_CAT = 12;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -21,9 +20,12 @@ export default async function handler(req, res) {
     // then fetch the story objects, then filter to those with score >= 7
     const perCat = {};
 
-    // Fetch all category IDs in parallel
+    // Fetch all category IDs in parallel.
+    // Read up to 200 per category (was 20 — which silently bumped still-fresh
+    // stories out of view within hours once newer ones arrived). The 48h TTL +
+    // trim are the only things that should remove a story, not a display cap.
     const idsPerCat = await Promise.all(
-      CATEGORIES.map(c => zrevrange('cat:' + c, 0, 19))
+      CATEGORIES.map(c => zrevrange('cat:' + c, 0, 199))
     );
 
     // Build a flat list of GET commands for one pipeline
