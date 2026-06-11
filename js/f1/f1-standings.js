@@ -16,10 +16,10 @@ function switchStandingsView(view) {
 
 function renderStandingsView() {
   if (currentStandingsView === 'driver') {
-    renderDriverStandings(F1_STANDINGS_FALLBACK, 'Fallback · R4');
+    renderDriverStandings(F1_STANDINGS_FALLBACK, 'Fallback · R6');
     loadLiveDriverStandings();
   } else {
-    renderConstructorStandings(F1_CONSTRUCTORS_FALLBACK, 'Fallback · R4');
+    renderConstructorStandings(F1_CONSTRUCTORS_FALLBACK, 'Fallback · R6');
     loadLiveConstructorStandings();
   }
 }

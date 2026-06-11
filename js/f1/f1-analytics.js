@@ -48,7 +48,7 @@ async function renderTitleMath() {
   var sl = data && data.MRData && data.MRData.StandingsTable && data.MRData.StandingsTable.StandingsLists[0];
   if (!sl) return;
   var round = parseInt(sl.round);
-  var totalRounds = 24; // 2026 has 24 rounds (22 GPs + sprint points handled separately)
+  var totalRounds = (typeof F1_CALENDAR !== 'undefined') ? F1_CALENDAR.length : 24; // auto from calendar (22 GPs + sprint points handled separately)
   var roundsLeft = Math.max(0, totalRounds - round);
   var maxLeft = roundsLeft * RACES_LEFT_PTS;
   var ds = sl.DriverStandings;

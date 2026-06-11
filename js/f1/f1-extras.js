@@ -58,7 +58,7 @@ async function renderGapAndPermutations() {
   var sl = data && data.MRData && data.MRData.StandingsTable && data.MRData.StandingsTable.StandingsLists[0];
   if (!sl || sl.DriverStandings.length < 2) return;
   var round = parseInt(sl.round);
-  var TOTAL_ROUNDS = 24;            // 2026 calendar rounds
+  var TOTAL_ROUNDS = (typeof F1_CALENDAR !== 'undefined') ? F1_CALENDAR.length : 24;
   var roundsLeft = Math.max(0, TOTAL_ROUNDS - round);
   var maxPerRound = 25;            // win = 25 (sprint points extra, ignored for a clean bound)
   var ptsAvailable = roundsLeft * maxPerRound;
