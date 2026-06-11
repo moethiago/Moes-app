@@ -8,18 +8,21 @@ var WC_FEED = 'https://raw.githubusercontent.com/openfootball/worldcup.json/mast
 var _wcData = null;       // raw {name, matches:[]}
 var _wcLoaded = false;
 var _wcLoading = null;
+var _wcLoadedAt = 0;
+var WC_TTL = 10 * 60 * 1000; // re-fetch after 10 min (file updates daily-ish)
 
 function wcLoad() {
-  if (_wcLoaded) return Promise.resolve(_wcData);
+  if (_wcLoaded && (Date.now() - _wcLoadedAt) < WC_TTL) return Promise.resolve(_wcData);
   if (_wcLoading) return _wcLoading;
   _wcLoading = new Promise(function(resolve) {
     var done = false;
-    var t = setTimeout(function(){ if(!done){done=true;resolve(null);} }, 9000);
-    fetch(WC_FEED).then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
+    var t = setTimeout(function(){ if(!done){done=true;_wcLoading=null;resolve(_wcData);} }, 9000);
+    fetch(WC_FEED + '?t=' + Math.floor(Date.now()/600000)).then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
       if (done) return; done = true; clearTimeout(t);
-      _wcData = data; _wcLoaded = !!data;
-      resolve(data);
-    }).catch(function(){ if(!done){done=true;clearTimeout(t);resolve(null);} });
+      if (data) { _wcData = data; _wcLoaded = true; _wcLoadedAt = Date.now(); }
+      _wcLoading = null;
+      resolve(_wcData);
+    }).catch(function(){ if(!done){done=true;clearTimeout(t);_wcLoading=null;resolve(_wcData);} });
   });
   return _wcLoading;
 }

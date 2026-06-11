@@ -29,7 +29,7 @@ async function fetchLiveScores() {
     clearTimeout(timer);
     if (!res.ok) return [];
     var data = await res.json();
-    return data.live || [];
+    return data.today || data.live || [];
   } catch(e) { return []; }
 }
 
@@ -101,5 +101,5 @@ function buildFootballSection() {
     if (live.length) {
       overlayLiveScores(live);
     }
-  }, 90000);
+  }, 120000);
 }
