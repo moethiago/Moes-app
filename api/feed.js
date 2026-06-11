@@ -3,10 +3,10 @@
 // Frontend calls this on page load
 // ============================================================
 
-import { CATEGORIES, TRUSTED_SOURCES } from './lib/sources.js';
-import { kvReady, kvPipeline, zrevrange } from './lib/kv.js';
-import { rankFeed } from './lib/rank-core.js';
-import { clusterByEmbedding } from './lib/embed-core.js';
+import { CATEGORIES, TRUSTED_SOURCES } from './_lib/sources.js';
+import { kvReady, kvPipeline, zrevrange } from './_lib/kv.js';
+import { rankFeed } from './_lib/rank-core.js';
+import { clusterByEmbedding } from './_lib/embed-core.js';
 
 
 export default async function handler(req, res) {

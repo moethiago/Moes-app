@@ -3,11 +3,11 @@
 // NO Claude calls. Safe to run every 30 minutes.
 // ============================================================
 
-import { TRUSTED_SOURCES, TWITTER_ACCOUNTS, CATEGORIES, assignCategory } from './lib/sources.js';
-import { fetchSource, storyId } from './lib/ingest-core.js';
-import { kvReady, kvGet, kvSet } from './lib/kv.js';
-import { embedText } from './lib/embed-core.js';
-import { fetchTwitterAccounts } from './lib/twitter-core.js';
+import { TRUSTED_SOURCES, TWITTER_ACCOUNTS, CATEGORIES, assignCategory } from './_lib/sources.js';
+import { fetchSource, storyId } from './_lib/ingest-core.js';
+import { kvReady, kvGet, kvSet } from './_lib/kv.js';
+import { embedText } from './_lib/embed-core.js';
+import { fetchTwitterAccounts } from './_lib/twitter-core.js';
 
 // Allow up to 60s (Vercel default is 10s). Ingest does many network calls.
 export const config = { maxDuration: 60 };

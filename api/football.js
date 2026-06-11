@@ -14,8 +14,8 @@
 // + live polling (1/min only while matches are live) ≈ 60-80/day. Fits.
 // ============================================================
 
-import { cached } from './lib/cache.js';
-import { LEAGUES } from './lib/leagues.js';
+import { cached } from './_lib/cache.js';
+import { LEAGUES } from './_lib/leagues.js';
 
 const TTL_SCHEDULE  = 6 * 3600;   // 6h  — today's fixture list (times/teams)
 const TTL_LIVE      = 60;         // 60s — live scores (shared by all users)
@@ -90,21 +90,29 @@ export default async function handler(req, res) {
   const today  = new Date().toISOString().split('T')[0];
 
   try {
-    // ── LIVE: one upstream call for EVERYTHING currently live ──────────
+    // ── LIVE: one upstream call for ALL of today's matches ─────────────
+    // /fixtures?date=today returns live + finished + upcoming for the whole
+    // world in ONE request. We filter to tracked leagues. This means scores
+    // of finished matches update too (live=all would miss them).
     if (type === 'live') {
       const { data, fromCache, ageSeconds } = await cached(
-        'cache:football:live-all',
-        TTL_LIVE,
+        'cache:football:today-all:' + today,
+        150, // 2.5 min — frontend polls every 2 min, server dedupes
         async () => {
-          const ld = await fetchFromAPI('/fixtures?live=all&timezone=Asia/Riyadh', apiKey);
+          const ld = await fetchFromAPI(`/fixtures?date=${today}&timezone=Asia/Riyadh`, apiKey);
           const all = (ld.response || []).map(simplifyFixture)
-            // keep only matches in leagues we actually track
-            .filter(m => m.leagueKey);
-          return { live: all, fetchedAt: Date.now() };
+            .filter(m => m.leagueKey); // only leagues we track (incl. worldcup)
+          const liveStatuses = ['1H','2H','HT','ET','BT','P','LIVE'];
+          return {
+            live:     all.filter(m => liveStatuses.includes(m.status)),
+            finished: all.filter(m => ['FT','AET','PEN'].includes(m.status)),
+            today:    all,
+            fetchedAt: Date.now(),
+          };
         }
       );
       res.setHeader('X-Cache', fromCache ? 'HIT-' + ageSeconds + 's' : 'MISS');
-      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+      res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=180');
       return res.status(200).json(data);
     }
 

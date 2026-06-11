@@ -3,9 +3,9 @@
 // Run every 2 hours (or trigger manually from diagnostic page)
 // ============================================================
 
-import { CATEGORIES } from './lib/sources.js';
-import { scoreCategory } from './lib/score-core.js';
-import { kvReady, kvPipeline, lpush, ltrim } from './lib/kv.js';
+import { CATEGORIES } from './_lib/sources.js';
+import { scoreCategory } from './_lib/score-core.js';
+import { kvReady, kvPipeline, lpush, ltrim } from './_lib/kv.js';
 
 const MAX_CANDIDATES_PER_CAT = 25;
 

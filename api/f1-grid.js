@@ -5,7 +5,7 @@
 // positions including any penalties applied after qualifying.
 // ============================================================
 
-import { cached, TTL } from './lib/cache.js';
+import { cached, TTL } from './_lib/cache.js';
 
 const OPENF1_BASE = 'https://api.openf1.org/v1';
 

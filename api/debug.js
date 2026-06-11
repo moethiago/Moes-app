@@ -9,8 +9,8 @@
 //   5. Live story sample — how many in KV actually have embeddings?
 // ============================================================
 
-import { embedText } from './lib/embed-core.js';
-import { TWITTER_ACCOUNTS } from './lib/sources.js';
+import { embedText } from './_lib/embed-core.js';
+import { TWITTER_ACCOUNTS } from './_lib/sources.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
