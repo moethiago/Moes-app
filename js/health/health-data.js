@@ -3,7 +3,7 @@
 // Edit TARGETS to change your daily goals
 // ============================================================
 
-var TARGETS = { kcal:2500, prot:180, carb:280, fat:70 };
+var TARGETS = { kcal:2000, prot:140, carb:210, fat:65 };
 
 function loadFoodLog() {
   try { return JSON.parse(localStorage.getItem('foodLog') || '[]'); } catch(e) { return []; }
