@@ -1,43 +1,8 @@
 {
   "functions": {
-    "api/ingest.js": {
-      "memory": 1024,
-      "maxDuration": 30,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/score.js": {
-      "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/feed.js": {
-      "memory": 256,
-      "maxDuration": 10,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/stats.js": {
-      "memory": 256,
-      "maxDuration": 10,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/f1-results.js": {
-      "memory": 512,
-      "maxDuration": 30,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/f1-grid.js": {
-      "memory": 512,
-      "maxDuration": 30,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/football.js": {
-      "memory": 128,
-      "maxDuration": 10,
-      "includeFiles": "api/_lib/**"
-    },
-    "api/deploy.js": {
-      "memory": 256,
-      "maxDuration": 15
-    }
+    "api/ingest.js": { "maxDuration": 30 },
+    "api/score.js":  { "maxDuration": 60 },
+    "api/f1-results.js": { "maxDuration": 30 },
+    "api/f1-grid.js":    { "maxDuration": 30 }
   }
 }
