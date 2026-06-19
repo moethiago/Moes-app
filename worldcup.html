@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Road to 32 — World Cup 2026 Qualification Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pitch:#0a1410; --panel:#0f1f17; --panel2:#15291e; --raise:#1b3327;
+    --line:rgba(220,255,230,.09); --chalk:rgba(255,255,255,.55);
+    --text:#eaf2ec; --muted:#7e9c8a; --muted2:#5e7867;
+    --advance:#1fd07a; --advance-dim:rgba(31,208,122,.14);
+    --bubble:#ffc23d; --bubble-dim:rgba(255,194,61,.13);
+    --out:#ff6b6b; --out-dim:rgba(255,107,107,.12);
+    --shadow:0 18px 50px -20px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(31,208,122,.07), transparent 60%),
+      var(--pitch);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    line-height:1.45;
+    padding-bottom:64px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px}
+
+  /* Masthead — scoreboard */
+  header.mast{
+    padding:26px 0 18px;border-bottom:1px solid var(--line);
+    position:relative;overflow:hidden;
+  }
+  .mast .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.32em;
+    text-transform:uppercase;color:var(--advance);margin:0 0 6px;
+  }
+  .mast h1{
+    font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.01em;
+    font-size:clamp(40px,12vw,76px);line-height:.86;margin:0;text-transform:uppercase;
+  }
+  .mast h1 .lo{color:var(--muted);}
+  .mast .sub{color:var(--muted);font-size:13.5px;margin:10px 0 0;max-width:54ch}
+  .mast .sub b{color:var(--text);font-weight:600}
+
+  /* Tabs */
+  nav.tabs{position:sticky;top:0;z-index:40;background:rgba(10,20,16,.86);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-bottom:14px}
+  nav.tabs .wrap{display:flex;gap:4px;padding-top:8px;padding-bottom:8px}
+  .tab{
+    flex:1;appearance:none;border:0;background:transparent;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.14em;
+    text-transform:uppercase;padding:9px 6px;border-radius:9px;cursor:pointer;
+    transition:background .18s,color .18s;
+  }
+  .tab[aria-selected="true"]{background:var(--raise);color:var(--text)}
+  .tab:focus-visible{outline:2px solid var(--advance);outline-offset:2px}
+
+  /* Group pills */
+  .pills{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:0 0 16px}
+  .pill{
+    appearance:none;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);font-family:'Anton',sans-serif;font-size:20px;
+    padding:9px 0;border-radius:10px;cursor:pointer;transition:.16s;line-height:1}
+  .pill small{display:block;font-family:'IBM Plex Mono',monospace;font-size:8.5px;
+    letter-spacing:.08em;color:var(--muted2);margin-top:3px}
+  .pill[aria-pressed="true"]{border-color:var(--advance);color:var(--text);
+    background:linear-gradient(180deg,var(--advance-dim),transparent);box-shadow:var(--shadow)}
+  .pill:focus-visible{outline:2px solid var(--advance);outline-offset:2px}
+
+  section.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px;margin:0 0 16px;box-shadow:var(--shadow)}
+  .card h2{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;
+    letter-spacing:.02em;font-size:15px;margin:0 0 2px;display:flex;align-items:center;gap:10px}
+  .card h2 .gtag{font-size:30px;color:var(--advance);line-height:.8}
+  .card .hint{color:var(--muted);font-size:12px;margin:0 0 12px}
+
+  /* Standings table */
+  .tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  .tbl th{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted2);font-weight:500;text-align:right;padding:4px 4px 8px}
+  .tbl th.l{text-align:left}
+  .tbl td{padding:9px 4px;border-top:1px solid var(--line);font-size:13.5px;text-align:right;
+    font-family:'IBM Plex Mono',monospace}
+  .tbl td.l{text-align:left;font-family:'Inter',sans-serif}
+  .tbl tr.team{cursor:pointer;transition:background .15s}
+  .tbl tr.team:hover,.tbl tr.team.sel{background:var(--panel2)}
+  .pos{display:inline-flex;width:20px;justify-content:center;color:var(--muted);font-size:12px}
+  .tname{font-weight:600;font-size:14.5px}
+  .tcode{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10.5px;margin-left:7px;letter-spacing:.06em}
+  .pts{font-weight:600;color:var(--text)}
+  .gd-pos{color:var(--advance)} .gd-neg{color:var(--out)}
+  .chip{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:.06em;
+    padding:2px 6px;border-radius:5px;margin-left:7px;vertical-align:middle}
+  .chip.q{background:var(--advance-dim);color:var(--advance)}
+  .chip.e{background:var(--out-dim);color:var(--out)}
+  .chip.l{background:var(--bubble-dim);color:var(--bubble)}
+
+  /* cutline — the signature element */
+  tr.cutline td{padding:0;border:0}
+  .cut{position:relative;height:0;margin:2px 0}
+  .cut .rule{height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--advance),transparent);
+    box-shadow:0 0 14px rgba(31,208,122,.6);animation:pulse 3.4s ease-in-out infinite}
+  .cut .lbl{position:absolute;top:-7px;right:0;background:var(--pitch);padding:0 7px;
+    font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.14em;color:var(--advance);text-transform:uppercase}
+  @keyframes pulse{0%,100%{opacity:.65}50%{opacity:1}}
+
+  /* Fixtures */
+  .fx-h{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted2);margin:18px 0 9px;display:flex;justify-content:space-between;align-items:baseline}
+  .fx-h .n{color:var(--muted)}
+  .md{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--muted2);
+    text-transform:uppercase;margin:14px 0 7px}
+  .fx{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+  .fx.played{opacity:.92}
+  .fx .side{flex:1;display:flex;align-items:center;gap:6px;font-size:13px;min-width:0}
+  .fx .side.b{justify-content:flex-end;text-align:right}
+  .fx .side .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+  .fx .cd{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted)}
+  .scorebox{display:flex;align-items:center;gap:4px}
+  .scorebox input{width:34px;height:34px;text-align:center;background:var(--panel2);
+    border:1px solid var(--line);border-radius:8px;color:var(--text);
+    font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;-moz-appearance:textfield}
+  .scorebox input::-webkit-outer-spin-button,.scorebox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .scorebox input:focus{outline:2px solid var(--advance);outline-offset:1px;border-color:transparent}
+  .scorebox .dash{color:var(--muted2)}
+  .scorebox input.empty{color:var(--muted2);border-style:dashed}
+  .wdl{display:flex;gap:3px;margin-top:6px;padding-left:0}
+  .wdl button{appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.04em;padding:4px 7px;border-radius:6px;cursor:pointer;transition:.14s}
+  .wdl button:hover{color:var(--text);border-color:var(--chalk)}
+  .wdl button.on{background:var(--raise);color:var(--text);border-color:transparent}
+  .wdl button.clr{margin-left:auto}
+  .fxrow{display:block}
+
+  /* Verdict */
+  .verdict{margin-top:6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .verdict .vhead{padding:14px 15px;display:flex;align-items:center;gap:12px}
+  .verdict .vhead .big{font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+  .verdict .vhead .who{font-size:12px;color:var(--muted);margin-top:3px}
+  .verdict.through .vhead{background:linear-gradient(180deg,var(--advance-dim),transparent);border-bottom:1px solid var(--line)}
+  .verdict.through .big{color:var(--advance)}
+  .verdict.out .vhead{background:linear-gradient(180deg,var(--out-dim),transparent);border-bottom:1px solid var(--line)}
+  .verdict.out .big{color:var(--out)}
+  .verdict.live .vhead{background:linear-gradient(180deg,var(--bubble-dim),transparent);border-bottom:1px solid var(--line)}
+  .verdict.live .big{color:var(--bubble)}
+  .vbody{padding:13px 15px}
+  .vline{display:flex;gap:9px;align-items:flex-start;font-size:13px;padding:5px 0;color:var(--text)}
+  .vline .mk{flex:none;width:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:1px}
+  .vline.good .mk{color:var(--advance)} .vline.warn .mk{color:var(--bubble)} .vline.bad .mk{color:var(--out)} .vline.info .mk{color:var(--muted)}
+  .vstat{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+  .vstat .s{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted)}
+  .vstat .s b{display:block;color:var(--text);font-size:16px;font-weight:600;margin-top:2px}
+  .closebar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .ghost{appearance:none;background:transparent;border:1px solid var(--line);color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;padding:6px 11px;border-radius:8px;cursor:pointer;text-transform:uppercase}
+  .ghost:hover{color:var(--text);border-color:var(--chalk)}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .toolbar .ghost{flex:1;text-align:center}
+
+  /* Third place race */
+  .t3 td.grp{color:var(--bubble);font-weight:600}
+  tr.cutline.amber .rule{background:linear-gradient(90deg,transparent,var(--bubble),transparent);box-shadow:0 0 14px rgba(255,194,61,.55)}
+  tr.cutline.amber .lbl{color:var(--bubble)}
+
+  details.rules{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 16px;margin-bottom:16px}
+  details.rules summary{cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--advance);padding:12px 0;list-style:none}
+  details.rules summary::-webkit-details-marker{display:none}
+  details.rules summary::after{content:'+';float:right;color:var(--muted)}
+  details.rules[open] summary::after{content:'–'}
+  details.rules .rc{font-size:13px;color:var(--muted);padding-bottom:14px}
+  details.rules .rc b{color:var(--text)}
+  details.rules ol{margin:8px 0;padding-left:20px}
+  details.rules li{margin:3px 0}
+  .foot{color:var(--muted2);font-size:11px;text-align:center;font-family:'IBM Plex Mono',monospace;
+    letter-spacing:.05em;line-height:1.7;padding:8px 0 0}
+  .hidden{display:none!important}
+  @media (prefers-reduced-motion:reduce){.cut .rule{animation:none}}
+  @media (max-width:420px){.pills{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <p class="eyebrow">FIFA World Cup 2026 · 48 teams · 12 groups</p>
+    <h1>Road to <span class="lo">32</span></h1>
+    <p class="sub">Set the scores, see who's <b>through</b>. Top two in every group reach the Round of 32, plus the <b>8 best third-placed teams</b>. Tap any team for its exact qualification path.</p>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap">
+    <button class="tab" id="tab-groups" role="tab" aria-selected="true" onclick="setTab('groups')">Groups</button>
+    <button class="tab" id="tab-third" role="tab" aria-selected="false" onclick="setTab('third')">Third-place race</button>
+    <button class="tab" id="tab-rules" role="tab" aria-selected="false" onclick="setTab('rules')">How it works</button>
+  </div>
+</nav>
+
+<main class="wrap">
+  <!-- GROUPS VIEW -->
+  <div id="view-groups">
+    <div class="pills" id="pills"></div>
+    <div class="toolbar">
+      <button class="ghost" onclick="resetGroup()">Reset group to live</button>
+      <button class="ghost" onclick="simulateGroup()">Fill remaining at random</button>
+      <button class="ghost" onclick="clearRemaining()">Clear remaining</button>
+    </div>
+    <section class="card" id="group-card"></section>
+    <section class="card" id="verdict-card" class="hidden"></section>
+  </div>
+
+  <!-- THIRD PLACE VIEW -->
+  <div id="view-third" class="hidden">
+    <section class="card" id="third-card"></section>
+  </div>
+
+  <!-- RULES VIEW -->
+  <div id="view-rules" class="hidden">
+    <section class="card">
+      <h2>The format</h2>
+      <p class="hint" style="font-size:13.5px;color:var(--text)">48 teams, 12 groups of four (A–L). Every team plays the other three once. The top two in each group advance automatically — that's 24 teams — and the <b style="color:var(--bubble)">8 best third-placed teams</b> across all 12 groups fill the last spots, for 32 teams in the Round of 32.</p>
+      <div style="margin-top:14px">
+        <p class="md">Tie-breakers within a group (2026 rules)</p>
+        <p class="hint" style="color:var(--text);font-size:13px">When teams are level on points, FIFA now checks head-to-head <em>before</em> overall goal difference — a change from 2022. Drawing of lots is gone.</p>
+        <ol style="font-size:13px;color:var(--muted);padding-left:20px;line-height:1.9">
+          <li>Points</li>
+          <li><b style="color:var(--text)">Head-to-head</b> points (among the tied teams)</li>
+          <li>Head-to-head goal difference</li>
+          <li>Head-to-head goals scored</li>
+          <li>Overall goal difference</li>
+          <li>Overall goals scored</li>
+          <li>Team conduct score (cards)</li>
+          <li>FIFA World Ranking</li>
+        </ol>
+        <p class="md">Ranking the third-placed teams</p>
+        <p class="hint" style="color:var(--text);font-size:13px">They're in different groups, so no head-to-head: points → goal difference → goals scored → conduct → FIFA ranking. The top 8 go through.</p>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Reading the engine</h2>
+      <p class="vline good"><span class="mk">●</span><span>Green <b>cutline</b> = the Round-of-32 line. Above it you're through.</span></p>
+      <p class="vline warn"><span class="mk">●</span><span>Amber = third place — alive, but it depends on the other groups.</span></p>
+      <p class="vline bad"><span class="mk">●</span><span>The <b>Q</b> / <b>OUT</b> chips mean mathematically certain, given the scores entered so far.</span></p>
+      <p class="vline info"><span class="mk">●</span><span>Scenario counts come from playing out every win/draw/loss combination of the games left in that group. Where a result hangs on goal difference, the engine flags it.</span></p>
+    </section>
+  </div>
+</main>
+
+<p class="foot">
+  Seeded with Matchday-1 results, as of June 18 2026 · a few scores are approximate — tap to correct<br>
+  Built for exploring scenarios. Not affiliated with FIFA.
+</p>
+
+<script>
+/* ---------------------------------------------------------------------------
+   DATA  — groups in fixture order; [code, name, fifaRank(lower=stronger)]
+   Fixture generation per group of 4 teams t0..t3:
+     MD1: t0–t1 (slot a), t2–t3 (slot b)
+     MD2: t0–t2 (a),      t1–t3 (b)
+     MD3: t0–t3 (a),      t1–t2 (b)
+--------------------------------------------------------------------------- */
+const GROUPS = {
+  A:[['MEX','Mexico',15],['RSA','South Africa',39],['KOR','South Korea',20],['CZE','Czechia',33]],
+  B:[['SUI','Switzerland',16],['QAT','Qatar',36],['CAN','Canada',24],['BIH','Bosnia & H.',42]],
+  C:[['SCO','Scotland',30],['HAI','Haiti',45],['BRA','Brazil',5],['MAR','Morocco',11]],
+  D:[['USA','United States',14],['PAR','Paraguay',31],['AUS','Australia',23],['TUR','Türkiye',29]],
+  E:[['GER','Germany',9],['CUW','Curaçao',47],['CIV','Côte d\u2019Ivoire',25],['ECU','Ecuador',21]],
+  F:[['SWE','Sweden',28],['TUN','Tunisia',32],['NED','Netherlands',6],['JPN','Japan',17]],
+  G:[['BEL','Belgium',8],['EGY','Egypt',27],['IRN','Iran',19],['NZL','New Zealand',34]],
+  H:[['ESP','Spain',2],['CPV','Cabo Verde',46],['KSA','Saudi Arabia',37],['URU','Uruguay',13]],
+  I:[['NOR','Norway',26],['IRQ','Iraq',38],['FRA','France',3],['SEN','Senegal',18]],
+  J:[['ARG','Argentina',1],['ALG','Algeria',43],['AUT','Austria',22],['JOR','Jordan',41]],
+  K:[['COD','DR Congo',35],['POR','Portugal',7],['COL','Colombia',12],['UZB','Uzbekistan',40]],
+  L:[['ENG','England',4],['CRO','Croatia',10],['GHA','Ghana',44],['PAN','Panama',48]]
+};
+
+/* seeded results: matchId -> [goalsHome, goalsAway].  Exact where known; GD-consistent otherwise. */
+const SEEDS = {
+  A1a:[2,0], A1b:[1,0],
+  B1a:[1,1], B1b:[1,1],
+  C1a:[1,0], C1b:[1,1],
+  D1a:[3,0], D1b:[2,0],
+  E1a:[7,1], E1b:[1,0],
+  F1a:[5,1], F1b:[2,2],
+  G1a:[1,1], G1b:[2,2],
+  H1a:[0,0], H1b:[1,1],
+  I1a:[3,0], I1b:[2,0],
+  J1a:[3,0], J1b:[2,0],
+  K1a:[1,1],            // Colombia v Uzbekistan (K1b) not yet played
+  L1a:[2,0]             // Ghana v Panama (L1b) not yet played
+};
+
+const TEAMS = {};            // code -> {code,name,rank,group}
+const MATCHES = {};          // group -> [ {id,md,slot,home,away,gh,ga,played} ]
+const PAIRS = [[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]];  // md1a,md1b,md2a,md2b,md3a,md3b
+const SLOTS = ['1a','1b','2a','2b','3a','3b'];
+
+function buildData(){
+  for(const g in GROUPS){
+    GROUPS[g].forEach(t=>{ TEAMS[t[0]]={code:t[0],name:t[1],rank:t[2],group:g}; });
+    MATCHES[g]=PAIRS.map((p,i)=>{
+      const id=g+SLOTS[i];
+      const seed=SEEDS[id];
+      return {
+        id, md:Math.floor(i/2)+1, slot:SLOTS[i],
+        home:GROUPS[g][p[0]][0], away:GROUPS[g][p[1]][0],
+        gh: seed?seed[0]:null, ga: seed?seed[1]:null, played: !!seed
+      };
+    });
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   ENGINE
+--------------------------------------------------------------------------- */
+// Build per-team stats for a group from a set of matches (each must have gh/ga numbers if counted)
+function statsFrom(group, matchList){
+  const s={};
+  GROUPS[group].forEach(t=>{ s[t[0]]={code:t[0],P:0,W:0,D:0,L:0,GF:0,GA:0}; });
+  matchList.forEach(m=>{
+    if(m.gh==null||m.ga==null) return;
+    const h=s[m.home], a=s[m.away];
+    h.P++; a.P++; h.GF+=m.gh; h.GA+=m.ga; a.GF+=m.ga; a.GA+=m.gh;
+    if(m.gh>m.ga){h.W++;a.L++;} else if(m.gh<m.ga){a.W++;h.L++;} else {h.D++;a.D++;}
+  });
+  for(const c in s){ const x=s[c]; x.Pts=x.W*3+x.D; x.GD=x.GF-x.GA; x.rank=TEAMS[c].rank; }
+  return s;
+}
+
+// head-to-head record of `code` against the set `cohort`, using only matches where both are in cohort
+function h2h(code, cohort, matchList){
+  let pts=0,gf=0,ga=0;
+  matchList.forEach(m=>{
+    if(m.gh==null||m.ga==null) return;
+    if(!cohort.has(m.home)||!cohort.has(m.away)) return;
+    if(m.home!==code&&m.away!==code) return;
+    const isHome=m.home===code;
+    const mine=isHome?m.gh:m.ga, theirs=isHome?m.ga:m.gh;
+    gf+=mine; ga+=theirs;
+    if(mine>theirs)pts+=3; else if(mine===theirs)pts+=1;
+  });
+  return {pts,gd:gf-ga,gf};
+}
+
+// rank a group's teams (array of stat objects) applying 2026 tie-breakers
+function rankGroup(statsObj, matchList){
+  const arr=Object.values(statsObj);
+  // precompute cohorts by equal points
+  const byPts={};
+  arr.forEach(t=>{ (byPts[t.Pts]=byPts[t.Pts]||[]).push(t.code); });
+  arr.forEach(t=>{
+    const cohort=new Set(byPts[t.Pts]);
+    if(cohort.size>1){ t._h=h2h(t.code,cohort,matchList); }
+    else { t._h={pts:0,gd:0,gf:0}; }
+  });
+  arr.sort((x,y)=>{
+    if(y.Pts!==x.Pts) return y.Pts-x.Pts;
+    if(y._h.pts!==x._h.pts) return y._h.pts-x._h.pts;
+    if(y._h.gd!==x._h.gd) return y._h.gd-x._h.gd;
+    if(y._h.gf!==x._h.gf) return y._h.gf-x._h.gf;
+    if(y.GD!==x.GD) return y.GD-x.GD;
+    if(y.GF!==x.GF) return y.GF-x.GF;
+    return x.rank-y.rank;             // last resort: FIFA ranking
+  });
+  arr.forEach((t,i)=>t.pos=i+1);
+  return arr;
+}
+
+// representative scoreline for an outcome on a remaining match
+function applyOutcome(m,outcome){
+  if(outcome==='a'){m.gh=1;m.ga=0;} else if(outcome==='b'){m.gh=0;m.ga=1;} else {m.gh=0;m.ga=0;}
+}
+
+// Enumerate every win/draw/loss combination of the unplayed matches in a group.
+// Returns analysis for `focus` team.
+function analyse(group, focus){
+  const base=MATCHES[group];
+  const played=base.filter(m=>m.played);
+  const remaining=base.filter(m=>!m.played);
+  const n=remaining.length;
+  const total=Math.pow(3,n);
+
+  const posCount={1:0,2:0,3:0,4:0};
+  let best=4, worst=1;
+  // conditioned on focus team's own remaining results
+  const ownIdx=remaining.map((m,i)=>({m,i})).filter(o=>o.m.home===focus||o.m.away===focus).map(o=>o.i);
+  const cond={ // worst/best position given focus wins-all / draws-all / loses-all its own games
+    win:{worst:1,best:4,seen:false}, draw:{worst:1,best:4,seen:false}, loss:{worst:1,best:4,seen:false}
+  };
+  let tieFlag=false;
+
+  const outs=['a','d','b'];
+  for(let k=0;k<total;k++){
+    let x=k;
+    // assign outcomes
+    const assign=new Array(n);
+    for(let i=0;i<n;i++){ assign[i]=outs[x%3]; x=Math.floor(x/3); }
+    // build match list
+    const ml=played.map(m=>({home:m.home,away:m.away,gh:m.gh,ga:m.ga}));
+    remaining.forEach((m,i)=>{
+      const mm={home:m.home,away:m.away,gh:0,ga:0};
+      applyOutcome(mm,assign[i]); ml.push(mm);
+    });
+    const ranked=rankGroup(statsFrom(group,ml),ml);
+    const fpos=ranked.find(t=>t.code===focus).pos;
+    posCount[fpos]++; if(fpos<best)best=fpos; if(fpos>worst)worst=fpos;
+
+    // detect goal-difference sensitivity near the line (pos 2 & 3 separated only by GD/GF/rank)
+    if(!tieFlag){
+      const p2=ranked[1], p3=ranked[2];
+      if(p2.Pts===p3.Pts && (p2.code===focus||p3.code===focus)) tieFlag=true;
+    }
+
+    // own-result conditioning
+    const ownRes=ownIdx.map(i=>{
+      const m=remaining[i];
+      const o=assign[i];
+      if(o==='d')return 'd';
+      const win=(m.home===focus&&o==='a')||(m.away===focus&&o==='b');
+      return win?'w':'l';
+    });
+    const allWin = ownRes.length>0 && ownRes.every(r=>r==='w');
+    const allDraw= ownRes.length>0 && ownRes.every(r=>r==='d');
+    const allLoss= ownRes.length>0 && ownRes.every(r=>r==='l');
+    if(allWin){cond.win.seen=true; cond.win.worst=Math.max(cond.win.worst,fpos); cond.win.best=Math.min(cond.win.best,fpos);}
+    if(allDraw){cond.draw.seen=true; cond.draw.worst=Math.max(cond.draw.worst,fpos); cond.draw.best=Math.min(cond.draw.best,fpos);}
+    if(allLoss){cond.loss.seen=true; cond.loss.worst=Math.max(cond.loss.worst,fpos); cond.loss.best=Math.min(cond.loss.best,fpos);}
+  }
+  // fix init extremes when condition unseen
+  ['win','draw','loss'].forEach(k=>{ if(!cond[k].seen){cond[k].worst=null;cond[k].best=null;} });
+  return {total,n,remaining:remaining.length,posCount,best,worst,cond,ownGames:ownIdx.length,tieFlag,
+          currentPos: rankGroup(statsFrom(group,base),base).find(t=>t.code===focus).pos,
+          decided:n===0};
+}
+
+// quick clinch/eliminate flag for the standings chips (uses analyse worst/best)
+function teamFlag(group, code){
+  const a=analyse(group,code);
+  if(a.worst<=2) return 'q';      // certain top-2
+  if(a.best>=4) return 'e';       // certain last → out
+  if(a.best>=3) return 'l';       // can't make top 2; best is 3rd (bubble)
+  return '';
+}
+
+/* ---------------------------------------------------------------------------
+   THIRD-PLACE RACE  (cross-group)
+--------------------------------------------------------------------------- */
+function thirdPlaceTable(){
+  const thirds=[];
+  for(const g in GROUPS){
+    const ranked=rankGroup(statsFrom(g,MATCHES[g]),MATCHES[g]);
+    const t=ranked[2]; // current 3rd
+    thirds.push({group:g, code:t.code, Pts:t.Pts, GD:t.GD, GF:t.GF, rank:t.rank, P:t.P});
+  }
+  thirds.sort((x,y)=>{
+    if(y.Pts!==x.Pts)return y.Pts-x.Pts;
+    if(y.GD!==x.GD)return y.GD-x.GD;
+    if(y.GF!==x.GF)return y.GF-x.GF;
+    return x.rank-y.rank;
+  });
+  thirds.forEach((t,i)=>t.seed=i+1);
+  return thirds;
+}
+
+/* ---------------------------------------------------------------------------
+   STATE + RENDER
+--------------------------------------------------------------------------- */
+let CURRENT='H';     // default to Group H (Saudi Arabia / Spain) — a live one
+let FOCUS=null;
+let TAB='groups';
+
+function setTab(t){
+  TAB=t;
+  ['groups','third','rules'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hidden',v!==t);
+    document.getElementById('tab-'+v).setAttribute('aria-selected', v===t);
+  });
+  if(t==='third') renderThird();
+}
+
+function selectGroup(g){ CURRENT=g; FOCUS=null; render(); }
+
+function gd(n){ return (n>0?'+':'')+n; }
+function gdClass(n){ return n>0?'gd-pos':(n<0?'gd-neg':''); }
+
+function renderPills(){
+  const el=document.getElementById('pills');
+  el.innerHTML=Object.keys(GROUPS).map(g=>
+    `<button class="pill" aria-pressed="${g===CURRENT}" onclick="selectGroup('${g}')">${g}</button>`
+  ).join('');
+}
+
+function renderGroup(){
+  const g=CURRENT;
+  const ranked=rankGroup(statsFrom(g,MATCHES[g]),MATCHES[g]);
+  const flags={}; GROUPS[g].forEach(t=>flags[t[0]]=teamFlag(g,t[0]));
+
+  let rows='';
+  ranked.forEach((t,i)=>{
+    const tm=TEAMS[t.code];
+    const f=flags[t.code];
+    const chip = f==='q'?'<span class="chip q">Q</span>': f==='e'?'<span class="chip e">OUT</span>': f==='l'?'<span class="chip l">3rd</span>':'';
+    rows+=`<tr class="team ${t.code===FOCUS?'sel':''}" onclick="focusTeam('${t.code}')">
+      <td class="l"><span class="pos">${i+1}</span><span class="tname">${tm.name}</span><span class="tcode">${t.code}</span>${chip}</td>
+      <td>${t.P}</td><td>${t.W}</td><td>${t.D}</td><td>${t.L}</td>
+      <td>${t.GF}:${t.GA}</td><td class="${gdClass(t.GD)}">${gd(t.GD)}</td><td class="pts">${t.Pts}</td>
+    </tr>`;
+    if(i===1){ rows+=`<tr class="cutline"><td colspan="8"><div class="cut"><div class="rule"></div><div class="lbl">Round of 32 line</div></div></td></tr>`; }
+  });
+
+  // fixtures grouped by matchday
+  let fx='';
+  [1,2,3].forEach(md=>{
+    fx+=`<p class="md">Matchday ${md}</p>`;
+    MATCHES[g].filter(m=>m.md===md).forEach(m=>{
+      fx+=renderFixture(m);
+    });
+  });
+
+  const remaining=MATCHES[g].filter(m=>!m.played).length;
+  document.getElementById('group-card').innerHTML=`
+    <h2><span class="gtag">${g}</span> Group ${g}</h2>
+    <p class="hint">Tap a team to see what it needs. ${remaining===0?'All games played — group decided.':remaining+' game'+(remaining>1?'s':'')+' left → '+Math.pow(3,remaining)+' possible outcomes.'}</p>
+    <table class="tbl">
+      <thead><tr>
+        <th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Goals</th><th>GD</th><th>Pts</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="fx-h">Fixtures &amp; scores <span class="n">tap to edit</span></div>
+    ${fx}
+  `;
+}
+
+function renderFixture(m){
+  const h=TEAMS[m.home], a=TEAMS[m.away];
+  const empty = m.gh==null||m.ga==null;
+  const o = (!empty)?(m.gh>m.ga?'a':(m.gh<m.ga?'b':'d')):'';
+  return `<div class="fxrow">
+    <div class="fx ${m.played?'played':''}">
+      <div class="side"><span class="nm">${h.name}</span><span class="cd">${h.code}</span></div>
+      <div class="scorebox">
+        <input type="number" min="0" inputmode="numeric" class="${empty?'empty':''}" value="${m.gh==null?'':m.gh}"
+          aria-label="${h.name} goals" onchange="setScore('${m.id}','h',this.value)">
+        <span class="dash">–</span>
+        <input type="number" min="0" inputmode="numeric" class="${empty?'empty':''}" value="${m.ga==null?'':m.ga}"
+          aria-label="${a.name} goals" onchange="setScore('${m.id}','a',this.value)">
+      </div>
+      <div class="side b"><span class="cd">${a.code}</span><span class="nm">${a.name}</span></div>
+    </div>
+    <div class="wdl">
+      <button class="${o==='a'?'on':''}" onclick="quick('${m.id}','a')">${h.code} win</button>
+      <button class="${o==='d'?'on':''}" onclick="quick('${m.id}','d')">Draw</button>
+      <button class="${o==='b'?'on':''}" onclick="quick('${m.id}','b')">${a.code} win</button>
+      <button class="clr" onclick="quick('${m.id}','x')">Clear</button>
+    </div>
+  </div>`;
+}
+
+function matchById(id){ for(const g in MATCHES){ const m=MATCHES[g].find(x=>x.id===id); if(m)return m; } }
+
+function setScore(id,side,val){
+  const m=matchById(id);
+  const v=val===''?null:Math.max(0,Math.min(30,parseInt(val,10)||0));
+  if(side==='h')m.gh=v; else m.ga=v;
+  m.played=(m.gh!=null&&m.ga!=null);
+  render();
+}
+function quick(id,o){
+  const m=matchById(id);
+  if(o==='x'){m.gh=null;m.ga=null;m.played=false;}
+  else{applyOutcome(m,o);m.played=true;}
+  render();
+}
+
+function focusTeam(code){ FOCUS=(FOCUS===code?null:code); render(); }
+
+function renderVerdict(){
+  const card=document.getElementById('verdict-card');
+  if(!FOCUS){ card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const tm=TEAMS[FOCUS];
+  const a=analyse(CURRENT,FOCUS);
+  const pct=(c)=>Math.round(c/a.total*100);
+
+  // headline class + label
+  let cls='live', label='IN CONTENTION';
+  if(a.worst<=2){cls='through';label='THROUGH';}
+  else if(a.best>=4){cls='out';label='ELIMINATED';}
+  else if(a.best>=3){cls='out';label='OUT OF TOP 2';}
+
+  // build plain-English lines
+  const lines=[];
+  const ord=['','1st','2nd','3rd','4th'];
+  if(a.decided){
+    lines.push(['info','■',`Group finished — ${tm.name} ends ${ord[a.currentPos]}.`]);
+    if(a.currentPos<=2) lines.push(['good','✓','Qualified for the Round of 32.']);
+    else if(a.currentPos===3) lines.push(['warn','▲','Third place — qualification rides on the best-third-place race (see the other tab).']);
+    else lines.push(['bad','✕','Eliminated.']);
+  } else if(cls==='through'){
+    lines.push(['good','✓',`Already guaranteed a top-2 finish — through no matter what happens next.`]);
+    if(a.best===1 && a.worst===2) lines.push(['info','■','Still fighting for top spot, which earns the friendlier knockout side.']);
+  } else if(label==='ELIMINATED'){
+    lines.push(['bad','✕',`Can't finish higher than last. Out of the tournament.`]);
+  } else if(label==='OUT OF TOP 2'){
+    lines.push(['bad','✕',`Can no longer reach the top two.`]);
+    lines.push(['warn','▲',`Best case is 3rd — survival then depends on how the other groups' third-placed teams finish.`]);
+  } else {
+    // genuinely in contention for top 2
+    const c=a.cond;
+    if(a.ownGames>0){
+      if(c.win.seen){
+        if(c.win.worst<=2) lines.push(['good','✓',`Win your remaining game${a.ownGames>1?'s':''} and you're through — guaranteed top 2.`]);
+        else if(c.win.best<=2) lines.push(['warn','▲',`Even winning out might not be enough alone — you'd also need results elsewhere to go your way.`]);
+        else lines.push(['bad','✕',`Winning out still wouldn't lift you into the top 2.`]);
+      }
+      if(c.draw.seen){
+        if(c.draw.worst<=2) lines.push(['good','✓',`A draw in your game${a.ownGames>1?'s':''} also guarantees top 2.`]);
+        else if(c.draw.best<=2) lines.push(['warn','▲',`Drawing could still be enough depending on the other games.`]);
+        else lines.push(['info','■',`Drawing your game${a.ownGames>1?'s':''} most likely leaves you short of the top 2.`]);
+      }
+      if(c.loss.seen){
+        if(c.loss.best<=2) lines.push(['warn','▲',`You could even lose and sneak top 2 if other results help — but don't count on it.`]);
+        else if(c.loss.best===3) lines.push(['bad','✕',`Lose out and the best you can manage is 3rd (then the third-place race).`]);
+        else lines.push(['bad','✕',`Lose your game${a.ownGames>1?'s':''} and you're out.`]);
+      }
+    } else {
+      lines.push(['info','■',`No games left for ${tm.name} — your fate is in other teams' hands.`]);
+    }
+  }
+  if(!a.decided && a.tieFlag){
+    lines.push(['info','■','Some of these outcomes are tight enough to come down to goal difference — enter real scorelines to settle them.']);
+  }
+
+  const linesHtml=lines.map(l=>`<p class="vline ${l[0]}"><span class="mk">${l[1]}</span><span>${l[2]}</span></p>`).join('');
+
+  card.className='card';
+  card.innerHTML=`
+    <div class="closebar">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--muted2);text-transform:uppercase">Qualification path</span>
+      <button class="ghost" onclick="focusTeam('${FOCUS}')">Close</button>
+    </div>
+    <div class="verdict ${cls}">
+      <div class="vhead">
+        <div>
+          <div class="big">${label}</div>
+          <div class="who">${tm.name} · Group ${CURRENT} · currently ${ord[a.currentPos]}</div>
+        </div>
+      </div>
+      <div class="vbody">
+        ${linesHtml}
+        <div class="vstat">
+          <div class="s">Best finish<b>${ord[a.best]}</b></div>
+          <div class="s">Worst finish<b>${ord[a.worst]}</b></div>
+          <div class="s">Top-2 outcomes<b>${pct(a.posCount[1]+a.posCount[2])}%</b></div>
+          <div class="s">Outcomes left<b>${a.total}</b></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderThird(){
+  const t3=thirdPlaceTable();
+  let rows='';
+  t3.forEach((t,i)=>{
+    const tm=TEAMS[t.code];
+    rows+=`<tr class="team t3">
+      <td class="l"><span class="pos">${i+1}</span><span class="tname">${tm.name}</span><span class="tcode">${t.code}</span></td>
+      <td class="grp">${t.group}</td><td>${t.P}</td><td>${t.Pts}</td>
+      <td class="${gdClass(t.GD)}">${gd(t.GD)}</td><td>${t.GF}</td>
+    </tr>`;
+    if(i===7){ rows+=`<tr class="cutline amber"><td colspan="6"><div class="cut"><div class="rule"></div><div class="lbl">8 qualify · cut here</div></div></td></tr>`; }
+  });
+  document.getElementById('third-card').innerHTML=`
+    <h2 style="color:var(--bubble)"><span class="gtag" style="color:var(--bubble)">3rd</span> Best third-placed teams</h2>
+    <p class="hint">The current third-placed team from every group, ranked head-to-head across the tournament. The top <b style="color:var(--bubble)">8</b> claim the last Round-of-32 spots. Updates as you enter results in the Groups tab.</p>
+    <table class="tbl">
+      <thead><tr><th class="l">Team</th><th>Grp</th><th>P</th><th>Pts</th><th>GD</th><th>GF</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="hint" style="margin-top:14px">Ranking order for thirds: points, then goal difference, goals scored, conduct, FIFA ranking. While group games remain this is a live projection from the table so far.</p>
+  `;
+}
+
+/* toolbar actions */
+function resetGroup(){
+  MATCHES[CURRENT].forEach(m=>{
+    const seed=SEEDS[m.id];
+    if(seed){m.gh=seed[0];m.ga=seed[1];m.played=true;}
+    else {m.gh=null;m.ga=null;m.played=false;}
+  });
+  render();
+}
+function clearRemaining(){
+  MATCHES[CURRENT].forEach(m=>{ if(!SEEDS[m.id]){m.gh=null;m.ga=null;m.played=false;} });
+  render();
+}
+function simulateGroup(){
+  const outs=['a','d','b'];
+  MATCHES[CURRENT].forEach(m=>{
+    if(!m.played){
+      // weight toward better-ranked team but keep it loose
+      const r=Math.random();
+      let o = r<0.42?'a': r<0.66?'d':'b';
+      // small nudge: stronger home team more likely to win
+      if(TEAMS[m.home].rank < TEAMS[m.away].rank && r<0.55) o='a';
+      if(TEAMS[m.away].rank < TEAMS[m.home].rank && r>0.5) o='b';
+      applyOutcome(m,o); m.played=true;
+    }
+  });
+  render();
+}
+
+function render(){
+  try{
+    renderPills();
+    renderGroup();
+    renderVerdict();
+    if(TAB==='third') renderThird();
+  }catch(e){ console.error('render failed',e); }
+}
+
+try{ buildData(); render(); }
+catch(e){ console.error('init failed',e); document.getElementById('group-card').textContent='Something went wrong loading the engine.'; }
+</script>
+</body>
+</html>
