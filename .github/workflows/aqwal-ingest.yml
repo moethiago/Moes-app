@@ -1,0 +1,26 @@
+name: Aqwal ingest
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"
+defaults:
+  run:
+    working-directory: aqwal-ingest
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests beautifulsoup4
+      - name: Dorar hadith (Tier 3)
+        run: python ingest_dorar.py dorar_hadith.jsonl
+      - name: Shamela classical via OpenITI (Tier 2)
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: python ingest_openiti.py --pull shamela_classical.jsonl
+      - name: Upsert to Upstash Vector
+        env:
+          UPSTASH_VECTOR_REST_URL: "${{ secrets.UPSTASH_VECTOR_REST_URL }}"
+          UPSTASH_VECTOR_REST_TOKEN: "${{ secrets.UPSTASH_VECTOR_REST_TOKEN }}"
+        run: python upsert_upstash.py dorar_hadith.jsonl shamela_classical.jsonl
