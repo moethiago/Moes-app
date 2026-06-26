@@ -13,7 +13,7 @@ def upsert(path, batch=100):
     for i in range(0,len(rows),batch):
         chunk=rows[i:i+batch]
         body=[{"id":r["id"],
-               "data":r.get("text_norm") or r.get("hadith_norm") or r.get("text") or r.get("hadith"),
+               "data":r.get("text") or r.get("hadith") or r.get("text_norm") or r.get("hadith_norm"),
                "metadata":r} for r in chunk]
         r=requests.post(f"{URL}/upsert-data",headers=H,data=json.dumps(body),timeout=60)
         r.raise_for_status(); n+=len(chunk); print(f"  upserted {n}/{len(rows)} from {path}")
