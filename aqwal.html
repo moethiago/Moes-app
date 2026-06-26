@@ -1,23 +1,15 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Aqwāl — أقوال</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-html,body{margin:0;padding:0;background:#ECE4D2;}*{box-sizing:border-box;}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+html,body{margin:0;padding:0;background:#ECE4D2;}*{box-sizing:border-box;}</style>
 </head>
 <body>
 <div id="root"></div>
-<script>
-(function(){function show(m){var r=document.getElementById('root');if(!r)return;r.innerHTML='<div style="font-family:ui-monospace,monospace;padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">Aqwal could not start.\n\n'+m+'</div>';}
-window.addEventListener('error',function(e){show((e.message||'err')+(e.filename?'\n'+e.filename+':'+(e.lineno||''):''));});
-setTimeout(function(){var r=document.getElementById('root');if(r&&!r.textContent.trim()&&!r.childElementCount)show('Nothing rendered after 7s — a script failed to load. Reload.');},7000);})();
-</script>
+<script>(function(){function show(m){var r=document.getElementById('root');if(!r)return;r.innerHTML='<div style="font-family:monospace;padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">Aqwal could not start.\n\n'+m+'</div>';}window.addEventListener('error',function(e){show((e.message||'err')+(e.filename?'\n'+e.filename+':'+(e.lineno||''):''));});setTimeout(function(){var r=document.getElementById('root');if(r&&!r.textContent.trim()&&!r.childElementCount)show('Nothing rendered after 7s — reload.');},7000);})();</script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
@@ -25,37 +17,23 @@ setTimeout(function(){var r=document.getElementById('root');if(r&&!r.textContent
 const {useState}=React;
 const BACKEND_URL="https://moes-app-two.vercel.app/api/aqwal";
 const C={paper:"#ECE4D2",paperHi:"#F4EEE0",ink:"#211C15",inkSoft:"#5C5446",indigo:"#27313D",line:"#D4C8AE",vermilion:"#9E2B25",verdigris:"#2F6B5E",ochre:"#B07A1E",darkred:"#6E1714"};
-const GRADE={
-  sahih:{label:"صحيح",en:"Authentic",color:C.verdigris},
-  hasan:{label:"حسن",en:"Good",color:C.ochre},
-  daif:{label:"ضعيف",en:"Weak",color:C.vermilion},
-  mawdu:{label:"موضوع",en:"Fabricated",color:C.darkred},
-  other:{label:"الحكم",en:"Ruling",color:C.inkSoft},
-};
-const PRESETS=["أهمية النية في العمل","حق المشتري في إلغاء البيع","أركان الإسلام","النهي عن الإضرار بالناس"];
+const GRADE={sahih:{label:"صحيح",en:"Authentic",color:C.verdigris},hasan:{label:"حسن",en:"Good",color:C.ochre},daif:{label:"ضعيف",en:"Weak",color:C.vermilion},mawdu:{label:"موضوع",en:"Fabricated",color:C.darkred},other:{label:"الحكم",en:"Ruling",color:C.inkSoft}};
+const PRESETS=["أهمية النية في العمل","الغش في التجارة","بر الوالدين","الربا في البيع","فضل طلب العلم","النهي عن الغيبة"];
 
 function App(){
-  const [q,setQ]=useState("");
-  const [view,setView]=useState({s:"idle"});
-  async function ask(text){
-    const question=(text??q).trim(); if(!question)return; setQ(question); setView({s:"loading"});
-    try{
-      const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});
-      const d=await r.json();
-      if(!r.ok){setView({s:"error",msg:d.error||("HTTP "+r.status)});return;}
-      setView({s:"done",data:d});
-    }catch(e){setView({s:"error",msg:String(e)});}
-  }
+  const [q,setQ]=useState(""); const [view,setView]=useState({s:"idle"});
+  async function ask(text){const question=(text??q).trim();if(!question)return;setQ(question);setView({s:"loading"});
+    try{const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});
+      const d=await r.json(); if(!r.ok){setView({s:"error",msg:d.error||("HTTP "+r.status)});return;} setView({s:"done",data:d});
+    }catch(e){setView({s:"error",msg:String(e)});}}
   const d=view.data;
+  const dist=d?d.groups.reduce((a,g)=>{a[g.grade_class]=(a[g.grade_class]||0)+1;return a;},{}):{};
   return (
     <div style={{background:C.paper,color:C.ink,minHeight:"100vh",fontFamily:"'IBM Plex Sans',system-ui,sans-serif"}}>
       <style>{`.wrap{max-width:760px;margin:0 auto;padding:28px 20px 64px}
         .inp:focus-visible,.b:focus-visible,.chip:focus-visible{outline:2px solid ${C.indigo};outline-offset:2px}
-        .card{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
-        .lnk{color:${C.indigo};text-decoration:none;border-bottom:1px solid ${C.line}}.lnk:hover{border-bottom-color:${C.indigo}}
-        .chip:hover{background:${C.paperHi}}
-        @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-        @media(prefers-reduced-motion:reduce){.card{animation:none}}`}</style>
+        .card{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}.lnk{color:${C.indigo};text-decoration:none;border-bottom:1px solid ${C.line}}.lnk:hover{border-bottom-color:${C.indigo}}.chip:hover{background:${C.paperHi}}
+        @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.card{animation:none}}`}</style>
       <div className="wrap">
         <header style={{marginBottom:20}}>
           <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}}>
@@ -66,31 +44,25 @@ function App(){
           <p style={{margin:"10px 0 0",color:C.inkSoft,fontSize:15,maxWidth:560}}>Ask in plain words. Get the real narration — with its grading and source.</p>
         </header>
         <div style={{display:"flex",gap:8,marginBottom:12}}>
-          <input className="inp" aria-label="Ask" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()}
-            placeholder="اكتب سؤالك… / Ask a question…" dir="auto"
+          <input className="inp" aria-label="Ask" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="اكتب سؤالك… / Ask…" dir="auto"
             style={{flex:1,background:C.paperHi,border:`1px solid ${C.line}`,borderRadius:2,padding:"13px 15px",fontSize:16,color:C.ink,fontFamily:"inherit"}}/>
           <button className="b" onClick={()=>ask()} style={{background:C.indigo,color:C.paperHi,border:"none",borderRadius:2,padding:"0 20px",fontSize:15,fontWeight:600,cursor:"pointer"}}>Search</button>
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:28}}>
-          {PRESETS.map(p=><button key={p} className="chip" onClick={()=>ask(p)} dir="rtl"
-            style={{background:"transparent",border:`1px solid ${C.line}`,borderRadius:100,padding:"6px 13px",fontSize:13.5,color:C.inkSoft,cursor:"pointer",fontFamily:"'Amiri',serif"}}>{p}</button>)}
+          {PRESETS.map(p=><button key={p} className="chip" onClick={()=>ask(p)} dir="rtl" style={{background:"transparent",border:`1px solid ${C.line}`,borderRadius:100,padding:"6px 13px",fontSize:13.5,color:C.inkSoft,cursor:"pointer",fontFamily:"'Amiri',serif"}}>{p}</button>)}
         </div>
-
-        {view.s==="idle"&&<p style={{borderTop:`1px solid ${C.line}`,paddingTop:24,color:C.inkSoft,fontSize:14.5,lineHeight:1.6}}>Every result here is a real record from your library — narration, grading, and source. Nothing is AI-written.</p>}
+        {view.s==="idle"&&<p style={{borderTop:`1px solid ${C.line}`,paddingTop:24,color:C.inkSoft,fontSize:14.5,lineHeight:1.6}}>Every result is a real record from your library — narration, grading, and source. Nothing is AI-written.</p>}
         {view.s==="loading"&&<p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:C.inkSoft}}>Searching the sources…</p>}
-        {view.s==="error"&&<div style={{border:`1px solid ${C.line}`,borderRadius:2,padding:16,fontSize:14,lineHeight:1.6,color:C.ink}}>{view.msg}</div>}
-
+        {view.s==="error"&&<div style={{border:`1px solid ${C.line}`,borderRadius:2,padding:16,fontSize:14,lineHeight:1.6}}>{view.msg}</div>}
         {view.s==="done"&&d&&(
           <div>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18,fontFamily:"'IBM Plex Mono',monospace",fontSize:11.5,letterSpacing:".04em",textTransform:"uppercase",color:C.verdigris}}>
               <span style={{width:7,height:7,borderRadius:100,background:"currentColor"}}/>Sourced · real records from your library
             </div>
             <h2 style={{fontFamily:"'Fraunces',serif",fontSize:22,fontWeight:600,margin:"0 0 6px"}}>{d.query}</h2>
-            <p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:C.inkSoft,margin:"0 0 22px"}}>
-              {d.count} result{d.count===1?"":"s"} · {Object.entries(d.grades||{}).map(([k,v])=>`${v} ${(GRADE[k]||GRADE.other).label}`).join(" · ")}
-            </p>
-            {d.results.map((x,i)=><Card key={x.id||i} x={x} i={i}/>)}
-            {d.count===0&&<p style={{color:C.inkSoft,fontSize:14}}>No matching narration found in the loaded sources yet.</p>}
+            <p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:C.inkSoft,margin:"0 0 22px"}}>{d.count} hadith · {Object.entries(dist).map(([k,v])=>`${v} ${(GRADE[k]||GRADE.other).label}`).join(" · ")}</p>
+            {d.groups.map((g,i)=><Group key={i} g={g} i={i}/>)}
+            {d.count===0&&<p style={{color:C.inkSoft,fontSize:14}}>No matching narration found yet.</p>}
             <p style={{borderTop:`1px solid ${C.line}`,marginTop:14,paddingTop:16,fontSize:12.5,color:C.inkSoft,lineHeight:1.6}}>A research aid that points to the sources — not a fatwā. Verify each ruling at its source.</p>
           </div>
         )}
@@ -98,26 +70,32 @@ function App(){
     </div>
   );
 }
-function Card({x,i}){
-  const g=GRADE[x.grade_class]||GRADE.other;
+function Group({g,i}){
+  const [open,setOpen]=useState(false);
+  const head=GRADE[g.grade_class]||GRADE.other;
+  const shown=open?g.chains:g.chains.slice(0,3);
   return (
     <article className="card" style={{animationDelay:`${i*55}ms`,borderTop:`1px solid ${C.line}`,padding:"18px 0"}}>
-      <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:10}}>
-        <span style={{fontSize:12,fontWeight:600,color:g.color,border:`1px solid ${g.color}`,borderRadius:100,padding:"4px 12px",whiteSpace:"nowrap"}}>{g.label} · {g.en}</span>
-        <span style={{marginRight:"auto"}}/>
+      <div style={{marginBottom:10}}>
+        <span style={{fontSize:12,fontWeight:600,color:head.color,border:`1px solid ${head.color}`,borderRadius:100,padding:"4px 12px"}}>{head.label} · {head.en}</span>
       </div>
-      <p dir="rtl" style={{fontFamily:"'Amiri',serif",fontSize:20,lineHeight:1.7,margin:"0 0 10px",color:C.ink,textAlign:"right"}}>{x.hadith}</p>
-      {x.grade&&<p dir="rtl" style={{fontFamily:"'Amiri',serif",fontSize:15,color:g.color,margin:"0 0 8px",textAlign:"right"}}>خلاصة الحكم: {x.grade}</p>}
-      <div dir="rtl" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11.5,color:C.inkSoft,lineHeight:1.7,textAlign:"right"}}>
-        {x.rawi?`الراوي: ${x.rawi}`:""}{x.muhaddith?` · المحدّث: ${x.muhaddith}`:""}<br/>
-        {x.source_book?`المصدر: ${x.source_book}`:""}{x.ref?` · ${x.ref}`:""}
+      <p dir="rtl" style={{fontFamily:"'Amiri',serif",fontSize:20,lineHeight:1.7,margin:"0 0 12px",textAlign:"right"}}>{g.matn}</p>
+      <div dir="rtl" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:C.inkSoft,textTransform:"uppercase",letterSpacing:".06em",marginBottom:8,textAlign:"right"}}>
+        طرق الحديث · {g.chain_count} {g.chain_count===1?"تخريج":"تخريجات"}
       </div>
-      {x.source_url&&<div style={{marginTop:10}}><a className="lnk" href={x.source_url} target="_blank" rel="noreferrer" style={{fontSize:13,fontWeight:500}}>تحقّق في الدرر ↗</a></div>}
+      {shown.map((c,j)=>{const gc=GRADE[c.grade_class]||GRADE.other;return(
+        <div key={j} dir="rtl" style={{borderRight:`2px solid ${gc.color}`,paddingRight:10,margin:"0 0 10px",textAlign:"right"}}>
+          <div style={{fontFamily:"'Amiri',serif",fontSize:14.5,color:gc.color,marginBottom:2}}>{c.grade||gc.label}</div>
+          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:C.inkSoft,lineHeight:1.65}}>
+            المحدّث: {c.muhaddith||"—"}{c.rawi?` · الراوي: ${c.rawi}`:""}<br/>{c.source_book?`${c.source_book} ${c.ref||""}`:""}
+            {c.source_url&&<>{"  "}<a className="lnk" href={c.source_url} target="_blank" rel="noreferrer" style={{fontSize:11}}>الدرر ↗</a></>}
+          </div>
+        </div>);})}
+      {g.chains.length>3&&<button onClick={()=>setOpen(!open)} style={{background:"none",border:"none",color:C.indigo,fontSize:12.5,cursor:"pointer",fontFamily:"inherit",padding:0}}>{open?"إخفاء":`عرض ${g.chains.length-3} طرق أخرى`}</button>}
     </article>
   );
 }
-try{ReactDOM.createRoot(document.getElementById("root")).render(<App/>);}
-catch(err){document.getElementById("root").innerHTML='<pre style="padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">'+((err&&err.stack)||err)+'</pre>';}
+try{ReactDOM.createRoot(document.getElementById("root")).render(<App/>);}catch(err){document.getElementById("root").innerHTML='<pre style="padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">'+((err&&err.stack)||err)+'</pre>';}
 </script>
 </body>
 </html>
