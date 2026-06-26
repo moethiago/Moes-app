@@ -1,274 +1,123 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Aqwāl — What the scholars said</title>
+<title>Aqwāl — أقوال</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-  html, body { margin: 0; padding: 0; background: #ECE4D2; }
-  * { box-sizing: border-box; }
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+html,body{margin:0;padding:0;background:#ECE4D2;}*{box-sizing:border-box;}
 </style>
 </head>
 <body>
 <div id="root"></div>
-
-<!-- On-screen error capture (iPhone has no console): turns a blank page into a readable message. -->
 <script>
-  (function () {
-    function show(msg){var r=document.getElementById('root');if(!r)return;r.innerHTML='<div style="font-family:ui-monospace,monospace;padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px;line-height:1.55">Aqwal could not start.\n\n'+msg+'</div>';}
-    window.addEventListener('error',function(e){show((e.message||'Script error')+(e.filename?'\n'+e.filename+':'+(e.lineno||''):''));});
-    window.addEventListener('unhandledrejection',function(e){show('Promise error: '+((e.reason&&e.reason.message)||e.reason));});
-    setTimeout(function(){var r=document.getElementById('root');if(r&&!r.textContent.trim()&&r.childElementCount===0){show('Nothing rendered after 7s — a script likely failed to load (React or Babel). Check your connection and reload; on a restricted network the CDN may be blocked.');}},7000);
-  })();
+(function(){function show(m){var r=document.getElementById('root');if(!r)return;r.innerHTML='<div style="font-family:ui-monospace,monospace;padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">Aqwal could not start.\n\n'+m+'</div>';}
+window.addEventListener('error',function(e){show((e.message||'err')+(e.filename?'\n'+e.filename+':'+(e.lineno||''):''));});
+setTimeout(function(){var r=document.getElementById('root');if(r&&!r.textContent.trim()&&!r.childElementCount)show('Nothing rendered after 7s — a script failed to load. Reload.');},7000);})();
 </script>
-
-<!-- React + Babel via CDN. For production you'd precompile to drop Babel. -->
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
-
 <script type="text/babel" data-presets="react">
-const { useState, useRef } = React;
-
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-// Point this at YOUR Vercel endpoint that holds the API key and calls Anthropic
-// server-side. Leave "" to run the grounded example only. The browser must NEVER
-// hold your real API key. Example: "https://moes-app-two.vercel.app/api/aqwal"
-const BACKEND_URL = "https://moes-app-two.vercel.app/api/aqwal";
-// Your backend should accept POST { question } and return JSON:
-// { overview, arabic?, positions: [{ name, arabic, era, stance, summary, confidence, source? }] }
-// ─────────────────────────────────────────────────────────────────────────────
-
-const C = {
-  paper:"#ECE4D2", paperHi:"#F4EEE0", ink:"#211C15", inkSoft:"#5C5446",
-  indigo:"#27313D", line:"#D4C8AE", vermilion:"#9E2B25", verdigris:"#2F6B5E", ochre:"#B07A1E",
+const {useState}=React;
+const BACKEND_URL="https://moes-app-two.vercel.app/api/aqwal";
+const C={paper:"#ECE4D2",paperHi:"#F4EEE0",ink:"#211C15",inkSoft:"#5C5446",indigo:"#27313D",line:"#D4C8AE",vermilion:"#9E2B25",verdigris:"#2F6B5E",ochre:"#B07A1E",darkred:"#6E1714"};
+const GRADE={
+  sahih:{label:"صحيح",en:"Authentic",color:C.verdigris},
+  hasan:{label:"حسن",en:"Good",color:C.ochre},
+  daif:{label:"ضعيف",en:"Weak",color:C.vermilion},
+  mawdu:{label:"موضوع",en:"Fabricated",color:C.darkred},
+  other:{label:"الحكم",en:"Ruling",color:C.inkSoft},
 };
+const PRESETS=["أهمية النية في العمل","حق المشتري في إلغاء البيع","أركان الإسلام","النهي عن الإضرار بالناس"];
 
-const STANCE = {
-  impermissible:{ label:"Impermissible", color:C.vermilion },
-  conditional:  { label:"Conditional",   color:C.ochre },
-  permissible:  { label:"Permissible",   color:C.verdigris },
-};
-
-const CURATED = {
-  arabic: "هل يجوز للمرأة أن تقود السيارة؟",
-  overview:
-    "Opinion here spans a clear spectrum. Several senior scholars — including former Grand Mufti Ibn Bāz — historically held it impermissible, treating the ruling as a precaution against social harms rather than an objection to driving itself. Others held it permissible in principle, viewing the restriction as social and contextual. In 2017 the Council of Senior Scholars officially backed permissibility, and the ban was lifted in 2018.",
-  positions: [
-    { name:"ʿAbd al-ʿAzīz Ibn Bāz", arabic:"عبد العزيز بن باز", era:"Grand Mufti · d. 1999", stance:"impermissible",
-      summary:"In a 1990 fatwa, held that permitting women to drive would open the way to social harms, and so should be blocked as a precaution. Some statements treated cases of necessity differently.",
-      source:{ label:"Library of Congress", url:"https://www.loc.gov/item/global-legal-monitor/2017-06-07/saudi-arabia-shura-council-denies-social-media-reports-on-resolution-to-allow-women-to-drive/" } },
-    { name:"Ibn al-ʿUthaymīn", arabic:"محمد بن عثيمين", era:"Senior scholar · d. 2001", stance:"impermissible",
-      summary:"Backed preventing it, holding that it could lead to outcomes at odds with Islamic guidance on modesty and free mixing.",
-      source:{ label:"Academic study (J. Fatwa Mgmt.)", url:"https://www.researchgate.net/publication/339229882_DRIVING_RESTRICTION_ON_SAUDI_WOMEN_A_COMPARATIVE_ANALYSIS_OF_MODALITY_BETWEEN_AL-JAZIRAH_AND_BBC_ARABIC_REPORTS" } },
-    { name:"Ṣāliḥ al-Fawzān", arabic:"صالح الفوزان", era:"Senior Scholars Council", stance:"impermissible",
-      summary:"Held that permitting it runs against the protective role Islam assigns to women.",
-      source:{ label:"Academic study (J. Fatwa Mgmt.)", url:"https://www.researchgate.net/publication/339229882_DRIVING_RESTRICTION_ON_SAUDI_WOMEN_A_COMPARATIVE_ANALYSIS_OF_MODALITY_BETWEEN_AL-JAZIRAH_AND_BBC_ARABIC_REPORTS" } },
-    { name:"ʿAbd al-Muḥsin al-ʿUbaykān", arabic:"عبد المحسن العبيكان", era:"Senior Scholars member", stance:"permissible",
-      summary:"Argued the act itself is permitted; the objection is to social circumstances, not to driving as such — so the restriction is contextual, not inherent.",
-      source:{ label:"Arab News (2008)", url:"https://www.arabnews.com/node/309049" } },
-    { name:"ʿĀʾiḍ al-Qarnī", arabic:"عائض القرني", era:"Preacher & author", stance:"permissible",
-      summary:"Stated that no religious evidence prohibits it, and called for the matter to be formally reviewed.",
-      source:{ label:"Library of Congress", url:"https://www.loc.gov/item/global-legal-monitor/2017-06-07/saudi-arabia-shura-council-denies-social-media-reports-on-resolution-to-allow-women-to-drive/" } },
-    { name:"Aḥmad ibn Bāz", arabic:"أحمد بن باز", era:"Researcher · son of the Grand Mufti", stance:"permissible",
-      summary:"Argued it should be seen as a right shaped by changing circumstances rather than a fixed prohibition.",
-      source:{ label:"Al Arabiya (2010)", url:"https://english.alarabiya.net/articles/2010/05/25/109562" } },
-    { name:"Council of Senior Scholars", arabic:"هيئة كبار العلماء", era:"Official · 2017", stance:"permissible", official:true,
-      summary:"Officially backed the decree permitting women to drive, stating it is permissible in origin and that earlier fatwas weighed benefits and harms within their own context.",
-      source:{ label:"The New Arab (2017)", url:"https://www.newarab.com/News/2017/9/27/Saudi-religious-authorities-back-women-driving-contradicting-years-of-opposition" } },
-  ],
-};
-
-const PRESETS = [
-  "Is it permissible for women to drive?",
-  "What is the ruling on music?",
-  "Is cryptocurrency trading allowed?",
-  "Can you fast while travelling?",
-];
-
-function Aqwal() {
-  const [query, setQuery] = useState("");
-  const [view, setView] = useState({ status:"idle" });
-  const [filter, setFilter] = useState(null);
-  const cardsRef = useRef({});
-
-  const norm = (s) => s.toLowerCase().replace(/[^\w]/g,"");
-  const isCurated = (q) => { const n = norm(q); return n.includes("womendriv")||n.includes("womandriv")||n.includes("femaledriv"); };
-
-  async function ask(q) {
-    const question = (q ?? query).trim();
-    if (!question) return;
-    setQuery(question); setFilter(null);
-    if (isCurated(question)) { setView({ status:"curated", data:{ ...CURATED, query:question } }); return; }
-    if (!BACKEND_URL) { setView({ status:"nobackend", query:question }); return; }
-    setView({ status:"loading" });
-    try {
-      const res = await fetch(BACKEND_URL, {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ question }),
-      });
-      const data = await res.json();
-      setView({ status:"live", data:{ ...data, query:question } });
-    } catch (e) { setView({ status:"error" }); }
+function App(){
+  const [q,setQ]=useState("");
+  const [view,setView]=useState({s:"idle"});
+  async function ask(text){
+    const question=(text??q).trim(); if(!question)return; setQ(question); setView({s:"loading"});
+    try{
+      const r=await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});
+      const d=await r.json();
+      if(!r.ok){setView({s:"error",msg:d.error||("HTTP "+r.status)});return;}
+      setView({s:"done",data:d});
+    }catch(e){setView({s:"error",msg:String(e)});}
   }
-
-  const data = view.data;
-  const positions = data?.positions ?? [];
-  const shown = filter ? positions.filter(p => p.stance===filter) : positions;
-  const counts = positions.reduce((a,p)=>((a[p.stance]=(a[p.stance]||0)+1),a),{});
-  const live = view.status==="live";
-
+  const d=view.data;
   return (
-    <div style={{ background:C.paper, color:C.ink, minHeight:"100vh", fontFamily:"'IBM Plex Sans', system-ui, sans-serif" }}>
-      <style>{`
-        .aq-wrap { max-width:760px; margin:0 auto; padding:28px 20px 64px; }
-        .aq-input:focus-visible,.aq-btn:focus-visible,.aq-chip:focus-visible,.aq-src:focus-visible{ outline:2px solid ${C.indigo}; outline-offset:2px; }
-        .aq-card{ animation:aqRise .5s cubic-bezier(.2,.7,.2,1) both; }
-        .aq-src{ color:${C.indigo}; text-decoration:none; border-bottom:1px solid ${C.line}; }
-        .aq-src:hover{ border-bottom-color:${C.indigo}; }
-        .aq-chip:hover{ background:${C.paperHi}; }
-        @keyframes aqRise{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
-        @keyframes aqFill{ from{transform:scaleX(0);} to{transform:scaleX(1);} }
-        @media (prefers-reduced-motion: reduce){ .aq-card,.aq-track i{ animation:none !important; } }
-      `}</style>
-      <div className="aq-wrap">
-        <header style={{ marginBottom:22 }}>
-          <div style={{ display:"flex", alignItems:"baseline", gap:12, flexWrap:"wrap" }}>
-            <span style={{ fontFamily:"'Amiri', serif", fontSize:34, fontWeight:700, color:C.indigo, lineHeight:1 }}>أقوال</span>
-            <span style={{ fontFamily:"'Fraunces', serif", fontSize:27, fontWeight:600, letterSpacing:"-0.01em" }}>Aqwāl</span>
-            <span style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:11, color:C.inkSoft, textTransform:"uppercase", letterSpacing:"0.14em", marginLeft:"auto" }}>What the scholars said</span>
+    <div style={{background:C.paper,color:C.ink,minHeight:"100vh",fontFamily:"'IBM Plex Sans',system-ui,sans-serif"}}>
+      <style>{`.wrap{max-width:760px;margin:0 auto;padding:28px 20px 64px}
+        .inp:focus-visible,.b:focus-visible,.chip:focus-visible{outline:2px solid ${C.indigo};outline-offset:2px}
+        .card{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+        .lnk{color:${C.indigo};text-decoration:none;border-bottom:1px solid ${C.line}}.lnk:hover{border-bottom-color:${C.indigo}}
+        .chip:hover{background:${C.paperHi}}
+        @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+        @media(prefers-reduced-motion:reduce){.card{animation:none}}`}</style>
+      <div className="wrap">
+        <header style={{marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"baseline",gap:12,flexWrap:"wrap"}}>
+            <span style={{fontFamily:"'Amiri',serif",fontSize:34,fontWeight:700,color:C.indigo,lineHeight:1}}>أقوال</span>
+            <span style={{fontFamily:"'Fraunces',serif",fontSize:26,fontWeight:600}}>Aqwāl</span>
+            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:C.inkSoft,textTransform:"uppercase",letterSpacing:".14em",marginLeft:"auto"}}>Search the sources</span>
           </div>
-          <p style={{ margin:"10px 0 0", color:C.inkSoft, fontSize:15, maxWidth:560 }}>
-            Ask a question. See the spread of scholarly opinion — scholar by scholar — then go to the source.
-          </p>
+          <p style={{margin:"10px 0 0",color:C.inkSoft,fontSize:15,maxWidth:560}}>Ask in plain words. Get the real narration — with its grading and source.</p>
         </header>
-
-        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-          <input className="aq-input" aria-label="Ask a religious question" value={query}
-            onChange={(e)=>setQuery(e.target.value)} onKeyDown={(e)=>e.key==="Enter"&&ask()}
-            placeholder="Ask a question…"
-            style={{ flex:1, background:C.paperHi, border:`1px solid ${C.line}`, borderRadius:2, padding:"13px 15px", fontSize:16, color:C.ink, fontFamily:"inherit" }} />
-          <button className="aq-btn" onClick={()=>ask()} aria-label="Ask"
-            style={{ background:C.indigo, color:C.paperHi, border:"none", borderRadius:2, padding:"0 20px", fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Ask</button>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <input className="inp" aria-label="Ask" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()}
+            placeholder="اكتب سؤالك… / Ask a question…" dir="auto"
+            style={{flex:1,background:C.paperHi,border:`1px solid ${C.line}`,borderRadius:2,padding:"13px 15px",fontSize:16,color:C.ink,fontFamily:"inherit"}}/>
+          <button className="b" onClick={()=>ask()} style={{background:C.indigo,color:C.paperHi,border:"none",borderRadius:2,padding:"0 20px",fontSize:15,fontWeight:600,cursor:"pointer"}}>Search</button>
         </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:30 }}>
-          {PRESETS.map(p=>(
-            <button key={p} className="aq-chip" onClick={()=>ask(p)}
-              style={{ background:"transparent", border:`1px solid ${C.line}`, borderRadius:100, padding:"6px 13px", fontSize:13, color:C.inkSoft, cursor:"pointer", fontFamily:"inherit" }}>{p}</button>
-          ))}
+        <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:28}}>
+          {PRESETS.map(p=><button key={p} className="chip" onClick={()=>ask(p)} dir="rtl"
+            style={{background:"transparent",border:`1px solid ${C.line}`,borderRadius:100,padding:"6px 13px",fontSize:13.5,color:C.inkSoft,cursor:"pointer",fontFamily:"'Amiri',serif"}}>{p}</button>)}
         </div>
 
-        {view.status==="idle" && (
-          <div style={{ borderTop:`1px solid ${C.line}`, paddingTop:26, color:C.inkSoft, fontSize:14.5, lineHeight:1.6 }}>
-            <p style={{ margin:0 }}>Try the grounded example — <b style={{ color:C.ink }}>“Is it permissible for women to drive?”</b> — to see the format with real, sourced positions.</p>
-          </div>
-        )}
-        {view.status==="loading" && <p style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:13, color:C.inkSoft }}>Gathering positions…</p>}
-        {view.status==="nobackend" && (
-          <div style={{ border:`1px solid ${C.line}`, borderRadius:2, padding:16, fontSize:14, lineHeight:1.6 }}>
-            Live answers need your backend. Set <code style={{ fontFamily:"'IBM Plex Mono', monospace" }}>BACKEND_URL</code> to your Vercel endpoint, then any question works. The grounded example runs now — try the women-driving question.
-          </div>
-        )}
-        {view.status==="error" && (
-          <div style={{ border:`1px solid ${C.line}`, borderRadius:2, padding:16, fontSize:14 }}>Couldn’t reach the backend. Check the endpoint, then try again.</div>
-        )}
+        {view.s==="idle"&&<p style={{borderTop:`1px solid ${C.line}`,paddingTop:24,color:C.inkSoft,fontSize:14.5,lineHeight:1.6}}>Every result here is a real record from your library — narration, grading, and source. Nothing is AI-written.</p>}
+        {view.s==="loading"&&<p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:13,color:C.inkSoft}}>Searching the sources…</p>}
+        {view.s==="error"&&<div style={{border:`1px solid ${C.line}`,borderRadius:2,padding:16,fontSize:14,lineHeight:1.6,color:C.ink}}>{view.msg}</div>}
 
-        {(view.status==="curated"||live) && data && (
+        {view.s==="done"&&d&&(
           <div>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:18, fontFamily:"'IBM Plex Mono', monospace", fontSize:11.5, letterSpacing:"0.04em", textTransform:"uppercase", color: live?C.vermilion:C.verdigris }}>
-              <span style={{ width:7, height:7, borderRadius:100, background:"currentColor" }} />
-              {live ? "AI draft · unverified — confirm with primary sources" : "Grounded · positions summarized from cited sources"}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18,fontFamily:"'IBM Plex Mono',monospace",fontSize:11.5,letterSpacing:".04em",textTransform:"uppercase",color:C.verdigris}}>
+              <span style={{width:7,height:7,borderRadius:100,background:"currentColor"}}/>Sourced · real records from your library
             </div>
-            <h2 style={{ fontFamily:"'Fraunces', serif", fontSize:23, fontWeight:600, margin:"0 0 4px", letterSpacing:"-0.01em" }}>{data.query}</h2>
-            {data.arabic && <p style={{ fontFamily:"'Amiri', serif", fontSize:18, color:C.inkSoft, margin:"0 0 16px", direction:"rtl" }}>{data.arabic}</p>}
-            <p style={{ fontFamily:"'Amiri', serif", fontSize:17.5, lineHeight:1.7, margin:"0 0 26px", color:C.ink }}>{data.overview}</p>
-
-            <Spread counts={counts} positions={positions} filter={filter} setFilter={setFilter}
-              jump={(i)=>cardsRef.current[i]?.scrollIntoView({ behavior:"smooth", block:"center" })} />
-
-            <div style={{ marginTop:8 }}>
-              {shown.map((p,i)=>{
-                const realIndex = positions.indexOf(p);
-                const st = STANCE[p.stance] || STANCE.conditional;
-                return (
-                  <article key={realIndex} ref={(el)=>(cardsRef.current[realIndex]=el)} className="aq-card"
-                    style={{ animationDelay:`${i*60}ms`, borderTop:`1px solid ${C.line}`, padding:"20px 0" }}>
-                    <div style={{ display:"flex", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
-                      <div style={{ flex:1, minWidth:200 }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                          <h3 style={{ fontFamily:"'Fraunces', serif", fontSize:18.5, fontWeight:600, margin:0 }}>{p.name}</h3>
-                          {p.arabic && <span style={{ fontFamily:"'Amiri', serif", fontSize:17, color:C.inkSoft, direction:"rtl" }}>{p.arabic}</span>}
-                          {p.official && <span style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:10, color:C.indigo, border:`1px solid ${C.line}`, borderRadius:2, padding:"2px 6px", textTransform:"uppercase", letterSpacing:"0.08em" }}>Official</span>}
-                        </div>
-                        {p.era && <p style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:11.5, color:C.inkSoft, margin:"4px 0 0", letterSpacing:"0.02em" }}>{p.era}</p>}
-                      </div>
-                      <span style={{ fontSize:12, fontWeight:600, color:st.color, border:`1px solid ${st.color}`, borderRadius:100, padding:"4px 11px", whiteSpace:"nowrap" }}>{st.label}</span>
-                    </div>
-                    <p style={{ fontSize:15.5, lineHeight:1.62, margin:"12px 0 0", color:C.ink, maxWidth:620 }}>{p.summary}</p>
-                    <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:12, flexWrap:"wrap" }}>
-                      {p.source?.url && <a className="aq-src" href={p.source.url} target="_blank" rel="noreferrer" style={{ fontSize:13, fontWeight:500 }}>{p.source.label} ↗</a>}
-                      {live && <span style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:11, color: p.confidence==="uncertain"?C.vermilion:C.inkSoft }}>{p.confidence==="uncertain" ? "⚠ unverified attribution" : "AI summary · verify"}</span>}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <p style={{ borderTop:`1px solid ${C.line}`, marginTop:8, paddingTop:18, fontSize:12.5, color:C.inkSoft, lineHeight:1.6 }}>
-              Aqwāl is a research aid for comparing scholarly opinion — not a fatwā. Rulings depend on context; consult a qualified scholar for personal guidance.
+            <h2 style={{fontFamily:"'Fraunces',serif",fontSize:22,fontWeight:600,margin:"0 0 6px"}}>{d.query}</h2>
+            <p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:C.inkSoft,margin:"0 0 22px"}}>
+              {d.count} result{d.count===1?"":"s"} · {Object.entries(d.grades||{}).map(([k,v])=>`${v} ${(GRADE[k]||GRADE.other).label}`).join(" · ")}
             </p>
+            {d.results.map((x,i)=><Card key={x.id||i} x={x} i={i}/>)}
+            {d.count===0&&<p style={{color:C.inkSoft,fontSize:14}}>No matching narration found in the loaded sources yet.</p>}
+            <p style={{borderTop:`1px solid ${C.line}`,marginTop:14,paddingTop:16,fontSize:12.5,color:C.inkSoft,lineHeight:1.6}}>A research aid that points to the sources — not a fatwā. Verify each ruling at its source.</p>
           </div>
         )}
       </div>
     </div>
   );
 }
-
-function Spread({ positions, filter, setFilter, jump }) {
-  const order = ["impermissible","conditional","permissible"];
+function Card({x,i}){
+  const g=GRADE[x.grade_class]||GRADE.other;
   return (
-    <div style={{ marginBottom:18 }}>
-      <div style={{ fontFamily:"'IBM Plex Mono', monospace", fontSize:11, color:C.inkSoft, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:10 }}>The spread of opinion</div>
-      <div className="aq-track" style={{ position:"relative", height:4, background:`linear-gradient(90deg, ${C.vermilion}, ${C.ochre}, ${C.verdigris})`, borderRadius:4, marginBottom:16, overflow:"hidden" }}>
-        <i style={{ display:"block", height:"100%", transformOrigin:"left", animation:"aqFill .7s cubic-bezier(.2,.7,.2,1) both", background:"transparent" }} />
+    <article className="card" style={{animationDelay:`${i*55}ms`,borderTop:`1px solid ${C.line}`,padding:"18px 0"}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:10}}>
+        <span style={{fontSize:12,fontWeight:600,color:g.color,border:`1px solid ${g.color}`,borderRadius:100,padding:"4px 12px",whiteSpace:"nowrap"}}>{g.label} · {g.en}</span>
+        <span style={{marginRight:"auto"}}/>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
-        {order.map(s=>{
-          const st = STANCE[s];
-          const items = positions.filter(p=>p.stance===s);
-          const active = filter===s;
-          return (
-            <button key={s} className="aq-chip" onClick={()=>setFilter(active?null:s)} aria-pressed={active}
-              style={{ textAlign:"left", background:active?C.paperHi:"transparent", border:`1px solid ${active?st.color:C.line}`, borderRadius:3, padding:"10px 11px", cursor:"pointer", fontFamily:"inherit" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                <span style={{ width:8, height:8, borderRadius:100, background:st.color }} />
-                <span style={{ fontSize:12.5, fontWeight:600, color:st.color }}>{st.label}</span>
-                <span style={{ marginLeft:"auto", fontFamily:"'IBM Plex Mono', monospace", fontSize:12, color:C.inkSoft }}>{items.length}</span>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                {items.map(p=>(
-                  <span key={p.name} onClick={(e)=>{ e.stopPropagation(); jump(positions.indexOf(p)); }} style={{ fontSize:12, color:C.inkSoft, lineHeight:1.4 }}>{p.name}</span>
-                ))}
-                {items.length===0 && <span style={{ fontSize:11.5, color:C.line }}>—</span>}
-              </div>
-            </button>
-          );
-        })}
+      <p dir="rtl" style={{fontFamily:"'Amiri',serif",fontSize:20,lineHeight:1.7,margin:"0 0 10px",color:C.ink,textAlign:"right"}}>{x.hadith}</p>
+      {x.grade&&<p dir="rtl" style={{fontFamily:"'Amiri',serif",fontSize:15,color:g.color,margin:"0 0 8px",textAlign:"right"}}>خلاصة الحكم: {x.grade}</p>}
+      <div dir="rtl" style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11.5,color:C.inkSoft,lineHeight:1.7,textAlign:"right"}}>
+        {x.rawi?`الراوي: ${x.rawi}`:""}{x.muhaddith?` · المحدّث: ${x.muhaddith}`:""}<br/>
+        {x.source_book?`المصدر: ${x.source_book}`:""}{x.ref?` · ${x.ref}`:""}
       </div>
-    </div>
+      {x.source_url&&<div style={{marginTop:10}}><a className="lnk" href={x.source_url} target="_blank" rel="noreferrer" style={{fontSize:13,fontWeight:500}}>تحقّق في الدرر ↗</a></div>}
+    </article>
   );
 }
-
-try {
-  ReactDOM.createRoot(document.getElementById("root")).render(<Aqwal />);
-} catch (err) {
-  document.getElementById("root").innerHTML =
-    '<pre style="font-family:ui-monospace,monospace;padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px;line-height:1.55">Render error:\n\n' +
-    ((err && err.stack) || err) + '</pre>';
-}
+try{ReactDOM.createRoot(document.getElementById("root")).render(<App/>);}
+catch(err){document.getElementById("root").innerHTML='<pre style="padding:22px;color:#9E2B25;white-space:pre-wrap;font-size:13px">'+((err&&err.stack)||err)+'</pre>';}
 </script>
 </body>
 </html>
