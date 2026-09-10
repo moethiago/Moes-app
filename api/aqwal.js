@@ -191,7 +191,16 @@ async function tTranscribe(mime, b64) {
   if (T_GEMINI) {
     const mt = /mp4|m4a|aac/.test(mime) ? "video/mp4" : mime;   // Gemini reads the audio track of an mp4 container
     let last = "";
-    for (const model of ["gemini-2.5-flash", "gemini-2.0-flash"]) {
+    let models = [process.env.THOUGHTS_GEMINI_MODEL, "gemini-3.6-flash", "gemini-flash-latest"].filter(Boolean);
+    try {   // ask Gemini which flash models exist right now, newest first
+      const lr = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": T_GEMINI } });
+      const lj = await lr.json();
+      const names = (lj.models || []).map((m) => String(m.name || "").replace(/^models\//, ""))
+        .filter((n) => /flash/.test(n) && !/lite|image|tts|live|audio|embedding|8b|preview|exp/.test(n) && (lj.models.find((m) => m.name === "models/" + n).supportedGenerationMethods || []).includes("generateContent"))
+        .sort().reverse();
+      models = [...new Set([...models, ...names])];
+    } catch {}
+    for (const model of models.slice(0, 4)) {
       const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
         method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": T_GEMINI },
         body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: mt, data: b64 } }, { text: "Transcribe this recording word for word in English. Output only the transcript, nothing else. Keep filler words out but never change meaning." }] }], generationConfig: { temperature: 0 } }),
