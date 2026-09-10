@@ -178,7 +178,7 @@ ${names.join("\n")}`;
 /* ---------------- price comparison ---------------- */
 async function compare({ items, store }) {
   // items: [{name, paid}]  (paid = unit price in SAR)
-  const list = (items || []).slice(0, 8);
+  const list = (items || []).slice(0, 4);
   const results = [];
   const todo = [];
   for (const it of list) {
@@ -212,7 +212,7 @@ Never invent a price. If you cannot find a real current price for an item, set l
       model: MODEL,
       max_tokens: 6000,
       system,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(20, todo.length * 3) }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(10, todo.length * 3) }],
       messages: [{ role: "user", content: user }],
     });
     let arr = [];
@@ -221,12 +221,15 @@ Never invent a price. If you cannot find a real current price for an item, set l
     for (let i = 0; i < todo.length; i++) {
       const it = todo[i];
       const r = arr.find((x) => x && normAr(x.name) === normAr(it.name)) || arr[i] || {};
-      const data = {
-        lowest: r.lowest && Number(r.lowest.price) > 0 ? { store: String(r.lowest.store || ""), price: Number(r.lowest.price), note: String(r.lowest.note || "") } : null,
-        prices: Array.isArray(r.prices) ? r.prices.filter((p) => p && Number(p.price) > 0).map((p) => ({ store: String(p.store || ""), price: Number(p.price) })).slice(0, 6) : [],
-        confidence: r.confidence || "low",
-        checked: r.checked || new Date().toISOString().slice(0, 10),
-      };
+      let prices = Array.isArray(r.prices) ? r.prices.filter((p) => p && Number(p.price) > 0).map((p) => ({ store: String(p.store || ""), price: Number(p.price) })) : [];
+      if (r.lowest && Number(r.lowest.price) > 0 && !prices.some((p) => p.store === String(r.lowest.store))) prices.push({ store: String(r.lowest.store || ""), price: Number(r.lowest.price) });
+      // the price actually paid is a real data point for that store
+      if (store && it.paid != null && Number(it.paid) > 0 && !prices.some((p) => p.store === store)) prices.push({ store, price: Number(it.paid) });
+      prices.sort((a, b) => a.price - b.price);
+      prices = prices.slice(0, 6);
+      // never trust the model's "lowest" — compute it
+      const lowest = prices.length ? { store: prices[0].store, price: prices[0].price, note: (r.lowest && String(r.lowest.store) === prices[0].store) ? String(r.lowest.note || "") : "" } : null;
+      const data = { lowest, prices, confidence: r.confidence || "low", checked: r.checked || new Date().toISOString().slice(0, 10) };
       if (data.lowest || data.prices.length) {
         await kv(["SET", "maqadi:price:" + normAr(it.name), JSON.stringify({ ts: Date.now(), data })]);
       }
