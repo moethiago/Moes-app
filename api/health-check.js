@@ -176,6 +176,17 @@ ${names.join("\n")}`;
 }
 
 /* ---------------- price comparison ---------------- */
+// Always derive "lowest" from the price list (never trust a model's pick), and
+// count the price actually paid as a real data point for that store.
+function finalize(data, it, store) {
+  let prices = Array.isArray(data.prices) ? data.prices.filter((p) => p && Number(p.price) > 0).map((p) => ({ store: String(p.store || ""), price: Number(p.price) })) : [];
+  if (data.lowest && Number(data.lowest.price) > 0 && !prices.some((p) => p.store === String(data.lowest.store))) prices.push({ store: String(data.lowest.store || ""), price: Number(data.lowest.price) });
+  if (store && it.paid != null && Number(it.paid) > 0 && !prices.some((p) => p.store === store)) prices.push({ store, price: Number(it.paid) });
+  prices.sort((a, b) => a.price - b.price);
+  prices = prices.slice(0, 6);
+  const lowest = prices.length ? { store: prices[0].store, price: prices[0].price, note: (data.lowest && String(data.lowest.store) === prices[0].store) ? String(data.lowest.note || "") : "" } : null;
+  return { lowest, prices, confidence: data.confidence || "low", checked: data.checked || new Date().toISOString().slice(0, 10) };
+}
 async function compare({ items, store }) {
   // items: [{name, paid}]  (paid = unit price in SAR)
   const list = (items || []).slice(0, 4);
@@ -187,7 +198,7 @@ async function compare({ items, store }) {
     if (cached) {
       try {
         const c = JSON.parse(cached);
-        if (Date.now() - c.ts < PRICE_TTL_DAYS * 86400000) { results.push({ ...c.data, name: it.name, paid: it.paid, cached: true }); continue; }
+        if (Date.now() - c.ts < PRICE_TTL_DAYS * 86400000) { results.push({ ...finalize(c.data, it, store), name: it.name, paid: it.paid, cached: true }); continue; }
       } catch {}
     }
     todo.push(it);
@@ -221,15 +232,7 @@ Never invent a price. If you cannot find a real current price for an item, set l
     for (let i = 0; i < todo.length; i++) {
       const it = todo[i];
       const r = arr.find((x) => x && normAr(x.name) === normAr(it.name)) || arr[i] || {};
-      let prices = Array.isArray(r.prices) ? r.prices.filter((p) => p && Number(p.price) > 0).map((p) => ({ store: String(p.store || ""), price: Number(p.price) })) : [];
-      if (r.lowest && Number(r.lowest.price) > 0 && !prices.some((p) => p.store === String(r.lowest.store))) prices.push({ store: String(r.lowest.store || ""), price: Number(r.lowest.price) });
-      // the price actually paid is a real data point for that store
-      if (store && it.paid != null && Number(it.paid) > 0 && !prices.some((p) => p.store === store)) prices.push({ store, price: Number(it.paid) });
-      prices.sort((a, b) => a.price - b.price);
-      prices = prices.slice(0, 6);
-      // never trust the model's "lowest" — compute it
-      const lowest = prices.length ? { store: prices[0].store, price: prices[0].price, note: (r.lowest && String(r.lowest.store) === prices[0].store) ? String(r.lowest.note || "") : "" } : null;
-      const data = { lowest, prices, confidence: r.confidence || "low", checked: r.checked || new Date().toISOString().slice(0, 10) };
+      const data = finalize(r, it, store);
       if (data.lowest || data.prices.length) {
         await kv(["SET", "maqadi:price:" + normAr(it.name), JSON.stringify({ ts: Date.now(), data })]);
       }
