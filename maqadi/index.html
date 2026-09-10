@@ -300,7 +300,7 @@ async function call(body,ms){
     var j=await r.json().catch(function(){return {};});
     if(r.status===401)throw new Error("pin");
     if(r.status===409)return {conflict:true,v:j.v,state:j.state};
-    if(!r.ok)throw new Error(j.error||("http "+r.status));
+    if(!r.ok){var msg=String(j.error||("http "+r.status));if(/credit balance/i.test(msg))msg="رصيد مفتاح Anthropic خلص — عبّيه من console.anthropic.com ثم حاول مرة ثانية";throw new Error(msg);}
     return j;
   } finally{clearTimeout(t);}
 }
@@ -746,7 +746,7 @@ async function checkPrice(it){
     var c=(r.results||[])[0];
     if(c&&c.prices&&c.prices.length){op("prices.found",{list:[{id:it.id,prices:c.prices}]});op("item.update",{id:it.id,patch:{priceChecked:Date.now()}});toast("الأقل: "+money(c.lowest.price)+" عند "+(STORE_AR[c.lowest.store]||c.lowest.store),true);}
     else toast("ما لقينا سعر واضح لهذا الصنف اليوم",true);
-  }catch(e){toast("ما قدرنا نجيب السعر الحين");}
+  }catch(e){toast(String(e.message||"ما قدرنا نجيب السعر الحين"),true);}
   delete priceBusy[it.id];render();
 }
 
