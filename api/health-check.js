@@ -64,10 +64,12 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
 const LITE_BLOCKED = ["receipt", "compare", "photoset"];
-const MODEL = process.env.MAQADI_MODEL || "claude-sonnet-5";                       // price research (needs web search judgement)
+const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-haiku-4-5-20251001"; // receipts: cheap model first, MODEL as fallback
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
-const COST = { receipt: 0.05, item: 0.2 };                                          // rough SAR per action, shown to the user
+// USD per million tokens [input, output]; web search is $10 per 1,000 searches. Real usage is read off every API response.
+const PRICE = { "claude-haiku-4-5-20251001": [1, 5], "claude-sonnet-5": [3, 15], "claude-opus-5": [15, 75] };
+const SEARCH_USD = 0.01, SAR = 3.75;
 
 const STATE_KEY = "maqadi:state";
 const PRICE_TTL_DAYS = 21;
@@ -86,10 +88,11 @@ async function kv(cmd) {
 function monthKey() { return "maqadi:usage:" + new Date().toISOString().slice(0, 7); }
 async function usage() {
   const raw = await kv(["HGETALL", monthKey()]);
-  const u = { receipts: 0, items: 0 };
+  const u = { receipts: 0, items: 0, searches: 0, calls: 0, usd: 0 };
   if (Array.isArray(raw)) for (let i = 0; i < raw.length; i += 2) u[raw[i]] = Number(raw[i + 1]) || 0;
-  u.est = Math.round((u.receipts * COST.receipt + u.items * COST.item) * 100) / 100;
+  u.est = Math.round(u.usd * SAR * 100) / 100;   // SAR actually spent this month, from real token counts
   u.budget = BUDGET_SAR;
+  u.model = MODEL;
   return u;
 }
 async function bump(field, n) { try { await kv(["HINCRBY", monthKey(), field, String(n)]); } catch {} }
@@ -115,6 +118,13 @@ async function claude(body) {
   });
   const j = await r.json();
   if (!r.ok) throw new Error("anthropic: " + (j.error && j.error.message ? j.error.message : r.status));
+  try {
+    const u = j.usage || {}, pr = PRICE[body.model] || [3, 15];
+    const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+    const searches = (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+    const usd = inTok / 1e6 * pr[0] + (u.output_tokens || 0) / 1e6 * pr[1] + searches * SEARCH_USD;
+    await Promise.all([kv(["HINCRBYFLOAT", monthKey(), "usd", String(usd)]), kv(["HINCRBY", monthKey(), "searches", String(searches)]), kv(["HINCRBY", monthKey(), "calls", "1"])]);
+  } catch {}
   return j;
 }
 function textOf(msg) {
@@ -222,6 +232,7 @@ async function compare({ items, store }) {
   if (todo.length) {
     const u = await usage();
     if (u.est >= BUDGET_SAR) { const err = new Error("budget"); err.code = 402; throw err; }
+    if (u.est + todo.length * 0.6 > BUDGET_SAR) { const err = new Error("budget"); err.code = 402; throw err; } // don't start what would cross the cap
     await bump("items", todo.length);
     const system = `You are a Saudi Arabia grocery price researcher. Today's shopper bought items at "${store || "a supermarket"}" in Riyadh. For EACH item, search the web for the CURRENT shelf/online price in Saudi Arabia (SAR) at the major chains: Danube, Panda, Tamimi, Carrefour, LuLu, Othaim, Nana, Al Raya, Manuel, Spar. Use the stores' own sites or apps' web pages and Saudi price-comparison pages. Prefer the same brand and pack size as the item name.
 
@@ -241,7 +252,7 @@ Never invent a price. If you cannot find a real current price for an item, set l
       model: MODEL,
       max_tokens: 3000,
       system,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(8, todo.length * 2) }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(6, todo.length * 2) }],
       messages: [{ role: "user", content: user }],
     });
     let arr = [];
