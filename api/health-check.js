@@ -302,6 +302,24 @@ async function maqadiHandler(req, res) {
       await writeState(nv, body.state);
       return res.status(200).json({ v: nv });
     }
+    if (action === "snapshot" && role === "full") {
+      const name = String(body.name || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32) || "manual";
+      const raw = await kv(["GET", STATE_KEY]);
+      const photos = await kv(["GET", "maqadi:photos"]);
+      await kv(["SET", "maqadi:snapshot:" + name, JSON.stringify({ ts: Date.now(), state: raw, photos })]);
+      return res.status(200).json({ ok: true, name, bytes: (raw || "").length });
+    }
+    if (action === "restore" && role === "full") {
+      const name = String(body.name || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32);
+      const snap = await kv(["GET", "maqadi:snapshot:" + name]);
+      if (!snap) return res.status(404).json({ error: "no snapshot" });
+      const j = JSON.parse(snap);
+      const cur = await readState();
+      const parsed = j.state ? JSON.parse(j.state) : { state: null };
+      await writeState((cur.v || 0) + 1, parsed.state);
+      if (j.photos) await kv(["SET", "maqadi:photos", j.photos]);
+      return res.status(200).json({ ok: true, restored: name, from: j.ts });
+    }
     if (action === "photos") {
       const raw = await kv(["GET", "maqadi:photos"]);
       return res.status(200).json({ photos: raw ? JSON.parse(raw) : {} });
