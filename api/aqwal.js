@@ -305,7 +305,7 @@ async function tProcessOne(id, index, ctx) {
     if (!a) throw new Error("no audio stored");
     const tr = await tTranscribe(a.mime, a.b64);
     if (!tr.text) { t.status = "empty"; await tPut(t); await tDeleteAudio(id); await tUpsertIndex(t); return { id, status: "empty" }; }
-    t.transcript = tr.text; t.engine = tr.engine; t.status = "transcribed";
+    t.transcript = tr.text; t.engine = tr.engine; t.status = "transcribed"; delete t.error; delete t.attempts;
     await tPut(t); await tDeleteAudio(id); await tBump("transcribed", 1);
   }
   // 2. embed + related
@@ -327,7 +327,7 @@ async function tProcessOne(id, index, ctx) {
   const themes = [...new Set([...T_THEMES, ...index.flatMap((x) => x.themes || [])])];
   const a = await tAnalyze(t, related, themes);
   Object.assign(t, a);
-  t.status = "ready"; delete t.note;
+  t.status = "ready"; delete t.note; delete t.error; delete t.attempts;
   await tPut(t); await tBump("analyzed", 1);
   await tUpsertIndex(t);
   return { id, status: "ready" };
