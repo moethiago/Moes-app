@@ -232,7 +232,7 @@ var SEED={
 /* =================================================================
    STATE
    ================================================================= */
-var homeQ="", priceBusy={};
+var homeQ="", priceBusy={}, refreshing=null;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -694,7 +694,8 @@ function rHome(){
   }
   s3.appendChild(c3);pad.appendChild(s3);
 
-  var s4=document.createElement("div");s4.className="sec";s4.innerHTML="<h2>الأسعار <span class='muted' style='font-weight:400'>اكتب أي صنف واطلب سعر اليوم</span></h2>";
+  var stale=Object.keys(S.items).filter(function(id){var it=S.items[id];return !it.priceChecked||Date.now()-it.priceChecked>7*DAY;}).length;
+  var s4=document.createElement("div");s4.className="sec";s4.innerHTML="<h2>الأسعار <button id='refreshAll'>"+(refreshing?'<span class="spin"></span> '+ar(refreshing.done)+' من '+ar(refreshing.total):(stale?"حدّث الأسعار ("+ar(stale)+")":"كلها محدّثة هذا الأسبوع"))+"</button></h2>";
   var c4=document.createElement("div");c4.className="card";
   var srch=document.createElement("input");srch.placeholder="دوّر على صنف…";srch.value=homeQ;srch.style.cssText="width:100%;background:var(--bg);border:0;border-radius:10px;padding:10px 12px;font-size:15px;outline:none;margin-bottom:6px";
   var box=document.createElement("div");
@@ -714,6 +715,7 @@ function rHome(){
     });
   }
   srch.addEventListener("input",function(){homeQ=srch.value;fill();});fill();c4.appendChild(srch);c4.appendChild(box);
+  $("refreshAll").onclick=function(){if(!refreshing&&stale)refreshAllPrices();};
   var leg=document.createElement("div");leg.className="muted";leg.style.cssText="font-size:11.5px;margin-top:8px";leg.textContent="● سعر دفعته من فاتورة · بدون علامة: سعر لقيناه على الإنترنت";c4.appendChild(leg);
   s4.appendChild(c4);pad.appendChild(s4);
 
@@ -722,6 +724,20 @@ function rHome(){
   pad.appendChild(f);$("logout").onclick=function(){localStorage.removeItem("maqadi_pin");location.reload();};
 }
 
+async function refreshAllPrices(){
+  var todo=Object.keys(S.items).map(function(id){return S.items[id];}).filter(function(it){return !it.priceChecked||Date.now()-it.priceChecked>7*DAY;}).sort(function(a,b){return a.cycle-b.cycle;});
+  refreshing={done:0,total:todo.length};render();
+  for(var i=0;i<todo.length;i+=3){
+    var ch=todo.slice(i,i+3);
+    try{
+      var r=await call({action:"compare",store:"",items:ch.map(function(it){return {name:it.name,paid:null};})},58000);
+      var found=[];ch.forEach(function(it){var c=(r.results||[]).find(function(x){return normAr(x.name)===normAr(it.name);});if(c&&c.prices&&c.prices.length)found.push({id:it.id,prices:c.prices});op("item.update",{id:it.id,patch:{priceChecked:Date.now()}});});
+      if(found.length)op("prices.found",{list:found});
+    }catch(e){}
+    refreshing.done=Math.min(todo.length,i+3);if(view==="home")render();
+  }
+  refreshing=null;render();toast("حدّثنا الأسعار",true);
+}
 async function checkPrice(it){
   if(priceBusy[it.id])return;priceBusy[it.id]=true;render();
   try{
