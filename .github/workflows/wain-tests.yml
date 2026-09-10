@@ -1,0 +1,20 @@
+name: wain tests
+on:
+  push:
+    paths: ["wain/**", "tests/**"]
+  workflow_dispatch:
+jobs:
+  grid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node tests/wain_grid.js
+      - name: backend contract
+        run: |
+          set -e
+          curl -sf -X POST "https://moes-app-two.vercel.app/api/health-check?app=wain" -H "Content-Type: application/json" -d '{"action":"state","pin":"2026"}' | grep -q '"v"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST 'https://moes-app-two.vercel.app/api/health-check?app=wain' -H 'Content-Type: application/json' -d '{"action":"state","pin":"0000"}')" = "401"
+          curl -sf https://moes-app-two.vercel.app/api/health-check | grep -q '"ok"'
+          curl -sf -X POST https://moes-app-two.vercel.app/api/health-check -H "Content-Type: application/json" -d '{"action":"state","pin":"1234"}' | grep -q '"v"'
