@@ -1,5 +1,5 @@
 // مقاضي — service worker: instant open, offline shell. API is never cached.
-var C = "maqadi-v4";
+var C = "maqadi-v5";
 var SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(C).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
@@ -12,7 +12,7 @@ self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET" || u.pathname.indexOf("/api/") >= 0) return;
   if (u.origin === location.origin) {
     // network first for our own files so updates land, cache as fallback
-    e.respondWith(fetch(e.request).then(function (r) { var cp = r.clone(); caches.open(C).then(function (c) { c.put(e.request, cp); }); return r; }).catch(function () { return caches.match(e.request); }));
+    e.respondWith(fetch(e.request, { cache: "no-store" }).then(function (r) { var cp = r.clone(); caches.open(C).then(function (c) { c.put(e.request, cp); }); return r; }).catch(function () { return caches.match(e.request); }));
   } else {
     // fonts: cache first
     e.respondWith(caches.match(e.request).then(function (m) { return m || fetch(e.request).then(function (r) { var cp = r.clone(); caches.open(C).then(function (c) { c.put(e.request, cp); }); return r; }); }));
