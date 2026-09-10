@@ -581,19 +581,18 @@ function commitReceipt(R){
   runCompare(rc);
 }
 async function runCompare(rc){
-  var lines=rc.lines.slice(0,24), results=[];
-  try{
-    for(var i=0;i<lines.length;i+=6){
-      var chunk=lines.slice(i,i+6).map(function(l){return {name:l.name,paid:l.unit!=null?l.unit:(l.total/(l.qty||1))};});
-      var r=await call({action:"compare",store:rc.store,items:chunk},58000);
-      results=results.concat(r.results||[]);
-      rcptUI.partial=results;if(view==="rcpt"&&rcptUI.rid===rc.id)render();
-    }
-    op("receipt.compare",{rid:rc.id,results:results});
-    rcptUI.comparing=false;rcptUI.partial=null;
-    var full=S.receipts.find(function(x){return x.id===rc.id;});var sv=full?savings(full):{over:0};
-    toast(sv.over>0?"لو اشتريت كل صنف من أرخص مكان توفر "+money(sv.over):"أسعاركم كانت الأرخص تقريباً",true);
-  }catch(e){rcptUI.comparing=false;rcptUI.err=String(e.message||e);}
+  var lines=rc.lines.slice(0,24), results=[], failed=0;
+  for(var i=0;i<lines.length;i+=3){
+    var chunk=lines.slice(i,i+3).map(function(l){return {name:l.name,paid:l.unit!=null?l.unit:(l.total/(l.qty||1))};});
+    try{ var r=await call({action:"compare",store:rc.store,items:chunk},58000); results=results.concat(r.results||[]); }
+    catch(e){ failed+=chunk.length; chunk.forEach(function(c){results.push({name:c.name,paid:c.paid,lowest:null,prices:[],confidence:"low",failed:true});}); }
+    rcptUI.partial=results;if(view==="rcpt"&&rcptUI.rid===rc.id)render();
+  }
+  op("receipt.compare",{rid:rc.id,results:results});
+  rcptUI.comparing=false;rcptUI.partial=null;
+  var full=S.receipts.find(function(x){return x.id===rc.id;});var sv=full?savings(full):{over:0};
+  if(failed&&failed===lines.length)toast("ما قدرنا نقارن الحين — اضغط «قارن الحين» بعد شوي",true);
+  else toast(sv.over>0?"لو اشتريت كل صنف من أرخص مكان توفر "+money(sv.over):"أسعاركم كانت الأرخص تقريباً",true);
   if(view==="rcpt"&&rcptUI.rid===rc.id)render();
 }
 function rResult(rid){
@@ -619,7 +618,7 @@ function rResult(rid){
     var d=document.createElement("div");d.className="line";
     var right;
     if(c&&c.lowest){var diff=paid-c.lowest.price;right=(diff>0.25?'<span class="delta up">+'+money(diff)+'</span>':'<span class="delta ok">✓ الأرخص</span>');}
-    else if(c)right='<span class="delta nd">ما لقينا سعر</span>';
+    else if(c)right='<span class="delta nd">'+(c.failed?"ما وصلنا":"ما لقينا سعر")+'</span>';
     else if(rcptUI.comparing)right='<span class="delta nd">…</span>';
     else right='';
     d.innerHTML='<div class="nm">'+esc(l.name)+'<small>دفعت '+money(paid)+(c&&c.lowest?' · الأقل <b>'+money(c.lowest.price)+'</b> عند '+esc(STORE_AR[c.lowest.store]||c.lowest.store)+(c.lowest.note?' ('+esc(c.lowest.note)+')':'')+(c.confidence==="low"?' · تقديري':''):'')+'</small></div>'+right;
