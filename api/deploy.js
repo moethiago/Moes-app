@@ -1,7 +1,8 @@
 // ============================================================
 // api/deploy.js — secure file deployment to GitHub
 // Protected by DEPLOY_SECRET env var
-// Usage: POST /api/deploy with { secret, path, content }
+// Usage: POST /api/deploy with { secret, path, content, message?, encoding? }
+// encoding: 'base64' sends binary files (content already base64-encoded)
 // ============================================================
 
 const REPO_OWNER = 'moethiago';
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
     // Write the file
     const putBody = {
       message: message,
-      content: Buffer.from(content).toString('base64'),
+      content: body.encoding === 'base64' ? content : Buffer.from(content).toString('base64'),
       branch:  BRANCH,
     };
     if (sha) putBody.sha = sha;
