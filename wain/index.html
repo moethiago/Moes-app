@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>وين نروح؟</title>
+<meta name="theme-color" content="#1E2233">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="وين نروح؟">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1E2233; --sur:#282D42; --sur2:#333A55; --line:#3C4463;
+  --ink:#F4EFE6; --mute:#A8AEC4; --dim:#6F7690;
+  --gold:#E9BE74; --gold-ink:#1E1A10; --green:#8FCDB5; --red:#E28C7C;
+  --r:18px; --pad:20px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body{min-height:100dvh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:var(--ink);background:var(--sur2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;width:100%;outline:none}
+input:focus,textarea:focus{border-color:var(--gold)}
+.app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) var(--pad) 0}
+.screen{display:none}.screen.on{display:block}
+h1{font-size:34px;font-weight:700;margin:6px 0 2px;letter-spacing:-.3px}
+.sub{color:var(--mute);margin:0 0 26px;font-size:17px}
+.q{font-size:18px;font-weight:600;margin:22px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--sur);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:16px;transition:background .15s,border-color .15s,transform .1s}
+.chip:active{transform:scale(.97)}
+.chip.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
+.cta{display:block;width:100%;background:var(--gold);color:var(--gold-ink);font-weight:700;font-size:19px;padding:16px;border-radius:16px;margin-top:28px;transition:transform .1s}
+.cta:active{transform:scale(.985)}
+.cta.ghost{background:var(--sur);color:var(--ink);border:1px solid var(--line);font-weight:500;font-size:17px;margin-top:12px}
+.cta:disabled{opacity:.45}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.nav{position:fixed;bottom:0;left:0;right:0;background:rgba(30,34,51,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:4px;z-index:5}
+.nav button{flex:1;max-width:170px;padding:8px 4px;border-radius:12px;color:var(--mute);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav button span{font-size:22px;line-height:1}
+.nav button.on{color:var(--gold)}
+.card{background:var(--sur);border-radius:var(--r);padding:18px;margin:12px 0;border:1px solid transparent}
+.card.pick{border-color:var(--gold)}
+.hero{height:118px;border-radius:14px;margin:-4px 0 14px;display:flex;align-items:center;justify-content:center;font-size:56px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 30% 120%,rgba(255,255,255,.14),transparent 60%)}
+.h-coffee{background:linear-gradient(135deg,#5B3A29,#8A5A3A)}
+.h-food{background:linear-gradient(135deg,#7B2E2E,#B25A3C)}
+.h-dessert{background:linear-gradient(135deg,#8C4A6B,#C97E9A)}
+.h-snack{background:linear-gradient(135deg,#7A5A1E,#B9923C)}
+.h-event{background:linear-gradient(135deg,#3B2F7A,#6C57C7)}
+.h-drive{background:linear-gradient(135deg,#2E4A3F,#4F8C6E)}
+.h-view{background:linear-gradient(135deg,#1F3A5A,#3E77A8)}
+.h-walk{background:linear-gradient(135deg,#2F4F4F,#5E8E8E)}
+.h-explore{background:linear-gradient(135deg,#4A3B2A,#8E7048)}
+.h-any{background:linear-gradient(135deg,#3A3F5C,#5B6390)}
+.rank{color:var(--mute);font-size:14px;margin-bottom:2px}
+.name{font-size:24px;font-weight:700;line-height:1.25;margin:0 0 4px}
+.kind{color:var(--mute);font-size:15px;margin-bottom:12px}
+.facts{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:15.5px;margin-bottom:12px}
+.facts b{font-weight:600}
+.open{color:var(--green)}.closed{color:var(--red)}.soon{color:var(--gold)}
+.why{background:var(--sur2);border-radius:12px;padding:10px 14px;font-size:15px;color:var(--ink)}
+.why small{display:block;color:var(--mute);font-size:13.5px;margin-bottom:2px}
+.actions{display:flex;gap:8px;margin-top:14px}
+.actions button{flex:1;padding:12px;border-radius:12px;font-weight:600;font-size:16px}
+.go{background:var(--gold);color:var(--gold-ink)}
+.no{background:var(--sur2);color:var(--ink)}
+.big{font-size:40px;font-weight:700;line-height:1.15;margin:8px 0 6px}
+.line{display:flex;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+.line .t{flex:1;min-width:0}
+.line .t b{font-weight:600;display:block}
+.line .t span{color:var(--mute);font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.line .x{color:var(--dim);font-size:22px;padding:6px 8px}
+.rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.rate button{background:var(--sur2);border-radius:14px;padding:12px 4px;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.rate button span{font-size:26px}
+.rate button.on{background:var(--gold);color:var(--gold-ink)}
+.empty{color:var(--mute);text-align:center;padding:40px 10px;font-size:16px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.icon{font-size:22px;padding:8px;color:var(--mute)}
+.note{color:var(--mute);font-size:14px;margin-top:10px}
+.pill{display:inline-block;background:var(--sur2);border-radius:999px;padding:3px 10px;font-size:13px;color:var(--mute);margin-inline-start:6px}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;white-space:nowrap}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(10,12,20,.6);display:none;align-items:flex-end;z-index:8}
+.modal.on{display:flex}
+.sheet{background:var(--sur);width:100%;max-width:520px;margin:0 auto;border-radius:22px 22px 0 0;padding:20px var(--pad) calc(24px + env(safe-area-inset-bottom));max-height:88dvh;overflow:auto}
+.sheet h2{font-size:22px;margin:4px 0 14px}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 6px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--mute);border-top-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-inline-end:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.reveal{animation:up .35s ease both}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.reveal{animation:none}}
+.seg{display:flex;background:var(--sur2);border-radius:12px;padding:4px;margin:10px 0}
+.seg button{flex:1;padding:8px;border-radius:9px;color:var(--mute);font-size:15px}
+.seg button.on{background:var(--sur);color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- PIN -->
+<section id="s-pin" class="screen">
+  <h1>وين نروح؟</h1>
+  <p class="sub">حطّوا رمز البيت عشان نفتح لكم.</p>
+  <input id="pin" inputmode="numeric" placeholder="رمز البيت" style="font-size:22px;text-align:center;letter-spacing:6px">
+  <button class="cta" onclick="enterPin()">ندخل</button>
+  <p class="note" id="pin-err"></p>
+</section>
+
+<!-- HOME -->
+<section id="s-home" class="screen">
+  <div class="top"><h1>وين نروح؟</h1><button class="icon" onclick="openSettings()" aria-label="إعدادات">⚙︎</button></div>
+  <p class="sub">خلّنا نختار لكم.</p>
+  <div id="pending-box"></div>
+  <div class="q">كم عندكم وقت؟</div>
+  <div class="chips" id="c-time"></div>
+  <div class="q">وش جوّكم؟ <span class="pill">اختاروا أكثر من شي</span></div>
+  <div class="chips" id="c-mood"></div>
+  <div class="q">كم مستعدين تبعدون؟</div>
+  <div class="chips" id="c-dist"></div>
+  <button class="cta" id="btn-go" onclick="decide()">شوف وش عندنا</button>
+  <button class="cta ghost" onclick="surprise()">🎲 فاجئنا</button>
+  <p class="note" id="loc-note"></p>
+</section>
+
+<!-- RESULTS -->
+<section id="s-results" class="screen">
+  <div class="top"><h1 id="res-title">أحلى ٣ خيارات</h1><button class="icon" onclick="show('home')">✕</button></div>
+  <p class="sub" id="res-sub"></p>
+  <div id="res-list"></div>
+  <div id="res-foot"></div>
+</section>
+
+<!-- GO -->
+<section id="s-go" class="screen">
+  <div class="top"><div class="rank" style="font-size:16px;margin-top:8px">يلا نروح هنا 🚗</div><button class="icon" onclick="show('home')">✕</button></div>
+  <div id="go-body"></div>
+</section>
+
+<!-- WISH -->
+<section id="s-wish" class="screen">
+  <h1>نبغى نجربها</h1>
+  <p class="sub">شفتوا مكان بالإنستقرام؟ حطّوه هنا وننبّهكم عليه بوقته.</p>
+  <button class="cta" onclick="openAdd()">+ نضيف مكان</button>
+  <div id="wish-list" class="card" style="padding:4px 18px"></div>
+</section>
+
+<!-- DONE -->
+<section id="s-done" class="screen">
+  <h1>جربناها</h1>
+  <p class="sub">كل مكان رحتوا له، وإيش رايكم فيه.</p>
+  <div id="done-pending"></div>
+  <div id="done-list" class="card" style="padding:4px 18px"></div>
+</section>
+
+</div>
+
+<nav class="nav">
+  <button id="n-home" class="on" onclick="show('home')"><span>🧭</span>وين نروح</button>
+  <button id="n-wish" onclick="show('wish')"><span>✨</span>نبغى نجربها</button>
+  <button id="n-done" onclick="show('done')"><span>❤️</span>جربناها</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADD WISH -->
+<div class="modal" id="m-add" onclick="if(event.target===this)closeModal('m-add')">
+  <div class="sheet">
+    <h2>مكان نبغى نجربه</h2>
+    <label>اسم المكان</label>
+    <input id="w-name" placeholder="مثلاً: مقهى شفناه بالإنستقرام">
+    <label>رابط قوقل ماب أو إنستقرام (اختياري)</label>
+    <input id="w-link" placeholder="https://maps.app.goo.gl/…" inputmode="url">
+    <label>وش نوعه؟</label>
+    <div class="chips" id="w-cats"></div>
+    <label>ملاحظة (اختياري)</label>
+    <input id="w-note" placeholder="مثلاً: يقولون حلاهم خرافي">
+    <button class="cta" id="w-save" onclick="saveWish()">نحفظه</button>
+    <p class="note" id="w-msg"></p>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="modal" id="m-set" onclick="if(event.target===this)closeModal('m-set')">
+  <div class="sheet">
+    <h2>إعدادات بسيطة</h2>
+    <label>موقع البيت (نستخدمه إذا ما قدرنا نحدد موقعكم)</label>
+    <button class="cta ghost" style="margin-top:0" onclick="setHome()">📍 خزّن موقعي الحالي كبيت</button>
+    <p class="note" id="home-note"></p>
+    <label>الجوال</label>
+    <button class="cta ghost" style="margin-top:0" onclick="logout()">تغيير رمز البيت</button>
+    <p class="note" id="ver"></p>
+  </div>
+</div>
+
+<script>
+/* ---------------- config ---------------- */
+const BUILD = "1.0";
+const API = "https://moes-app-two.vercel.app/api/health-check?app=wain";
+const SEED = [{"id": "s01", "name": "أوليتشا للقهوة المختصة", "cats": ["coffee"], "lat": 24.766, "lng": 46.658, "hours": {"d": "24", "5": "00:00-05:00,12:00-24:00"}, "stay": 45, "area": "الغدير", "tags": [], "note": ""}, {"id": "s02", "name": "أتموسفير", "cats": ["coffee", "dessert"], "lat": 24.7351, "lng": 46.6767, "hours": {"d": "06:00-25:00", "4": "06:00-26:00", "5": "06:00-26:00"}, "stay": 60, "area": "الملك فهد", "tags": ["cozy"], "note": ""}, {"id": "s03", "name": "بيسمنترز", "cats": ["coffee"], "lat": 24.8059, "lng": 46.6146, "hours": {"d": "06:30-24:00", "4": "06:30-25:30", "5": "12:00-25:30", "6": "08:00-24:00"}, "stay": 45, "area": "الملقا", "tags": [], "note": ""}, {"id": "s04", "name": "جو باريل", "cats": ["coffee"], "lat": 24.7195, "lng": 46.6725, "hours": {"d": "06:30-23:30", "4": "06:30-26:00", "5": "06:30-26:00"}, "stay": 45, "area": "العليا", "tags": [], "note": ""}, {"id": "s05", "name": "بريهانت", "cats": ["coffee"], "lat": 24.8128, "lng": 46.6255, "hours": {"d": "24"}, "stay": 45, "area": "الياسمين", "tags": [], "note": ""}, {"id": "s06", "name": "إير للقهوة", "cats": ["coffee"], "lat": 24.7862, "lng": 46.6815, "hours": {"d": "06:00-24:00", "4": "06:00-26:00", "5": "12:30-26:00", "6": "09:00-24:00"}, "stay": 45, "area": "النفل", "tags": [], "note": ""}, {"id": "s07", "name": "بينري", "cats": ["coffee", "snack"], "lat": 24.7218, "lng": 46.6514, "hours": {"d": "06:00-24:00"}, "stay": 60, "area": "الرحمانية", "tags": ["cozy"], "note": ""}, {"id": "s08", "name": "مقهى مجلس المضياف", "cats": ["coffee"], "lat": 24.685, "lng": 46.6986, "hours": {"d": "06:00-26:00"}, "stay": 60, "area": "العليا", "tags": ["saudi"], "note": "قهوة عربية وجلسة مجلس"}, {"id": "s09", "name": "كايو", "cats": ["dessert", "coffee"], "lat": 24.7069, "lng": 46.7069, "hours": {"d": "07:30-24:30", "4": "07:30-25:30", "5": "10:30-25:30"}, "stay": 60, "area": "السليمانية", "tags": [], "note": ""}, {"id": "s10", "name": "هانوفريان", "cats": ["dessert", "coffee"], "lat": 24.7531, "lng": 46.6395, "hours": {"d": "07:30-25:00"}, "stay": 60, "area": "النخيل", "tags": [], "note": ""}, {"id": "s11", "name": "كروي", "cats": ["coffee", "dessert", "snack"], "lat": 24.6956, "lng": 46.6839, "hours": {"d": "07:00-24:00", "4": "07:00-25:30", "5": "07:00-25:30"}, "stay": 50, "area": "العليا", "tags": [], "note": ""}, {"id": "s12", "name": "كريب دي ألب", "cats": ["dessert"], "lat": 24.7115, "lng": 46.6745, "hours": {"d": "08:00-25:00", "5": "13:00-25:00"}, "stay": 45, "area": "برج المملكة", "tags": [], "note": ""}, {"id": "s13", "name": "سكلي", "cats": ["dessert"], "lat": 24.8278, "lng": 46.6399, "hours": {"d": "11:30-24:00", "4": "11:30-25:00", "5": "13:00-25:00"}, "stay": 30, "area": "الياسمين", "tags": [], "note": ""}, {"id": "s14", "name": "آيس كريم 36", "cats": ["dessert"], "lat": 24.7347, "lng": 46.6489, "hours": {"d": "11:00-26:30", "5": "13:00-26:30"}, "stay": 40, "area": "التخصصي", "tags": [], "note": ""}, {"id": "s15", "name": "سالفي جيلاتو", "cats": ["dessert"], "lat": 24.8082, "lng": 46.5916, "hours": {"d": "12:30-24:00", "4": "12:30-25:00", "5": "12:30-25:00"}, "stay": 30, "area": "الملقا", "tags": [], "note": ""}, {"id": "s16", "name": "قرية نجد", "cats": ["food"], "lat": 24.8129, "lng": 46.6473, "hours": {"d": "11:00-24:00", "4": "11:00-25:30", "5": "12:30-25:30"}, "stay": 90, "area": "الياسمين", "tags": ["saudi"], "note": ""}, {"id": "s17", "name": "عصيب", "cats": ["food"], "lat": 24.8126, "lng": 46.627, "hours": {"d": "06:30-24:00"}, "stay": 100, "area": "الياسمين", "tags": ["saudi", "fancy"], "note": ""}, {"id": "s18", "name": "ماديو", "cats": ["food"], "lat": 24.6674, "lng": 46.627, "hours": {"d": "18:00-24:00", "5": "13:00-24:00", "6": "13:00-24:00"}, "stay": 100, "area": "فيا رياض", "tags": ["fancy"], "note": ""}, {"id": "s19", "name": "ميازو", "cats": ["food"], "lat": 24.7, "lng": 46.7049, "hours": {"d": "13:00-24:30", "3": "13:00-25:30", "4": "13:00-25:30", "5": "13:00-25:30"}, "stay": 100, "area": "السليمانية", "tags": ["fancy"], "note": ""}, {"id": "s20", "name": "نوزومي", "cats": ["food"], "lat": 24.701, "lng": 46.6771, "hours": {"d": "13:00-25:15", "4": "13:00-25:30", "5": "13:00-25:30"}, "stay": 100, "area": "العليا", "tags": ["fancy"], "note": ""}, {"id": "s21", "name": "تليد", "cats": ["food", "explore"], "lat": 24.7399, "lng": 46.5723, "hours": {"d": "18:30-23:30", "6": "x"}, "stay": 120, "area": "الدرعية", "tags": ["fancy"], "note": "مطعم حجازي‑متوسطي بنجمة ميشلان"}, {"id": "s22", "name": "لا بتيت ميزون", "cats": ["food"], "lat": 24.6908, "lng": 46.6841, "hours": {"d": "12:30-15:30,18:30-23:30", "4": "13:00-16:00,18:30-23:30", "5": "13:00-16:00,18:30-23:30", "6": "13:00-16:00,18:30-23:30"}, "stay": 100, "area": "العليا", "tags": ["fancy"], "note": ""}, {"id": "s23", "name": "مطاعم ميراث نجد", "cats": ["food"], "lat": 24.8457, "lng": 46.838, "hours": {"d": "12:00-23:30"}, "stay": 75, "area": "الرمال", "tags": ["saudi"], "note": ""}, {"id": "s24", "name": "سناك 316", "cats": ["snack"], "lat": 24.724, "lng": 46.6802, "hours": {"d": "24"}, "stay": 30, "area": "الورود", "tags": [], "note": ""}, {"id": "s25", "name": "براون ترك", "cats": ["snack", "coffee"], "lat": 24.6998, "lng": 46.6793, "hours": {"d": "24"}, "stay": 30, "area": "العليا", "tags": [], "note": "شاي كرك وساندويتشات من الفود ترك"}, {"id": "s26", "name": "كاليفورنيا برجر", "cats": ["snack", "food"], "lat": 24.8065, "lng": 46.6123, "hours": {"d": "13:00-25:00", "4": "13:00-26:00", "5": "13:00-26:00"}, "stay": 45, "area": "الملقا", "tags": [], "note": ""}, {"id": "s27", "name": "جسر المملكة", "cats": ["view", "explore"], "lat": 24.7113, "lng": 46.6745, "hours": {"d": "12:00-23:00", "5": "16:00-23:00"}, "stay": 60, "area": "برج المملكة", "tags": [], "note": "الأحلى قبل المغرب بشوي"}, {"id": "s28", "name": "البجيري", "cats": ["walk", "food", "coffee", "view"], "lat": 24.7361, "lng": 46.5742, "hours": {"d": "10:00-23:00", "4": "10:00-24:00", "5": "10:00-24:00"}, "stay": 120, "area": "الدرعية", "tags": ["outdoor", "evening"], "note": ""}, {"id": "s29", "name": "الطريف", "cats": ["explore", "view", "walk"], "lat": 24.7336, "lng": 46.5746, "hours": {"d": "17:00-24:00"}, "stay": 90, "area": "الدرعية", "tags": ["outdoor", "evening"], "note": "موقع تراث عالمي"}, {"id": "s30", "name": "وادي نمار", "cats": ["view", "walk", "drive"], "lat": 24.572, "lng": 46.6797, "hours": {"d": "24"}, "stay": 75, "area": "نمار", "tags": ["outdoor", "sunset"], "note": "بحيرة وشلال، أحلى وقت قبل المغرب"}, {"id": "s31", "name": "منتزه وادي حنيفة", "cats": ["view", "walk", "drive"], "lat": 24.6561, "lng": 46.6132, "hours": {"d": "24"}, "stay": 75, "area": "وادي حنيفة", "tags": ["outdoor", "evening"], "note": ""}, {"id": "s32", "name": "حديقة الملك عبدالله", "cats": ["walk", "view"], "lat": 24.6664, "lng": 46.7372, "hours": {"d": "13:00-24:00"}, "stay": 75, "area": "الملز", "tags": ["outdoor", "evening"], "note": "عرض النافورة بالليل"}, {"id": "s33", "name": "حديقة السلام", "cats": ["walk", "view"], "lat": 24.6219, "lng": 46.7099, "hours": {"d": "16:00-23:55", "0": "x"}, "stay": 75, "area": "سلام", "tags": ["outdoor", "evening"], "note": ""}, {"id": "s34", "name": "حديقة الروضة", "cats": ["walk"], "lat": 24.7317, "lng": 46.7756, "hours": {"d": "24"}, "stay": 45, "area": "الروضة", "tags": ["outdoor"], "note": ""}, {"id": "s35", "name": "ممشى الملك عبدالله", "cats": ["walk"], "lat": 24.7402, "lng": 46.6949, "hours": {"d": "24"}, "stay": 45, "area": "حي الملك سلمان", "tags": ["outdoor"], "note": ""}, {"id": "s36", "name": "المسار الرياضي", "cats": ["walk", "view"], "lat": 24.7578, "lng": 46.5927, "hours": {"d": "24"}, "stay": 60, "area": "حطين", "tags": ["outdoor", "evening"], "note": ""}, {"id": "s37", "name": "بوليفارد سيتي", "cats": ["walk", "event", "food"], "lat": 24.7694, "lng": 46.6046, "hours": {"d": "16:00-28:00"}, "stay": 120, "area": "حطين", "tags": ["evening"], "note": ""}, {"id": "s38", "name": "بوليفارد وورلد", "cats": ["event", "explore", "walk"], "lat": 24.774, "lng": 46.5998, "hours": {"d": "16:00-25:00"}, "stay": 150, "area": "العقيق", "tags": ["evening"], "note": "يفتح عادةً بموسم الرياض"}, {"id": "s39", "name": "روشن فرونت", "cats": ["walk", "food", "coffee"], "lat": 24.8414, "lng": 46.7333, "hours": {"d": "10:00-26:00"}, "stay": 90, "area": "الفرونت", "tags": [], "note": ""}, {"id": "s40", "name": "فيا رياض", "cats": ["walk", "food"], "lat": 24.6671, "lng": 46.6264, "hours": {"d": "10:00-24:00"}, "stay": 90, "area": "الهدا", "tags": ["fancy"], "note": ""}, {"id": "s41", "name": "يو ووك", "cats": ["walk", "coffee", "food"], "lat": 24.7363, "lng": 46.6316, "hours": {"d": "09:30-23:00", "5": "13:00-23:30"}, "stay": 75, "area": "النخيل", "tags": [], "note": ""}, {"id": "s42", "name": "رياض بارك", "cats": ["walk", "snack"], "lat": 24.7563, "lng": 46.6301, "hours": {"d": "09:00-24:00", "5": "13:00-24:00"}, "stay": 90, "area": "العقيق", "tags": [], "note": ""}, {"id": "s43", "name": "سوق الزل", "cats": ["walk", "explore"], "lat": 24.6289, "lng": 46.7122, "hours": {"d": "15:30-22:30"}, "stay": 60, "area": "الديرة", "tags": [], "note": "سوق تراثي قديم، فيه مزاد يوم الجمعة"}, {"id": "s44", "name": "قصر المصمك", "cats": ["explore"], "lat": 24.6312, "lng": 46.7134, "hours": {"d": "08:00-21:00", "5": "16:00-20:00", "6": "09:00-20:00"}, "stay": 45, "area": "الديرة", "tags": [], "note": ""}, {"id": "s45", "name": "المتحف الوطني", "cats": ["explore"], "lat": 24.6481, "lng": 46.711, "hours": {"d": "09:00-19:00", "4": "09:00-22:00", "5": "14:00-22:00", "0": "x"}, "stay": 90, "area": "المربع", "tags": [], "note": ""}, {"id": "s46", "name": "قصر المربع", "cats": ["explore"], "lat": 24.6466, "lng": 46.7092, "hours": {"d": "09:00-17:00", "5": "17:00-20:00", "6": "17:00-20:00", "0": "x"}, "stay": 60, "area": "المربع", "tags": [], "note": ""}, {"id": "s47", "name": "دارة الملك عبدالعزيز", "cats": ["explore"], "lat": 24.6465, "lng": 46.7093, "hours": {"d": "09:00-17:00", "5": "17:00-20:00", "0": "09:00-14:00"}, "stay": 60, "area": "المربع", "tags": [], "note": ""}, {"id": "s48", "name": "متحف الذهب الأسود", "cats": ["explore"], "lat": 24.8786, "lng": 46.7218, "hours": {"d": "15:00-22:00", "0": "x"}, "stay": 75, "area": "الفرونت", "tags": [], "note": "يحتاج حجز مسبق من ويبوك (مجاني)"}, {"id": "s49", "name": "بونس", "cats": ["event"], "lat": 24.8011, "lng": 46.6514, "hours": {"d": "12:00-22:00", "4": "12:00-24:00", "5": "12:00-24:00"}, "stay": 75, "area": "سوليتير", "tags": [], "note": "ترامبولين"}, {"id": "s50", "name": "حافة العالم", "cats": ["drive", "view", "explore"], "lat": 24.9486, "lng": 45.9884, "hours": {"d": "06:00-19:00"}, "stay": 90, "area": "خارج الرياض", "tags": ["outside", "outdoor", "sunset"], "note": "الطريق يحتاج سيارة دفع رباعي"}, {"id": "s51", "name": "رمال الثمامة", "cats": ["drive", "view"], "lat": 24.98, "lng": 46.92, "hours": {"d": "06:00-23:00"}, "stay": 90, "area": "الثمامة", "tags": ["outside", "outdoor", "sunset"], "note": ""}, {"id": "s52", "name": "الرمال الحمراء", "cats": ["drive", "view"], "lat": 24.731, "lng": 46.17, "hours": {"d": "06:00-24:00"}, "stay": 90, "area": "خارج الرياض", "tags": ["outside", "outdoor", "sunset"], "note": ""}];
+const CATS = {
+  food:{l:"أكل",e:"🍽️"}, coffee:{l:"قهوة",e:"☕"}, dessert:{l:"حلى",e:"🍰"}, snack:{l:"سناك",e:"🥤"},
+  event:{l:"فعالية",e:"🎯"}, drive:{l:"طلعة بالسيارة",e:"🚗"}, view:{l:"منظر / جلسة",e:"🌅"},
+  walk:{l:"تمشية",e:"🛍️"}, explore:{l:"استكشاف",e:"🔎"}, any:{l:"أي شيء",e:"🎲"}
+};
+const TIMES = [["ساعة أو أقل",60],["2–3 ساعات",150],["4–6 ساعات",300],["اليوم كله",600]];
+const DISTS = [["قريب",15],["إلى 30 دقيقة",30],["إلى 60 دقيقة",60],["ما يهم",999]];
+const RIYADH = {lat:24.7136,lng:46.6753};
+
+/* ---------------- state ---------------- */
+let state = {v:0, userPlaces:[], wish:[], visits:[], prefs:{home:null,acceptMax:{}}, pending:null};
+let pin = localStorage.getItem("wain_pin") || "";
+let sel = {time:150, moods:new Set(["any"]), dist:30};
+let loc = null, locSrc = "";
+let session = {shown:new Set(), rejectedCats:new Set(), round:0};
+let current = null; // place chosen for "go"
+
+/* ---------------- util ---------------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),2200);}
+function show(n){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+  $("s-"+n).classList.add("on");
+  ["home","wish","done"].forEach(k=>$("n-"+k).classList.toggle("on",k===n));
+  window.scrollTo(0,0);
+  if(n==="home") renderHome(); if(n==="wish") renderWish(); if(n==="done") renderDone();
+}
+function closeModal(id){$(id).classList.remove("on");}
+const uid = () => Math.random().toString(36).slice(2,9);
+function arNum(n){return String(n);} // keep western digits (spec examples use them)
+
+/* ---------------- api ---------------- */
+async function api(body){
+  const r = await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,pin})});
+  const j = await r.json().catch(()=>({}));
+  if(r.status===401) throw new Error("pin");
+  if(r.status===409) return {conflict:true,...j};
+  if(!r.ok) throw new Error(j.error||("http "+r.status));
+  return j;
+}
+function normalize(s){
+  s = s||{};
+  return {v:Number(s.v||0), userPlaces:s.userPlaces||[], wish:s.wish||[], visits:s.visits||[],
+    prefs:Object.assign({home:null,acceptMax:{}},s.prefs||{}), pending:s.pending||null};
+}
+async function load(){
+  const j = await api({action:"state"});
+  state = normalize({...(j.state||{}), v:j.v});
+  localStorage.setItem("wain_cache", JSON.stringify(state));
+}
+let saving = Promise.resolve();
+function mutate(fn){
+  fn(state);
+  localStorage.setItem("wain_cache", JSON.stringify(state));
+  saving = saving.then(async()=>{
+    try{
+      const {v,...body} = state;
+      let r = await api({action:"save", v, state:body});
+      if(r.conflict){ state = normalize({...(r.state||{}), v:r.v}); fn(state); const {v:v2,...b2}=state; r = await api({action:"save",v:v2,state:b2}); }
+      if(r.v!==undefined) state.v = r.v;
+    }catch(e){ toast("ما قدرنا نحفظ — بنحاول مرة ثانية"); }
+  });
+  return saving;
+}
+
+/* ---------------- places / hours ---------------- */
+function allPlaces(){
+  const wishWithLoc = state.wish.filter(w=>w.lat&&w.lng).map(w=>({id:w.id,name:w.name,cats:w.cats&&w.cats.length?w.cats:["explore"],lat:w.lat,lng:w.lng,hours:{d:w.hours||"?"},stay:60,area:"",tags:["wish"],note:w.note||"",wish:true,addedAt:w.addedAt}));
+  return SEED.concat(state.userPlaces||[], wishWithLoc);
+}
+function parseRanges(s){
+  if(s==="24") return [[0,1440]];
+  if(s==="x") return [];
+  if(!s||s==="?") return null; // unknown → assume open
+  return s.split(",").map(p=>{const [a,b]=p.split("-");const m=t=>{const [h,mm]=t.split(":").map(Number);return h*60+(mm||0);};return [m(a),m(b)];});
+}
+function dayRanges(h,day){ if(!h) return null; const k=String(day); return parseRanges(k in h? h[k] : h.d); }
+function openInfo(place, at){
+  const day = at.getDay(), min = at.getHours()*60+at.getMinutes();
+  const hs = place.hours||{}; const todayStr = (String(day) in hs)? hs[String(day)] : hs.d;
+  if(todayStr==="24") return {open:true, closesIn:999, opensIn:null};
+  const today = dayRanges(place.hours,day), yest = dayRanges(place.hours,(day+6)%7);
+  if(today===null && yest===null) return {open:true, unknown:true, closesIn:999};
+  let open=false, closesIn=0, opensIn=null;
+  (yest||[]).forEach(([a,b])=>{ if(b>1440 && min<b-1440){open=true;closesIn=Math.max(closesIn,b-1440-min);} });
+  (today||[]).forEach(([a,b])=>{ if(min>=a && min<b){open=true;closesIn=Math.max(closesIn,b-min);} else if(min<a){ opensIn = opensIn===null? a-min : Math.min(opensIn,a-min);} });
+  return {open, closesIn:open?closesIn:0, opensIn};
+}
+
+/* ---------------- distance / traffic ---------------- */
+function hav(a,b){const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+function speed(at){
+  const d=at.getDay(), h=at.getHours()+at.getMinutes()/60, wk=(d===5||d===6);
+  if(!wk){ if(h>=7&&h<9.5)return 27; if(h>=9.5&&h<12)return 44; if(h>=12&&h<13)return 40; if(h>=13&&h<15.5)return 34; if(h>=15.5&&h<16.5)return 42; if(h>=16.5&&h<19.5)return 28; if(h>=19.5&&h<22.5)return 36; if(h>=22.5||h<1)return 50; return 58; }
+  if(h>=8&&h<11.5)return 50; if(h>=11.5&&h<13.5)return 42; if(h>=13.5&&h<16)return 45; if(h>=16&&h<19)return 36; if(h>=19&&h<24)return 31; return 52;
+}
+function drive(from,place,at){
+  const km = hav(from,place)*1.28;
+  const s = speed(at);
+  const urban = Math.min(km,12), hwy = Math.max(0,km-12);
+  const mins = urban/s*60 + hwy/80*60 + (km>1?5:2);
+  return {km:Math.round(km), min:Math.round(mins), jam:s<35 && km>3};
+}
+function hot(at){ const m=at.getMonth(), h=at.getHours()+at.getMinutes()/60; return (m>=4&&m<=9) && h>=10 && h<17.5; }
+function isEvening(at){ const h=at.getHours(); return h>=17 || h<1; }
+
+/* ---------------- memory ---------------- */
+function history(id){
+  const vs = state.visits.filter(v=>v.placeId===id).sort((a,b)=>b.at-a.at);
+  return {count:vs.length,last:vs[0]||null};
+}
+const RATE = {love:{e:"❤️",l:"حبيّناها",s:18},good:{e:"🙂",l:"كويسة",s:6},meh:{e:"😐",l:"عادية",s:-8},bad:{e:"👎",l:"ما عجبتنا",s:-100}};
+
+/* ---------------- ranking ---------------- */
+function rank(opts){
+  const at = new Date(), from = loc||state.prefs.home||RIYADH;
+  const moods = opts.moods, any = moods.has("any") || moods.size===0;
+  const out = [];
+  for(const p of allPlaces()){
+    if(session.shown.has(p.id)) continue;
+    const h = history(p.id);
+    if(h.last && (h.last.rating==="bad" || h.last.again==="no")) continue;
+    const d = drive(from,p,at);
+    const oi = openInfo(p, new Date(at.getTime()+d.min*60000));
+    const stay = p.stay||60;
+    const total = d.min*2 + stay;
+    if(!oi.open){ if(oi.opensIn===null || oi.opensIn>25) continue; }
+    if(oi.open && oi.closesIn < 35) continue;
+    const minTotal = d.min*2 + Math.min(stay,30);
+    if(minTotal > opts.time) continue;
+    const maxDrive = opts.dist;
+    const learned = (state.prefs.acceptMax||{})[p.cats[0]]||0;
+    if(d.min > maxDrive && !(learned>=d.min)) continue;
+    if(p.tags.includes("outside") && opts.time<240) continue;
+
+    let score = 0; const why=[];
+    const matched = p.cats.filter(c=>moods.has(c));
+    if(!any){ if(!matched.length) continue; score += (moods.has(p.cats[0])?40:26) + 10*(matched.length-1); }
+    else score += 10;
+    if(session.rejectedCats.size && p.cats.some(c=>session.rejectedCats.has(c))) score -= 55;
+    // drive
+    const light = ["coffee","dessert","snack"].includes(p.cats[0]);
+    let per = light?0.9:0.5; if(learned>=d.min) per*=0.6;
+    score -= d.min*per;
+    if(d.min<=15) why.push("قريب");
+    if(d.jam) score -= 6;
+    // time fit
+    if(total <= opts.time*0.8) { score += 12; why.push("يدخل ضمن وقتكم"); }
+    else if(total <= opts.time) score += 4;
+    if(opts.time>=300 && stay>=90) score += 10;
+    // hours
+    if(oi.open){ if(!oi.unknown) why.push("مفتوح الآن"); } else { score -= 10; }
+    if(oi.open && oi.closesIn < 90 && oi.closesIn<999) score -= 8;
+    // weather / evening
+    const outdoor = p.tags.includes("outdoor");
+    if(outdoor){ if(hot(at)) score -= 45; else if(isEvening(at)) { score += 12; why.push("الجو الحين حلو له"); } }
+    if(p.tags.includes("sunset")){ const hh=at.getHours()+at.getMinutes()/60+d.min/60; if(hh>=16.5&&hh<=18.3){score+=14;why.push("بتلحقون الغروب");} }
+    if(p.tags.includes("evening") && !isEvening(at)) score -= 10;
+    // memory
+    if(p.wish){ const days=(Date.now()-(p.addedAt||0))/864e5; score += 25 + (days>7?10:0); why.push(days>20?"قلتوا من زمان تبغون تجربونه":"من قائمة اللي تبغون تجربونها"); }
+    if(h.last){
+      score += RATE[h.last.rating]?RATE[h.last.rating].s:0;
+      const days=(Date.now()-h.last.at)/864e5;
+      if(days<10) score -= (h.last.rating==="love"?10:25);
+      if(h.last.again==="later" && days<30) score -= 15;
+      if(h.last.rating==="love") why.push("حبيتوها آخر مرة");
+      if(h.count>4 && h.last.rating!=="love") score -= 10;
+    } else { score += moods.has("explore")?14:4; if(!p.wish) why.push("شي ما جربتوه"); }
+    if(p.tags.includes("outside") && opts.time>=300) { score += 8; }
+    out.push({p,d,oi,total,score,why:why.slice(0,3),h});
+  }
+  out.sort((a,b)=>b.score-a.score);
+  return out;
+}
+function pickThree(list){
+  const picks=[], used=new Set();
+  for(const c of list){ if(picks.length>=3) break; const k=c.p.cats[0]; if(used.has(k)) continue; used.add(k); picks.push(c); }
+  for(const c of list){ if(picks.length>=3) break; if(!picks.includes(c)) picks.push(c); }
+  return picks;
+}
+
+/* ---------------- location ---------------- */
+function locate(){
+  return new Promise(res=>{
+    if(!navigator.geolocation) return res(false);
+    navigator.geolocation.getCurrentPosition(p=>{loc={lat:p.coords.latitude,lng:p.coords.longitude};locSrc="من موقعكم الحالي";res(true);},()=>res(false),{timeout:7000,maximumAge:120000});
+  });
+}
+function locNote(){
+  if(loc) return locSrc;
+  if(state.prefs.home) return "نحسب من البيت (ما قدرنا نحدد موقعكم)";
+  return "نحسب من وسط الرياض — خزّنوا موقع البيت من ⚙︎";
+}
+
+/* ---------------- home ---------------- */
+function chipRow(el, items, get, set, multi){
+  el.innerHTML = items.map(([l,v])=>`<button class="chip ${get(v)?"on":""}" data-v="${v}">${l}</button>`).join("");
+  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{set(b.dataset.v);chipRow(el,items,get,set,multi);});
+}
+function renderHome(){
+  chipRow($("c-time"),TIMES,v=>Number(v)===sel.time,v=>sel.time=Number(v));
+  chipRow($("c-mood"),Object.entries(CATS).map(([k,c])=>[c.e+" "+c.l,k]),v=>sel.moods.has(v),v=>{
+    if(v==="any"){sel.moods=new Set(["any"]);return;}
+    sel.moods.delete("any"); sel.moods.has(v)?sel.moods.delete(v):sel.moods.add(v); if(!sel.moods.size) sel.moods.add("any");
+  });
+  chipRow($("c-dist"),DISTS,v=>Number(v)===sel.dist,v=>sel.dist=Number(v));
+  $("loc-note").textContent = locNote();
+  renderPending($("pending-box"));
+}
+async function decide(){
+  session = {shown:new Set(), rejectedCats:new Set(), round:0};
+  const b=$("btn-go"); b.disabled=true; b.innerHTML='<span class="spin"></span>نشوف الزحمة والأوقات…';
+  if(!loc) await locate();
+  b.disabled=false; b.textContent="شوف وش عندنا";
+  renderResults(false);
+}
+function renderResults(changed){
+  const list = rank({time:sel.time,moods:sel.moods,dist:sel.dist});
+  const picks = pickThree(list);
+  $("res-title").textContent = changed? "طيب، نغيّر الجو." : (picks.length? "أحلى "+(picks.length===1?"خيار":picks.length===2?"خيارين":"٣ خيارات")+" الحين" : "ما لقينا شي مناسب");
+  $("res-sub").textContent = picks.length? locNote() : "";
+  if(!picks.length){
+    $("res-list").innerHTML = `<div class="empty">${session.round?"خلصت الخيارات اللي تناسب الوقت والمسافة.":"ما فيه مكان يناسب الوقت والمسافة الحين."}<br>جرّبوا وقت أطول أو مسافة أبعد، أو اضغطوا فاجئنا.</div>`;
+    $("res-foot").innerHTML = `<button class="cta ghost" onclick="show('home')">نعدّل الاختيارات</button>`;
+    show("results"); return;
+  }
+  picks.forEach(c=>session.shown.add(c.p.id));
+  const labels=["الخيار الأول","الخيار الثاني","الخيار الثالث"];
+  $("res-list").innerHTML = picks.map((c,i)=>card(c,labels[i],i)).join("");
+  // forgotten wish without location
+  const forgotten = state.wish.filter(w=>!(w.lat&&w.lng) && (Date.now()-w.addedAt)>7*864e5 && !state.visits.some(v=>v.placeId===w.id));
+  $("res-foot").innerHTML = (forgotten.length? `<p class="note">تذكرون <b>${esc(forgotten[0].name)}</b>؟ قلتوا قبل فترة إنكم تبغون تجربونه. أضيفوا رابط موقعه من «نبغى نجربها» عشان نحسب له الوقت.</p>`:"") +
+    `<button class="cta ghost" onclick="rejectAll()">مو جوّنا</button>`;
+  show("results");
+}
+function card(c,label,i){
+  const p=c.p, cat=p.cats[0];
+  const kind = p.cats.slice(0,2).map(k=>CATS[k]?CATS[k].e+" "+CATS[k].l:k).join(" + ");
+  const st = c.oi.open? (c.oi.unknown?`<span class="soon">ما نعرف أوقاته</span>`:`<span class="open">مفتوح الآن</span>`) : `<span class="soon">يفتح بعد ${c.oi.opensIn} دقيقة</span>`;
+  const tot = c.total>=60? `${Math.floor(c.total/60)} س ${c.total%60? (c.total%60)+" د":""}` : `${c.total} د`;
+  return `<div class="card reveal" style="animation-delay:${i*70}ms">
+    <div class="rank">${label}</div>
+    <div class="hero h-${cat}">${CATS[cat]?CATS[cat].e:"📍"}</div>
+    <div class="name">${esc(p.name)}</div>
+    <div class="kind">${kind}${p.area?` · ${esc(p.area)}`:""}</div>
+    <div class="facts">
+      <span>🚗 <b>${c.d.min} دقيقة</b>${c.d.jam?" بسبب الزحمة":""}</span>
+      <span>📍 ${c.d.km} كم</span>
+      <span>${st}</span>
+      <span>⏱️ رايح وجاي مع الجلسة: ${tot}</span>
+    </div>
+    <div class="why"><small>مناسب لكم لأن:</small>${c.why.length?c.why.join("، "):"يناسب الوقت والمسافة"}${p.note?`<br><small style="margin-top:4px">${esc(p.note)}</small>`:""}</div>
+    <div class="actions"><button class="go" onclick="go('${p.id}')">يلا نروح</button><button class="no" onclick="rejectOne('${p.id}')">مو جوّنا</button></div>
+  </div>`;
+}
+function rejectAll(){ session.round++; allPlaces().filter(p=>session.shown.has(p.id)).forEach(p=>p.cats.forEach(c=>session.rejectedCats.add(c))); renderResults(true); }
+function rejectOne(id){ const p=allPlaces().find(x=>x.id===id); if(p) session.rejectedCats.add(p.cats[0]); renderResults(true); }
+
+/* ---------------- surprise ---------------- */
+async function surprise(){
+  if(!loc) await locate();
+  session = {shown:new Set(), rejectedCats:new Set(), round:0};
+  const recent = new Set(state.visits.filter(v=>Date.now()-v.at<21*864e5).map(v=>v.cat));
+  let list = rank({time:sel.time,moods:new Set(["any"]),dist:sel.dist});
+  list = list.map(c=>({...c, score:c.score + (c.h.count?0:30) + (recent.has(c.p.cats[0])?-20:0) + (Math.random()*24-12)})).sort((a,b)=>b.score-a.score);
+  if(!list.length){ toast("ما فيه شي يناسب الوقت الحين"); return; }
+  const c = list[0]; session.shown.add(c.p.id);
+  $("res-title").textContent = "اليوم بنروح هنا.";
+  $("res-sub").textContent = "";
+  $("res-list").innerHTML = card(c,"🎲 فاجئنا",0).replace("مناسب لكم لأن:","✨ شي مختلف عن طلعاتكم المعتادة:");
+  $("res-foot").innerHTML = `<button class="cta ghost" onclick="surprise()">لا، شي ثاني</button>`;
+  show("results");
+}
+
+/* ---------------- go ---------------- */
+function go(id){
+  const p = allPlaces().find(x=>x.id===id); if(!p) return;
+  const at=new Date(), from=loc||state.prefs.home||RIYADH, d=drive(from,p,at);
+  current = p;
+  mutate(s=>{ s.pending={placeId:p.id,name:p.name,cat:p.cats[0],at:Date.now()}; s.prefs.acceptMax=s.prefs.acceptMax||{}; s.prefs.acceptMax[p.cats[0]]=Math.max(s.prefs.acceptMax[p.cats[0]]||0,d.min); });
+  const maps = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
+  const apple = `https://maps.apple.com/?daddr=${p.lat},${p.lng}&dirflg=d`;
+  $("go-body").innerHTML = `<div class="hero h-${p.cats[0]}" style="height:150px;font-size:70px;margin-top:10px">${CATS[p.cats[0]].e}</div>
+    <div class="big">${esc(p.name)}</div>
+    <div class="kind">${p.area?esc(p.area)+" · ":""}🚗 ${d.min} دقيقة · 📍 ${d.km} كم</div>
+    ${p.note?`<p class="note">${esc(p.note)}</p>`:""}
+    <a class="cta" style="text-align:center;text-decoration:none" href="${maps}" target="_blank" rel="noopener">افتح الطريق بقوقل ماب</a>
+    <a class="cta ghost" style="text-align:center;text-decoration:none" href="${apple}" target="_blank" rel="noopener">أو خرائط أبل</a>
+    <p class="note" style="text-align:center">بنسألكم بعدين: كيف كانت؟</p>`;
+  show("go");
+}
+
+/* ---------------- pending rating ---------------- */
+let rateSel = {rating:null, again:null};
+function renderPending(el){
+  const pd = state.pending;
+  if(!pd || (Date.now()-pd.at) < 75*60000){ el.innerHTML=""; return; }
+  el.innerHTML = `<div class="card pick">
+    <div class="rank">رحتوا <b>${esc(pd.name)}</b>؟</div>
+    <div class="name" style="font-size:20px">كيف كانت؟</div>
+    <div class="rate" id="r-rate">${Object.entries(RATE).map(([k,r])=>`<button data-k="${k}"><span>${r.e}</span>${r.l}</button>`).join("")}</div>
+    <div id="r-again" style="display:none">
+      <div class="rank">نرجع لها؟</div>
+      <div class="seg" id="r-seg"><button data-k="yes">نعم</button><button data-k="later">لاحقاً</button><button data-k="no">لا</button></div>
+    </div>
+    <div class="actions"><button class="go" id="r-save" disabled style="opacity:.5" onclick="saveRating()">نحفظ</button><button class="no" onclick="skipRating()">ما رحنا</button></div>
+  </div>`;
+  rateSel={rating:null,again:null};
+  el.querySelectorAll("#r-rate button").forEach(b=>b.onclick=()=>{rateSel.rating=b.dataset.k;el.querySelectorAll("#r-rate button").forEach(x=>x.classList.toggle("on",x===b));$("r-again").style.display="block";checkRate();});
+  el.querySelectorAll("#r-seg button").forEach(b=>b.onclick=()=>{rateSel.again=b.dataset.k;el.querySelectorAll("#r-seg button").forEach(x=>x.classList.toggle("on",x===b));checkRate();});
+}
+function checkRate(){ const ok=rateSel.rating&&rateSel.again; const b=$("r-save"); b.disabled=!ok; b.style.opacity=ok?1:.5; }
+function saveRating(){
+  const pd=state.pending; if(!pd) return;
+  mutate(s=>{ s.visits.push({id:uid(),placeId:pd.placeId,name:pd.name,cat:pd.cat,at:pd.at,rating:rateSel.rating,again:rateSel.again}); s.pending=null; });
+  toast("سجّلناها ❤️"); renderPending($("pending-box")); renderPending($("done-pending")); renderDone();
+}
+function skipRating(){ mutate(s=>{s.pending=null;}); renderPending($("pending-box")); renderPending($("done-pending")); }
+
+/* ---------------- wish ---------------- */
+let wCats = new Set();
+function openAdd(){
+  wCats=new Set(); $("w-name").value="";$("w-link").value="";$("w-note").value="";$("w-msg").textContent="";
+  chipRow($("w-cats"),Object.entries(CATS).filter(([k])=>k!=="any").map(([k,c])=>[c.e+" "+c.l,k]),v=>wCats.has(v),v=>{wCats.has(v)?wCats.delete(v):wCats.add(v);});
+  $("m-add").classList.add("on"); setTimeout(()=>$("w-name").focus(),50);
+}
+async function saveWish(){
+  const name=$("w-name").value.trim(), link=$("w-link").value.trim(), note=$("w-note").value.trim();
+  if(!name){ $("w-msg").textContent="نحتاج اسم المكان على الأقل."; return; }
+  const b=$("w-save"); b.disabled=true; b.innerHTML='<span class="spin"></span>نحفظ…';
+  let geo=null;
+  if(link && /maps|goo\.gl|google/.test(link)){ try{ geo = await api({action:"resolve",url:link}); }catch(e){} }
+  const item={id:"w"+uid(),name,link,note,cats:[...wCats],addedAt:Date.now(),lat:geo&&geo.lat||null,lng:geo&&geo.lng||null};
+  await mutate(s=>{s.wish.push(item);});
+  b.disabled=false; b.textContent="نحفظه";
+  closeModal("m-add"); renderWish();
+  toast(item.lat? "حفظناه مع موقعه ✨" : (link? "حفظناه — ما قدرنا نطلع موقعه من الرابط":"حفظناه ✨"));
+}
+function renderWish(){
+  const el=$("wish-list");
+  if(!state.wish.length){ el.innerHTML=`<div class="empty">ما فيه شي محفوظ.<br>أول ما تشوفون مكان يعجبكم، حطّوه هنا.</div>`; return; }
+  el.innerHTML = state.wish.slice().sort((a,b)=>b.addedAt-a.addedAt).map(w=>`<div class="line">
+    <div class="t"><b>${esc(w.name)}</b><span>${w.lat?"📍 موقعه محفوظ":"بدون موقع"}${w.cats&&w.cats.length?" · "+w.cats.map(c=>CATS[c]?CATS[c].l:c).join("، "):""}${w.note?" · "+esc(w.note):""}</span>${w.link?`<span><a href="${esc(w.link)}" target="_blank" rel="noopener" style="color:var(--gold)">الرابط</a></span>`:""}</div>
+    ${w.lat?`<button class="icon" style="color:var(--gold)" onclick="go('${w.id}')" title="يلا نروح">🚗</button>`:""}
+    <button class="x" onclick="delWish('${w.id}')" aria-label="حذف">×</button></div>`).join("");
+}
+function delWish(id){ if(!confirm("نشيله من القائمة؟")) return; mutate(s=>{s.wish=s.wish.filter(w=>w.id!==id);}); renderWish(); }
+
+/* ---------------- done ---------------- */
+function renderDone(){
+  renderPending($("done-pending"));
+  const el=$("done-list");
+  if(!state.visits.length){ el.innerHTML=`<div class="empty">لسا ما سجّلتوا زيارة.<br>بعد كل طلعة بنسألكم: كيف كانت؟</div>`; return; }
+  const fmt=t=>new Date(t).toLocaleDateString("ar-SA-u-nu-latn",{day:"numeric",month:"short"});
+  el.innerHTML = state.visits.slice().sort((a,b)=>b.at-a.at).map(v=>`<div class="line">
+    <div style="font-size:26px">${RATE[v.rating]?RATE[v.rating].e:"🙂"}</div>
+    <div class="t"><b>${esc(v.name)}</b><span>${fmt(v.at)} · ${RATE[v.rating]?RATE[v.rating].l:""} · ${v.again==="yes"?"نرجع لها":v.again==="no"?"ما نرجع":"لاحقاً"}</span></div>
+    <button class="x" onclick="delVisit('${v.id}')" aria-label="حذف">×</button></div>`).join("");
+}
+function delVisit(id){ if(!confirm("نحذف هالزيارة؟")) return; mutate(s=>{s.visits=s.visits.filter(v=>v.id!==id);}); renderDone(); }
+
+/* ---------------- settings ---------------- */
+function openSettings(){ $("home-note").textContent = state.prefs.home? "موقع البيت محفوظ ✓":"ما حفظنا موقع البيت بعد."; $("ver").textContent="وين نروح؟ · إصدار "+BUILD; $("m-set").classList.add("on"); }
+async function setHome(){
+  const ok = await locate();
+  if(!ok){ toast("ما قدرنا نجيب موقعكم — تأكدوا من إذن الموقع"); return; }
+  mutate(s=>{s.prefs.home={lat:loc.lat,lng:loc.lng};}); $("home-note").textContent="موقع البيت محفوظ ✓"; toast("حفظنا البيت 🏠");
+}
+function logout(){ localStorage.removeItem("wain_pin"); location.reload(); }
+
+/* ---------------- pin / boot ---------------- */
+async function enterPin(){
+  pin=$("pin").value.trim(); $("pin-err").textContent="";
+  try{ await load(); localStorage.setItem("wain_pin",pin); boot2(); }
+  catch(e){ $("pin-err").textContent = e.message==="pin"? "الرمز غلط." : "ما قدرنا نوصل للسيرفر. جرّبوا مرة ثانية."; }
+}
+function boot2(){ show("home"); locate().then(()=>{ if($("s-home").classList.contains("on")) $("loc-note").textContent=locNote(); }); }
+(async function boot(){
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if(!pin){ show("pin"); return; }
+  const cache = localStorage.getItem("wain_cache"); if(cache){ try{ state=normalize(JSON.parse(cache)); }catch(e){} }
+  try{ await load(); boot2(); }
+  catch(e){ if(e.message==="pin"){ localStorage.removeItem("wain_pin"); pin=""; show("pin"); } else { boot2(); toast("شغّالين بدون نت — بنحدّث أول ما يرجع"); } }
+})();
+</script>
+</body>
+</html>
