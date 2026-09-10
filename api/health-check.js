@@ -61,7 +61,9 @@ async function healthHandler(req, res) {
 const KV_URL = process.env.KV_REST_API_URL;
 const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const PIN = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
+const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
+const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
+const LITE_BLOCKED = ["receipt", "compare", "photoset"];
 const MODEL = process.env.MAQADI_MODEL || "claude-sonnet-5";
 
 const STATE_KEY = "maqadi:state";
@@ -256,12 +258,14 @@ async function maqadiHandler(req, res) {
     const body = req.method === "POST" ? (typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})) : {};
     const action = body.action || req.query.action || "state";
     const pin = String(req.headers["x-pin"] || body.pin || req.query.pin || "").trim();
-    if (PIN && pin !== PIN) return res.status(401).json({ error: "pin" });
+    const role = pin && pin === PIN_FULL ? "full" : (pin && pin === PIN_LITE ? "lite" : null);
+    if (!role) return res.status(401).json({ error: "pin" });
+    if (role === "lite" && LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
 
     if (action === "state") {
       const s = await readState();
-      return res.status(200).json(s);
+      return res.status(200).json({ ...s, role });
     }
     if (action === "save") {
       const cur = await readState();
