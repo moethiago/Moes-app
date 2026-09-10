@@ -194,6 +194,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 
 <div class="tabs hidden" id="tabs"><div class="in" id="tabsIn"></div></div>
 
+<button id="upd" class="net hidden" style="background:var(--go-soft);color:var(--go);top:calc(env(safe-area-inset-top) + 34px)">فيه إصدار جديد — اضغط للتحديث</button>
 <div id="net" class="net hidden">بدون اتصال — التعديلات محفوظة وبترفع لما يرجع النت</div>
 <div class="toast" id="toast"></div>
 <input type="file" id="camIn" accept="image/*" capture="environment" class="hidden">
@@ -242,7 +243,7 @@ var SEED={
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD="1.7 · ١٠ سبتمبر ٢٠٢٦", homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
+var BUILD_ID="1.8", BUILD=BUILD_ID+" · ١٠ سبتمبر ٢٠٢٦", homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -951,7 +952,23 @@ function start(){
   setInterval(poll,5000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden){flush();poll();}});
 }
+async function checkUpdate(silent){
+  try{
+    var r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});var j=await r.json();
+    if(!j.build||j.build===BUILD_ID)return false;
+    var already=location.search.indexOf("v="+j.build)>=0;
+    if(!silent||already){var b=$("upd");b.classList.remove("hidden");b.onclick=function(){forceReload(j.build);};return true;}
+    forceReload(j.build);return true;
+  }catch(e){return false;}
+}
+async function forceReload(build){
+  try{if("caches" in window){var ks=await caches.keys();await Promise.all(ks.map(function(k){return caches.delete(k);}));}}catch(e){}
+  try{if("serviceWorker" in navigator){var rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(function(r){return r.unregister();}));}}catch(e){}
+  location.replace(location.pathname+"?v="+build);
+}
 (async function boot(){
+  if(await checkUpdate(true))return;
+  setInterval(function(){checkUpdate(false);},5*60000);
   if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js",{updateViaCache:"none"});}catch(e){}}
   loadLocal();
   PIN=localStorage.getItem("maqadi_pin")||"";
