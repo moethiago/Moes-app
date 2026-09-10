@@ -287,7 +287,7 @@ Only list a connection when the link is real. Empty array is fine.`;
 }
 
 /* ---------------- the pipeline ---------------- */
-async function tProcessOne(id, index) {
+async function tProcessOne(id, index, ctx) {
   const t = await tGet(id);
   if (!t) return { id, skipped: "missing" };
   // 1. transcribe
@@ -311,7 +311,8 @@ async function tProcessOne(id, index) {
       t.said_before = sims.some((s) => s.score >= 0.8 && (index.find((x) => x.id === s.id) || {}).ts < t.ts);
     }
   } catch (e) { t.embed_error = String(e.message || e).slice(0, 200); }
-  // 3. analyze (only within budget)
+  // 3. analyze (only within budget, and only when Claude is reachable)
+  if (ctx && ctx.noClaude) { t.status = "unanalyzed"; t.note = "Anthropic credit needed"; await tPut(t); await tUpsertIndex(t); return { id, parked: "credit" }; }
   const u = await tUsage();
   if (u.sar >= T_BUDGET_SAR) { t.status = "unanalyzed"; t.note = "monthly budget reached"; await tPut(t); await tUpsertIndex(t); return { id, status: t.status }; }
   const themes = [...new Set([...T_THEMES, ...index.flatMap((x) => x.themes || [])])];
@@ -325,30 +326,33 @@ async function tProcessOne(id, index) {
 async function tProcess(limitMs) {
   const got = await tkv(["SET", T_LOCK, "1", "NX", "EX", "90"]);
   if (got !== "OK") return { locked: true };
-  const started = Date.now(), done = [];
+  const started = Date.now(), done = [], seen = new Set(), ctx = { noClaude: false };
   try {
     let index = await tIndex();
     while (Date.now() - started < limitMs) {
       const id = await tkv(["LINDEX", T_QUEUE, "0"]);
-      if (!id) break;
+      if (!id || seen.has(id)) break;     // empty, or we have cycled through everything once
+      seen.add(id);
       try {
-        done.push(await tProcessOne(id, index));
+        const r = await tProcessOne(id, index, ctx);
+        done.push(r);
         index = await tIndex();
+        if (r.parked) { await tkv(["LREM", T_QUEUE, "0", id]); await tkv(["RPUSH", T_QUEUE, id]); continue; }   // stays queued for when credit is back
       } catch (e) {
         const t = await tGet(id);
         if (/credit balance|billing|insufficient/i.test(String(e.message || e))) {
-          // not a fault of the thought — park it, keep it queued, and stop for this run
+          // not a fault of the thought — park it, keep it queued, still transcribe the rest this run
+          ctx.noClaude = true;
           if (t) { t.status = "unanalyzed"; t.note = "Anthropic credit needed"; await tPut(t); await tUpsertIndex(t); }
           done.push({ id, parked: "credit" });
           await tkv(["LREM", T_QUEUE, "0", id]); await tkv(["RPUSH", T_QUEUE, id]);
-          break;
+          continue;
         }
         const n = (t && t.attempts || 0) + 1;
         if (t) { t.attempts = n; t.error = String(e.message || e).slice(0, 300); if (n >= 3) t.status = "failed"; await tPut(t); await tUpsertIndex(t); }
         done.push({ id, error: String(e.message || e).slice(0, 200), attempts: n });
         if (n >= 3 || !t) await tkv(["LREM", T_QUEUE, "0", id]);
         else { await tkv(["LREM", T_QUEUE, "0", id]); await tkv(["RPUSH", T_QUEUE, id]); }   // retry after the others
-        if (n < 3 && (await tkv(["LLEN", T_QUEUE])) <= 1) break;   // nothing else to do this run; let the next trigger retry
         continue;
       }
       await tkv(["LREM", T_QUEUE, "0", id]);
