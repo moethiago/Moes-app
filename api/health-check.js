@@ -64,10 +64,13 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
 const LITE_BLOCKED = ["receipt", "compare", "photoset"];
-const MODEL = process.env.MAQADI_MODEL || "claude-sonnet-5";
+const MODEL = process.env.MAQADI_MODEL || "claude-sonnet-5";                       // price research (needs web search judgement)
+const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-haiku-4-5-20251001"; // receipts: cheap model first, MODEL as fallback
+const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
+const COST = { receipt: 0.05, item: 0.2 };                                          // rough SAR per action, shown to the user
 
 const STATE_KEY = "maqadi:state";
-const PRICE_TTL_DAYS = 7;
+const PRICE_TTL_DAYS = 21;
 
 /* ---------------- Upstash ---------------- */
 async function kv(cmd) {
@@ -80,6 +83,16 @@ async function kv(cmd) {
   if (j.error) throw new Error("kv: " + j.error);
   return j.result;
 }
+function monthKey() { return "maqadi:usage:" + new Date().toISOString().slice(0, 7); }
+async function usage() {
+  const raw = await kv(["HGETALL", monthKey()]);
+  const u = { receipts: 0, items: 0 };
+  if (Array.isArray(raw)) for (let i = 0; i < raw.length; i += 2) u[raw[i]] = Number(raw[i + 1]) || 0;
+  u.est = Math.round((u.receipts * COST.receipt + u.items * COST.item) * 100) / 100;
+  u.budget = BUDGET_SAR;
+  return u;
+}
+async function bump(field, n) { try { await kv(["HINCRBY", monthKey(), field, String(n)]); } catch {} }
 async function readState() {
   const raw = await kv(["GET", STATE_KEY]);
   if (!raw) return { v: 0, state: null };
@@ -152,19 +165,19 @@ Rules: ignore subtotals, VAT lines, discounts summary, loyalty points, payment l
 HOUSEHOLD CATALOG:
 ${names.join("\n")}`;
 
-  const msg = await claude({
-    model: MODEL,
-    max_tokens: 4000,
-    system,
-    messages: [{
-      role: "user",
-      content: [
-        { type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: image } },
-        { type: "text", text: "Read this receipt and return the JSON." },
-      ],
-    }],
-  });
-  const out = parseJSON(textOf(msg));
+  const messages = [{
+    role: "user",
+    content: [
+      { type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: image } },
+      { type: "text", text: "Read this receipt and return the JSON." },
+    ],
+  }];
+  let out = null;
+  try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages }))); } catch (e) { out = null; }
+  if (!out || !Array.isArray(out.lines) || !out.lines.length) {
+    out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 4000, system, messages })));
+  }
+  await bump("receipts", 1);
   out.lines = (out.lines || []).map((l) => ({
     raw: String(l.raw || "").slice(0, 120),
     name_ar: String(l.name_ar || l.raw || "").slice(0, 80),
@@ -207,6 +220,9 @@ async function compare({ items, store }) {
   }
 
   if (todo.length) {
+    const u = await usage();
+    if (u.est >= BUDGET_SAR) { const err = new Error("budget"); err.code = 402; throw err; }
+    await bump("items", todo.length);
     const system = `You are a Saudi Arabia grocery price researcher. Today's shopper bought items at "${store || "a supermarket"}" in Riyadh. For EACH item, search the web for the CURRENT shelf/online price in Saudi Arabia (SAR) at the major chains: Danube, Panda, Tamimi, Carrefour, LuLu, Othaim, Nana, Al Raya, Manuel, Spar. Use the stores' own sites or apps' web pages and Saudi price-comparison pages. Prefer the same brand and pack size as the item name.
 
 Return ONLY JSON (no prose, no markdown) as an array in the same order as the items:
@@ -217,15 +233,15 @@ Return ONLY JSON (no prose, no markdown) as an array in the same order as the it
    "confidence": "high" | "medium" | "low",
    "checked": "<YYYY-MM-DD>" }
 ]
-Never invent a price. If you cannot find a real current price for an item, set lowest=null and prices=[]. Keep at most 6 entries in prices.`;
+Never invent a price. If you cannot find a real current price for an item, set lowest=null and prices=[]. Keep at most 6 entries in prices. Be economical: at most two searches per item.`;
 
     const user = "Items (name — paid unit price SAR):\n" + todo.map((t, i) => `${i + 1}. ${t.name} — ${t.paid != null ? t.paid : "?"}`).join("\n");
 
     const msg = await claude({
       model: MODEL,
-      max_tokens: 6000,
+      max_tokens: 3000,
       system,
-      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(10, todo.length * 3) }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: Math.min(8, todo.length * 2) }],
       messages: [{ role: "user", content: user }],
     });
     let arr = [];
@@ -265,7 +281,8 @@ async function maqadiHandler(req, res) {
 
     if (action === "state") {
       const s = await readState();
-      return res.status(200).json({ ...s, role });
+      const u = role === "full" ? await usage() : undefined;
+      return res.status(200).json({ ...s, role, usage: u });
     }
     if (action === "save") {
       const cur = await readState();
@@ -298,6 +315,7 @@ async function maqadiHandler(req, res) {
     }
     return res.status(400).json({ error: "unknown action" });
   } catch (e) {
+    if (e && e.code === 402) return res.status(402).json({ error: "budget", budget: BUDGET_SAR });
     return res.status(500).json({ error: String(e && e.message ? e.message : e) });
   }
 }
