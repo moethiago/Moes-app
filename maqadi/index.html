@@ -232,7 +232,7 @@ var SEED={
 /* =================================================================
    STATE
    ================================================================= */
-var homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.2}, FRESH=21*DAY;
+var BUILD="1.6 · ١٠ سبتمبر ٢٠٢٦", homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -737,12 +737,12 @@ function rHome(){
   }
   srch.addEventListener("input",function(){homeQ=srch.value;fill();});fill();c4.appendChild(srch);c4.appendChild(box);
   $("refreshAll").onclick=function(){if(!refreshing&&staleList.length)refreshAllPrices(staleList);};
-  if(USAGE){var um=document.createElement("div");um.className="muted";um.style.cssText="font-size:12px;margin-top:10px;display:flex;align-items:center;gap:10px";var p=Math.min(100,Math.round(USAGE.est/USAGE.budget*100));um.innerHTML='<span>صرف البحث هذا الشهر <b>'+money(USAGE.est)+'</b> من '+money(USAGE.budget)+'</span><span style="flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><span style="display:block;width:'+p+'%;height:100%;background:'+(p>85?"var(--late)":"var(--go)")+'"></span></span>';c4.appendChild(um);}
+  if(USAGE){var um=document.createElement("div");um.className="muted";um.style.cssText="font-size:12px;margin-top:10px;display:flex;align-items:center;gap:10px";var p=Math.min(100,Math.round(USAGE.est/USAGE.budget*100));um.innerHTML='<span>صرف الذكاء هذا الشهر <b>'+money(USAGE.est)+'</b> من '+money(USAGE.budget)+' <span style="opacity:.7">('+ar(USAGE.calls||0)+' طلب · '+ar(USAGE.searches||0)+' بحث)</span></span><span style="flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden"><span style="display:block;width:'+p+'%;height:100%;background:'+(p>85?"var(--late)":"var(--go)")+'"></span></span>';c4.appendChild(um);}
   var leg=document.createElement("div");leg.className="muted";leg.style.cssText="font-size:11.5px;margin-top:8px";leg.textContent="● سعر دفعته من فاتورة · بدون علامة: سعر لقيناه على الإنترنت";c4.appendChild(leg);
   s4.appendChild(c4);pad.appendChild(s4);
 
   var f=document.createElement("div");f.className="muted";f.style.cssText="text-align:center;padding:26px 0 0;font-size:12px";
-  f.innerHTML=ar(Object.keys(S.items).length)+' صنف · '+ar(S.receipts.length)+' فاتورة<br>رمزك يفتح كل شي · رمز زوجتك يفتح «خلص» و«السلة» فقط<br><button class="link" id="logout">تغيير الرمز على هذا الجوال</button>';
+  f.innerHTML='الإصدار '+BUILD+'<br>'+ar(Object.keys(S.items).length)+' صنف · '+ar(S.receipts.length)+' فاتورة<br>رمزك يفتح كل شي · رمز زوجتك يفتح «خلص» و«السلة» فقط<br><button class="link" id="logout">تغيير الرمز على هذا الجوال</button>';
   pad.appendChild(f);$("logout").onclick=function(){localStorage.removeItem("maqadi_pin");location.reload();};
 }
 
@@ -882,7 +882,7 @@ function start(){
   document.addEventListener("visibilitychange",function(){if(!document.hidden){flush();poll();}});
 }
 (async function boot(){
-  if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+  if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js",{updateViaCache:"none"});}catch(e){}}
   loadLocal();
   PIN=localStorage.getItem("maqadi_pin")||"";
   if(!PIN){gate();return;}
