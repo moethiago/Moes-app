@@ -1,8 +1,19 @@
 {
   "functions": {
-    "api/ingest.js": { "maxDuration": 30 },
-    "api/score.js":  { "maxDuration": 60 },
-    "api/f1-results.js": { "maxDuration": 30 },
-    "api/f1-grid.js":    { "maxDuration": 30 }
+    "api/ingest.js": {
+      "maxDuration": 30
+    },
+    "api/score.js": {
+      "maxDuration": 60
+    },
+    "api/f1-results.js": {
+      "maxDuration": 30
+    },
+    "api/f1-grid.js": {
+      "maxDuration": 30
+    },
+    "api/health-check.js": {
+      "maxDuration": 60
+    }
   }
 }
