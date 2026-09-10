@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: node tests/wain_grid.js
+      - run: node tests/wain_grid.cjs
       - name: backend contract
         run: |
           set -e
