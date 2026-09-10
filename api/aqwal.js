@@ -336,6 +336,13 @@ async function tProcess(limitMs) {
         index = await tIndex();
       } catch (e) {
         const t = await tGet(id);
+        if (/credit balance|billing|insufficient/i.test(String(e.message || e))) {
+          // not a fault of the thought — park it, keep it queued, and stop for this run
+          if (t) { t.status = "unanalyzed"; t.note = "Anthropic credit needed"; await tPut(t); await tUpsertIndex(t); }
+          done.push({ id, parked: "credit" });
+          await tkv(["LREM", T_QUEUE, "0", id]); await tkv(["RPUSH", T_QUEUE, id]);
+          break;
+        }
         const n = (t && t.attempts || 0) + 1;
         if (t) { t.attempts = n; t.error = String(e.message || e).slice(0, 300); if (n >= 3) t.status = "failed"; await tPut(t); await tUpsertIndex(t); }
         done.push({ id, error: String(e.message || e).slice(0, 200), attempts: n });
