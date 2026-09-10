@@ -159,6 +159,16 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .sug .no{width:36px;height:36px;border-radius:11px;background:var(--bg);color:var(--dimmer);font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
 .hint{margin-top:-6px;margin-bottom:14px;font-size:13px;color:var(--soon);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .hint button{background:var(--soon-soft);color:var(--soon);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600}
+.brands{display:flex;flex-wrap:wrap;gap:8px}
+.brands button{background:var(--bg);border-radius:14px;padding:14px 16px;font-size:15px;font-weight:600;min-width:30%;flex:1 1 auto;text-align:center;position:relative}
+.brands button.usual{background:var(--go-soft);color:var(--go);box-shadow:inset 0 0 0 1.5px var(--go)}
+.brands button.usual::after{content:"المعتاد";position:absolute;top:-8px;inset-inline-end:8px;background:var(--go);color:#fff;font-size:10px;padding:1px 7px;border-radius:999px;font-weight:600}
+.brands button.any{background:var(--sf);box-shadow:inset 0 0 0 1.5px var(--line);color:var(--dim)}
+.brands button.more{background:none;color:var(--go);box-shadow:inset 0 0 0 1.5px var(--go-soft)}
+.bchip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border-radius:999px;padding:5px 10px;font-size:12.5px;font-weight:500;margin:0 0 6px 6px}
+.bchip b{color:var(--dimmer);font-weight:400;font-size:15px;line-height:1;cursor:pointer}
+.tile .br{font-size:10.5px;color:var(--go);font-weight:600;display:block;margin-top:1px}
+.row .nm .br,.line .nm .br,.sug .nm .br{color:var(--go);font-weight:600}
 .net{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:50%;transform:translateX(50%);background:var(--soon-soft);color:var(--soon);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;z-index:50}
 
 /* ---------- tabs ---------- */
@@ -240,7 +250,35 @@ var CATS=[
  {id:"home",name:"مستلزمات منزلية",em:"🏠",c:"#8E85C4"},
  {id:"other",name:"أشياء ثانية",em:"🛍️",c:"#9AA1AD"}
 ];
-var CATALOG_V=2;
+var CATALOG_V=3;
+var BRAND_IN_NAME=["المراعي","نادك","الصافي","البقرات","كرافت","الضاحكة","التاج","هناء","نيدو","فيلادلفيا","ماجي","نسكافيه","كلوركس","ديتول","لوزين","كويكر"];
+/* [name regex, brands] — first match wins; items whose name already carries a brand get none */
+var BRANDS=[
+ [/حليب لوز/,["ألبرو","بلو دايموند"]],[/حليب شوفان/,["أوتلي","ألبرو"]],[/حليب طويل/,["المراعي","نادك","الصافي","نستله"]],
+ [/زبدة/,["لورباك","المراعي","نادك"]],[/جبنة شرائح/,["كرافت","المراعي","بوك","كيري"]],[/جبن سائل/,["المراعي","بوك","كرافت"]],
+ [/موزاريلا|قشقوان|حلوم/,["المراعي","بوك","نادك"]],[/كريمة/,["المراعي","بريزيدنت"]],
+ [/حليب|لبن|زبادي|لبنة/,["المراعي","نادك","الصافي","السعودية"]],[/قشطة/,["نستله","بوك","التاج"]],
+ [/بيض/,["الوطنية","الفقيه","الطازج"]],[/دجاج|صدور|أفخاذ|أجنحة|ناقتس/,["الوطنية","الطازج","فقيه","ساديا"]],[/نقانق|مرتديلا|ديك رومي/,["أمريكانا","الكبير","ساديا"]],
+ [/تورتيلا/,["ميشن","لوزين"]],[/توست|صامولي|خبز|بريوش|برقر|كرواسون/,["لوزين","أمريكانا","ديمة"]],
+ [/تونة|سردين/,["جودي","صن شاين","ريو ماري"]],[/زيتون/,["كوبوليفا","كورتاس"]],[/فول|حمص معلب|فاصوليا معلبة|ذرة معلبة|مشروم معلب/,["كاليفورنيا جاردن","قودي"]],
+ [/معجون طماطم/,["الوطنية","دل مونتي","قودي"]],[/حليب مكثف|حليب مبخر/,["نستله","رينبو","لونا"]],
+ [/رز بسمتي/,["أبو كاس","الشعلان","الوليمة"]],[/رز مصري/,["الشعلان","الوليمة"]],[/معكرونة|شعيرية/,["قودي","بانزاني","باريلا"]],[/دقيق/,["الأولى","صافولا"]],[/سكر/,["الأسرة","صافولا"]],[/شوفان/,["كويكر","هناء"]],
+ [/زيت ذرة/,["عافية","نور","هلا"]],[/زيت زيتون/,["الجوف","بورجيس","فيليبو بيريو"]],[/سمن/,["السعودية","دالدا"]],[/كاتشب/,["هاينز","قودي"]],[/مايونيز/,["هيلمانز","قودي"]],
+ [/عسل/,["الشفاء","لانجنيز"]],[/مربى/,["فيتراكس","قودي"]],[/صوص صويا/,["كيكومان","لي كم كي"]],[/هوت صوص/,["تاباسكو","كريستال"]],[/صلصة باستا/,["باريلا","دولميو"]],[/طحينة/,["الكسيح","شمس"]],
+ [/شاي أحمر/,["ليبتون","ربيع","أحمد تي","العروسة"]],[/شاي أخضر/,["ليبتون","أحمد تي","تويننجز"]],[/قهوة عربية/,["الكيف","بن العرب"]],[/قهوة سوداء/,["ديفيدوف","لافازا","إيلي"]],[/كبسولات/,["نسبريسو","لافازا","ستاربكس"]],[/قهوة تركية/,["نجار","محمد أفندي"]],
+ [/ماء/,["نوفا","أروى","بيرين","حياة"]],[/عصير/,["المراعي","الربيع","سن توب","الصافي"]],[/مشروب غازي/,["بيبسي","كوكاكولا","سفن أب","ميرندا"]],[/مياه غازية/,["بيريه","سان بيليغرينو"]],[/مشروب طاقة/,["ريد بول","كود ريد","بايسون"]],
+ [/مناديل|ورق تواليت/,["فاين","كلينكس","سوفت"]],
+ [/صابون صحون|ليفة|مزيل دهون/,["فيري","برايل","لوكس"]],[/مسحوق غسيل/,["تايد","أريال","بيرسيل","أومو"]],[/منعم/,["داوني","كومفورت"]],[/منظف أرضيات|معطر أرضيات/,["فلاش","ديتول","أجاكس"]],[/منظف زجاج/,["ويندكس"]],[/منظف حمام/,["هاربك","ديتول"]],
+ [/شامبو|بلسم/,["بانتين","هيد اند شولدرز","دوف","صنسيلك"]],[/صابون يد|صابون استحمام/,["ديتول","لايف بوي","دوف","لوكس"]],[/معجون أسنان/,["سيجنال","كولجيت","سنسوداين"]],[/فرشاة أسنان/,["أورال بي","كولجيت"]],[/مزيل عرق/,["نيفيا","دوف","ريكسونا"]],[/غسول وجه|مرطب/,["نيفيا","سيتافيل","غارنييه"]],[/شفرات/,["جيليت","شيك"]],[/واقي شمس/,["نيفيا","لاروش بوزيه"]],[/غسول فم/,["ليسترين","كولجيت"]],
+ [/شيبس/,["ليز","برينجلز","تشيتوس"]],[/شوكولاتة/,["جالكسي","كيت كات","كادبوري","سنيكرز"]],[/بسكويت مالح/,["تك","ريتز"]],[/بسكويت/,["أوريو","ماكفيتيز","لوتس","أولكر"]],[/كورن فليكس|جرانولا/,["كيلوقز","نستله"]],[/تمر/,["سكري","خلاص","صقعي","عجوة"]],[/فشار/,["بوب سيكرت","أكت تو"]],[/آيس كريم/,["باسكن روبنز","لندن ديري","هاجن داز"]],
+ [/سمبوسة|سبرنق|برقر مجمد|بطاطس مقلية|خضار مشكلة|بازلاء مجمدة|ذرة مجمدة/,["ساديا","أمريكانا","الكبير"]],[/عجينة/,["أمريكانا","سنبلة"]],
+ [/بطاريات/,["دوراسيل","إنرجايزر"]],[/لمبات/,["فيليبس","أوسرام"]],[/معطر جو/,["إيرويك","جليد"]],[/مبيد/,["بيف باف","ريد"]]
+];
+function seedBrands(name){
+  for(var i=0;i<BRAND_IN_NAME.length;i++)if(name.indexOf(BRAND_IN_NAME[i])>=0)return [];
+  for(var j=0;j<BRANDS.length;j++)if(BRANDS[j][0].test(name))return BRANDS[j][1].slice();
+  return [];
+}
 /* [name, days between purchases, emoji] */
 var SEED={
  veg:[["بصل",10,"🧅"],["ثوم",14,"🧄"],["بطاطس",10,"🥔"],["باذنجان",10,"🍆"],["كوسة",7,"🥒"],["جزر",10,"🥕"],["قرع",21,"🎃"],["بامية",14,"🫛"],["بروكلي",8,"🥦"],["زهرة",10,"🥦"],["ملفوف أبيض",14,"🥬"],["ملفوف أحمر",14,"🥬"],["خيار",4,"🥒"],["طماطم",4,"🍅"],["فلفل بارد أخضر",7,"🫑"],["فلفل بارد ملون",8,"🫑"],["فلفل حار",10,"🌶️"],["ليمون",7,"🍋"],["خس",5,"🥬"],["بقدونس",5,"🌿"],["كزبرة",5,"🌿"],["شبت",7,"🌿"],["جرجير",5,"🥬"],["فطر",10,"🍄"],["بصل أخضر",7,"🧅"],["نعناع",7,"🌿"],["سبانخ",7,"🥬"],["بطاطا حلوة",14,"🍠"],["فاصوليا خضراء",10,"🫛"],["ذرة",14,"🌽"],["كرفس",10,"🥬"],["زنجبيل",21,"🫚"],["فجل",10,"🥕"],["شمندر",14,"🟣"],["ملوخية",14,"🌿"]],
@@ -269,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="1.9", BUILD=BUILD_ID+" · ١٠ سبتمبر ٢٠٢٦", homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
+var BUILD_ID="2.0", BUILD=BUILD_ID+" · ١٠ سبتمبر ٢٠٢٦", homeQ="", priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -295,9 +333,11 @@ function seed(){
 function norm(st){st=st||{};if(!st.items||!Object.keys(st.items).length)return migrate(seed());st.list=st.list||{};st.cart=st.cart||{};st.receipts=st.receipts||[];st.trips=st.trips||[];st.stores=st.stores||[];st.photoV=st.photoV||0;return migrate(st);}
 function migrate(st){
   if((st.catalogV||1)>=CATALOG_V)return st;
+  if((st.catalogV||1)>=2){ Object.keys(st.items).forEach(function(id){var it=st.items[id];if(!it.brands)it.brands=seedBrands(it.name);}); st.catalogV=CATALOG_V; return st; }
   var have={};Object.keys(st.items).forEach(function(id){have[normAr(st.items[id].name)]=1;});
   Object.keys(st.items).forEach(function(id){var it=st.items[id];if(it.cat==="veg"&&FRUITS.indexOf(it.name)>=0)it.cat="fruit";if(it.cycle0==null)it.cycle0=it.cycle;});
-  CATS.forEach(function(c){(SEED[c.id]||[]).forEach(function(x){if(have[normAr(x[0])])return;var id=c.id+":"+x[0];st.items[id]={id:id,name:x[0],cat:c.id,em:x[2],cycle:x[1],cycle0:x[1],last:null,buys:[],prices:{},learned:0};have[normAr(x[0])]=1;});});
+  CATS.forEach(function(c){(SEED[c.id]||[]).forEach(function(x){if(have[normAr(x[0])])return;var id=c.id+":"+x[0];st.items[id]={id:id,name:x[0],cat:c.id,em:x[2],cycle:x[1],cycle0:x[1],last:null,buys:[],prices:{},learned:0,brands:seedBrands(x[0])};have[normAr(x[0])]=1;});});
+  if((st.catalogV||1)<3)Object.keys(st.items).forEach(function(id){var it=st.items[id];if(!it.brands)it.brands=seedBrands(it.name);});
   st.catalogV=CATALOG_V;return st;
 }
 function recompute(it){
@@ -322,7 +362,10 @@ function rollback(st,items,ts){
 function apply(st,op){
   var p=op.p||{};
   switch(op.t){
-    case "list.add": if(st.items[p.id]){st.list[p.id]={qty:p.qty||1,at:op.ts};} break;
+    case "list.add": if(st.items[p.id]){st.list[p.id]={qty:p.qty||1,at:op.ts,brand:p.brand||null};if(p.brand)st.items[p.id].usual=p.brand;} break;
+    case "list.brand": if(st.list[p.id]){st.list[p.id].brand=p.brand||null;if(p.brand&&st.items[p.id])st.items[p.id].usual=p.brand;} break;
+    case "brand.add": if(st.items[p.id]&&p.name){var bl=st.items[p.id].brands||[];if(bl.indexOf(p.name)<0)st.items[p.id].brands=bl.concat([p.name]);} break;
+    case "brand.remove": if(st.items[p.id]){st.items[p.id].brands=(st.items[p.id].brands||[]).filter(function(b){return b!==p.name;});if(st.items[p.id].usual===p.name)st.items[p.id].usual=null;} break;
     case "list.remove": delete st.list[p.id]; delete st.cart[p.id]; break;
     case "list.qty": if(st.list[p.id])st.list[p.id].qty=p.qty; break;
     case "cart.toggle": if(st.cart[p.id])delete st.cart[p.id]; else st.cart[p.id]=op.ts; break;
@@ -387,8 +430,8 @@ async function pull(){
   var r=await call({action:"state"});
   if(r.role){ROLE=r.role;localStorage.setItem("maqadi_role",ROLE);}
   if(r.usage)USAGE=r.usage;
-  if(!r.state){ S=seed(); V=r.v||0; await push(); }
-  else { S=norm(r.state); V=r.v; }
+  if(!r.state){ S=norm(seed()); V=r.v||0; await push(); }
+  else { var before=r.state.catalogV||1; S=norm(r.state); V=r.v; if((S.catalogV||1)!==before)await push(); }
   cacheLocal();
 }
 async function push(){
@@ -537,13 +580,13 @@ function rSug(){
   sg.forEach(function(it){
     var st=status(it),left=Math.round(it.cycle-(Date.now()-it.last)/DAY);
     var r=document.createElement("div");r.className="sug";
-    r.innerHTML='<span class="em">'+(PHOTOS[it.id]?'<img src="'+PHOTOS[it.id]+'" style="width:28px;height:28px;border-radius:8px;object-fit:cover">':(it.em||cat(it.cat).em))+'</span><div class="nm">'+esc(it.name)+'<small>'+(st==="late"?"عادةً خلص من "+nd(Math.max(1,-left)):"عادةً يخلص بعد "+nd(Math.max(1,left)))+'</small></div>';
-    var add=document.createElement("button");add.className="add";add.textContent="+";add.setAttribute("aria-label","إضافة");add.onclick=function(){op("list.add",{id:it.id,qty:1});};
+    r.innerHTML='<span class="em">'+(PHOTOS[it.id]?'<img src="'+PHOTOS[it.id]+'" style="width:28px;height:28px;border-radius:8px;object-fit:cover">':(it.em||cat(it.cat).em))+'</span><div class="nm">'+esc(it.name)+(it.usual?' <span class="br">'+esc(it.usual)+'</span>':'')+'<small>'+(st==="late"?"عادةً خلص من "+nd(Math.max(1,-left)):"عادةً يخلص بعد "+nd(Math.max(1,left)))+'</small></div>';
+    var add=document.createElement("button");add.className="add";add.textContent="+";add.setAttribute("aria-label","إضافة");add.onclick=function(){op("list.add",{id:it.id,qty:1,brand:it.usual||null});};
     var no=document.createElement("button");no.className="no";no.textContent="×";no.setAttribute("aria-label","ليس الآن");no.onclick=function(){op("suggest.dismiss",{id:it.id});toast("تمام، ما بنذكّرك فيه الحين");};
     r.appendChild(add);r.appendChild(no);card.appendChild(r);
   });
   sec.appendChild(card);box.appendChild(sec);
-  $("sugAll").onclick=function(){sg.forEach(function(it){op("list.add",{id:it.id,qty:1});});toast("أضفنا "+ar(sg.length)+" صنف");};
+  $("sugAll").onclick=function(){sg.forEach(function(it){op("list.add",{id:it.id,qty:1,brand:it.usual||null});});toast("أضفنا "+ar(sg.length)+" صنف");};
 }
 function rGrid(){
   var g=$("grid");if(!g)return;g.innerHTML="";
@@ -574,13 +617,13 @@ function tile(it){
   var pic=PHOTOS[it.id]?'<img src="'+PHOTOS[it.id]+'" alt="">':(it.em||c.em);
   var nm=it.name, detail="";
   var m=nm.match(/^(.*?)\s*\((.*)\)\s*$/);if(m){nm=m[1];detail=m[2];}
-  b.innerHTML=(st&&st!=="ok"&&!LITE()?'<span class="dot '+st+'"></span>':"")+'<div class="pic">'+pic+'</div><div class="nm">'+esc(nm)+(detail?'<small>'+esc(detail)+'</small>':"")+'</div>'+(S.list[it.id]?'<div class="on"><i>✓</i>في القائمة</div>':"");
+  b.innerHTML=(st&&st!=="ok"&&!LITE()?'<span class="dot '+st+'"></span>':"")+'<div class="pic">'+pic+'</div><div class="nm">'+esc(nm)+(detail?'<small>'+esc(detail)+'</small>':"")+(it.usual&&!S.list[it.id]?'<span class="br">'+esc(it.usual)+'</span>':"")+'</div>'+(S.list[it.id]?'<div class="on"><i>✓</i>'+(S.list[it.id].brand?esc(S.list[it.id].brand):"في القائمة")+'</div>':"");
   var pressed=false,timer=null;
   b.addEventListener("touchstart",function(){pressed=false;if(LITE())return;timer=setTimeout(function(){pressed=true;sheetItem(it);},520);},{passive:true});
   b.addEventListener("touchend",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("touchmove",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("contextmenu",function(e){e.preventDefault();});
-  b.onclick=function(){if(pressed){pressed=false;return;} if(S.list[it.id])op("list.remove",{id:it.id});else{op("list.add",{id:it.id,qty:1});} };
+  b.onclick=function(){if(pressed){pressed=false;return;} if(S.list[it.id])op("list.remove",{id:it.id});else if((it.brands||[]).length)sheetBrand(it,null);else op("list.add",{id:it.id,qty:1}); };
   return b;
 }
 
@@ -623,7 +666,9 @@ function rBasket(){
     g.forEach(function(id){
       var it=S.items[id],q=S.list[id].qty||1;
       var r=document.createElement("div");r.className="row";
-      r.innerHTML='<div class="em">'+(it.em||cat(it.cat).em)+'</div><div class="nm">'+esc(it.name)+'</div>';
+      var br=S.list[id].brand;
+      r.innerHTML='<div class="em">'+(it.em||cat(it.cat).em)+'</div><div class="nm">'+esc(it.name)+((it.brands||[]).length?'<small>'+(br?'<span class="br">'+esc(br)+'</span>':'أي ماركة')+' · <span class="link">غيّري</span></small>':'')+'</div>';
+      var lk=r.querySelector(".link");if(lk)lk.onclick=function(e){e.stopPropagation();sheetBrand(it,true);};
       var qb=document.createElement("button");qb.className="qty"+(q>1?" on":"");qb.textContent="×"+ar(q);qb.onclick=function(){op("list.qty",{id:id,qty:q>=6?1:q+1});};
       var rm=document.createElement("button");rm.className="rm";rm.textContent="×";rm.onclick=function(){op("list.remove",{id:id});};
       r.appendChild(qb);r.appendChild(rm);pad.appendChild(r);
@@ -635,7 +680,8 @@ function tripRow(it,done){
   var r=document.createElement("div");r.className="row"+(done?" done":"");
   var lp=lastPrice(it),lo=lowestKnown(it),q=S.list[it.id].qty||1;
   var hint=lo?('الأقل '+money(lo.price)+' '+esc(storeName(lo.store))+(lp&&lp.store!==lo.store?' · آخر مرة '+money(lp.price)+' '+esc(storeName(lp.store)):'')):"";
-  r.innerHTML='<div class="cb"></div><div class="em">'+(it.em||cat(it.cat).em)+'</div><div class="nm">'+esc(it.name)+(hint?'<small>'+hint+'</small>':"")+'</div>';
+  var br=S.list[it.id].brand;
+  r.innerHTML='<div class="cb"></div><div class="em">'+(it.em||cat(it.cat).em)+'</div><div class="nm">'+esc(it.name)+(br?' <span class="br">'+esc(br)+'</span>':'')+(hint?'<small>'+hint+'</small>':"")+'</div>';
   var qb=document.createElement("button");qb.className="qty"+(q>1?" on":"");qb.textContent="×"+ar(q);qb.onclick=function(e){e.stopPropagation();op("list.qty",{id:it.id,qty:q>=6?1:q+1});};
   var rm=document.createElement("button");rm.className="rm";rm.textContent="×";rm.onclick=function(e){e.stopPropagation();op("list.remove",{id:it.id});};
   r.appendChild(qb);r.appendChild(rm);
@@ -733,7 +779,8 @@ function commitReceipt(R){
     }
   });
   var ids=[],prices={};
-  R.lines.forEach(function(l){ids.push(l.itemId);prices[l.itemId]=l.unit!=null?l.unit:(l.total/(l.qty||1));});
+  R.lines.forEach(function(l){ids.push(l.itemId);prices[l.itemId]=l.unit!=null?l.unit:(l.total/(l.qty||1));
+    var it=S.items[l.itemId];if(it&&(it.brands||[]).length){var hit=it.brands.find(function(b){return normAr(l.name).indexOf(normAr(b))>=0;});if(hit&&it.usual!==hit)op("item.update",{id:it.id,patch:{usual:hit}});}});
   var rc={id:uid(),ts:R.date?Math.max(Date.now()-90*DAY,new Date(R.date).getTime()||Date.now()):Date.now(),store:R.store||"Other",total:R.total,lines:R.lines.map(function(l){return {name:l.name,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.total};}),compare:null};
   op("bought",{ids:ids,store:rc.store,prices:prices,ts:rc.ts});
   op("receipt.add",{receipt:rc});
@@ -926,15 +973,18 @@ function sheet(html){
 function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null;}}
 
 function sheetItem(it,presetName){
-  var isNew=!it;var draft={name:it?it.name:(presetName||""),cat:it?it.cat:(catPage||"other"),photo:it?(PHOTOS[it.id]||null):null,em:it?it.em:null};
+  var isNew=!it;var draft={name:it?it.name:(presetName||""),cat:it?it.cat:(catPage||"other"),photo:it?(PHOTOS[it.id]||null):null,em:it?it.em:null,brands:it?(it.brands||[]).slice():[]};
   var sh=sheet('<h3>'+(isNew?"صنف جديد":"تعديل الصنف")+'</h3>'+
     '<div class="fld"><label>الاسم'+(isNew?' <span style="font-weight:400;opacity:.7">— تقدر تكتب الكمية معه: بيض ٣٠</span>':'')+'</label><input id="fName" placeholder="مثال: حليب المراعي ٢ لتر" value="'+esc(draft.name)+'"></div>'+(isNew?'<div class="hint hidden" id="fHint"></div>':'')+
     '<div class="fld"><label>القسم</label><div class="cats" id="fCats"></div></div>'+
+    (LITE()?"":'<div class="fld"><label>الماركات <span style="font-weight:400;opacity:.7">— تظهر لزوجتك لما تضغط الصنف</span></label><div id="fBrands"></div><button class="link" id="fBrandAdd">＋ أضف ماركة</button></div>')+
     (LITE()?"":'<div class="fld"><label>الصورة</label><div class="photo"><div class="pv" id="fPv"></div><div><button class="link" id="fPhoto">'+(draft.photo?"غيّر الصورة":"صوّر المنتج عشان تعرفه بسرعة")+'</button>'+(draft.photo?'<br><button class="link" id="fPhotoRm" style="color:var(--late)">احذف الصورة</button>':"")+'</div></div></div>')+
     '<div class="cta"><button class="btn" id="fSave">'+(isNew?(LITE()?"أضيفيه للسلة":"أضفه وحطه في القائمة"):"احفظ")+'</button>'+(isNew?"":'<button class="btn red" id="fDel" style="flex:0 0 auto">احذف</button>')+'</div>');
   function pv(){var p=$("fPv");if(!p)return;p.innerHTML=draft.photo?'<img src="'+draft.photo+'">':(draft.em||cat(draft.cat).em);}
   function cats(){var c=$("fCats");c.innerHTML="";CATS.forEach(function(k){var b=document.createElement("button");b.textContent=k.em+" "+k.name;b.style.setProperty("--tint","var(--"+k.id+")");b.className=draft.cat===k.id?"on":"";b.onclick=function(){draft.cat=k.id;cats();pv();};c.appendChild(b);});}
   cats();pv();
+  function brandsUI(){var b=$("fBrands");if(!b)return;b.innerHTML="";draft.brands.forEach(function(n){var c=document.createElement("span");c.className="bchip";c.innerHTML=esc(n)+' <b>×</b>';c.querySelector("b").onclick=function(){draft.brands=draft.brands.filter(function(x){return x!==n;});brandsUI();};b.appendChild(c);});if(!draft.brands.length)b.innerHTML='<span class="muted" style="font-size:12.5px">بدون ماركات — الضغط على الصنف يضيفه مباشرة</span>';}
+  brandsUI();if($("fBrandAdd"))$("fBrandAdd").onclick=function(){var n=prompt("اسم الماركة");if(n&&n.trim()&&draft.brands.indexOf(n.trim())<0){draft.brands.push(n.trim());brandsUI();}};
   function useExisting(ex,qty,explicit){closeSheet();query="";if(S.list[ex.id]){var nq=explicit?Math.min(99,qty):Math.min(99,(S.list[ex.id].qty||1)+1);op("list.qty",{id:ex.id,qty:nq});toast("«"+ex.name+"» موجود بالقائمة — صار ×"+ar(nq));}else{op("list.add",{id:ex.id,qty:qty||1});toast("«"+ex.name+"» موجود عندكم — أضفناه للقائمة");}}
   function hint(){var h=$("fHint");if(!h)return;var pq=parseQty($("fName").value);var d=findDup(pq.name);if(!d.length){h.classList.add("hidden");h.innerHTML="";return;}h.classList.remove("hidden");h.innerHTML='<span>'+(d.length===1?"موجود عندكم:":"تقصد:")+'</span>';d.slice(0,4).forEach(function(ex){var b=document.createElement("button");b.textContent=(ex.em||"")+" "+ex.name+(S.list[ex.id]?" ✓":"");b.onclick=function(){useExisting(ex,pq.qty,pq.qty>1);};h.appendChild(b);});}
   if(isNew){$("fName").addEventListener("input",hint);hint();}
@@ -945,8 +995,8 @@ function sheetItem(it,presetName){
     var pq=isNew?parseQty(raw):{name:raw,qty:1};var name=pq.name;
     if(isNew){var d=findDup(name);if(d.length===1){useExisting(d[0],pq.qty,pq.qty>1);return;}}
     var id=it?it.id:draft.cat+":"+name+":"+uid().slice(-3);
-    if(isNew){op("item.add",{item:{id:id,name:name,cat:draft.cat,em:cat(draft.cat).em,cycle:14,last:null,buys:[],prices:{},learned:0,custom:true}});op("list.add",{id:id,qty:pq.qty});}
-    else op("item.update",{id:id,patch:{name:name,cat:draft.cat,em:it.em||cat(draft.cat).em}});
+    if(isNew){op("item.add",{item:{id:id,name:name,cat:draft.cat,em:cat(draft.cat).em,cycle:14,cycle0:14,last:null,buys:[],prices:{},learned:0,custom:true,brands:draft.brands.length?draft.brands:seedBrands(name)}});op("list.add",{id:id,qty:pq.qty});}
+    else op("item.update",{id:id,patch:{name:name,cat:draft.cat,em:it.em||cat(draft.cat).em,brands:draft.brands,usual:draft.brands.indexOf(it.usual)>=0?it.usual:null}});
     closeSheet();query="";render();
     if(!LITE()&&draft.photo!==(it?(PHOTOS[it.id]||null):null)){
       try{await call({action:"photoset",id:id,data:draft.photo||null});if(draft.photo)PHOTOS[id]=draft.photo;else delete PHOTOS[id];op("photo.bump");PHOTOS.__v=S.photoV;localStorage.setItem("maqadi_photos",JSON.stringify(PHOTOS));render();}catch(e){toast("الصورة ما اتحفظت");}
@@ -955,6 +1005,15 @@ function sheetItem(it,presetName){
   };
   if($("fDel"))$("fDel").onclick=function(){if(confirm("تحذف «"+it.name+"» من التطبيق؟")){op("item.remove",{id:it.id});closeSheet();}};
   setTimeout(function(){if(isNew)$("fName").focus();},50);
+}
+function sheetBrand(it,onList){
+  var brands=(it.brands||[]).slice();if(it.usual&&brands.indexOf(it.usual)>=0){brands.splice(brands.indexOf(it.usual),1);brands.unshift(it.usual);}
+  var sh=sheet('<h3>'+esc(it.name)+' — أي ماركة؟</h3><div class="brands" id="bl"></div>');
+  var box=$("bl");
+  function pick(b){closeSheet();if(onList)op("list.brand",{id:it.id,brand:b});else op("list.add",{id:it.id,qty:1,brand:b});}
+  brands.forEach(function(b){var x=document.createElement("button");x.textContent=b;if(b===it.usual)x.className="usual";x.onclick=function(){pick(b);};box.appendChild(x);});
+  var any=document.createElement("button");any.className="any";any.textContent="أي ماركة";any.onclick=function(){pick(null);};box.appendChild(any);
+  var more=document.createElement("button");more.className="more";more.textContent="＋ ماركة ثانية";more.onclick=function(){var n=prompt("اسم الماركة");if(n&&n.trim()){n=n.trim();op("brand.add",{id:it.id,name:n});pick(n);}};box.appendChild(more);
 }
 function sheetLink(line,done){
   var sh=sheet('<h3>وش هذا الصنف؟</h3><div class="muted" style="margin:-8px 0 10px">'+esc(line.name)+'</div><div class="fld"><input id="lq" placeholder="دوّر في أصنافكم…"></div><div class="pick" id="lp"></div>');
