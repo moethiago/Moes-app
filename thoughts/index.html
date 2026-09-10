@@ -187,7 +187,7 @@ var cache = { list: null, at: 0 };
 var tab = localStorage.getItem("thoughts_tab") || "recent";
 var themeFilter = null;
 var SRC = { my_thought: "My thought", someone_elses_wisdom: "Heard from someone", quoted_material: "A quote", my_interpretation: "My take on someone's idea", mixed: "Mixed", source_unclear: "Source unclear" };
-var STATUS = { pending: "Being transcribed", transcribed: "Being understood", unanalyzed: "Saved, not yet analyzed (budget)", empty: "Nothing was heard", failed: "Could not process" };
+var STATUS = { pending: "Being transcribed", transcribed: "Being understood", unanalyzed: "Saved, waiting to be understood", empty: "Nothing was heard", failed: "Could not process" };
 
 /* ============ api ============ */
 function api(action, data, extra) {
@@ -427,7 +427,7 @@ function renderDetail() {
   var meta = [fmtDate(t.ts) + " (" + ago(t.ts) + ")", t.mode === "spoken" && t.duration ? fmtDur(t.duration) : (t.mode === "written" ? "written" : "")].filter(Boolean);
   h += '<div class="meta">' + meta.map(esc).join(" · ") + (t.multiple ? ' · several thoughts in one' : "") + '</div>';
   if (t.status !== "ready") {
-    h += '<div class="before"><b>' + esc(STATUS[t.status] || t.status) + '</b>' + (t.error ? esc(t.error) : (t.status === "pending" || t.status === "transcribed" ? "Give it a minute and come back." : "")) + '</div>';
+    h += '<div class="before"><b>' + esc(STATUS[t.status] || t.status) + '</b>' + (t.note ? esc(t.note) + ". It will be understood automatically once that is sorted." : (t.error ? esc(t.error) : (t.status === "pending" || t.status === "transcribed" ? "Give it a minute and come back." : ""))) + '</div>';
     if (t.status === "failed" || t.status === "unanalyzed") h += '<div class="acts"><button onclick="retry()">Try again</button></div>';
   }
   var before = rel.filter(function (r) { return r.ts < t.ts && r.score >= 0.75; });
