@@ -14,6 +14,8 @@ jobs:
         with: { node-version: 22 }
       - name: contract grid (offline, in-memory KV, zero cost)
         run: node tests/backend_contract.mjs ./api/health-check.js
+      - name: brief contract grid (offline, mocked RSS + model, zero cost)
+        run: node tests/brief_contract.mjs ./api/feed.js
       - name: wait for Vercel
         if: github.event_name == 'push'
         run: sleep 90
