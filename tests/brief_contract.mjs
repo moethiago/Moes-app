@@ -1,6 +1,7 @@
 // Contract test for the Daily Brief route in api/feed.js — in-memory KV, mocked RSS + Groq. No real calls, zero cost.
 // Usage: node tests/brief_contract.mjs ./api/feed.js
-const file = process.argv[2] || './api/feed.js';
+import { pathToFileURL } from 'node:url'; import { resolve as _resolvePath } from 'node:path';
+const file = pathToFileURL(_resolvePath(process.cwd(), process.argv[2] || './api/feed.js')).href; // resolve relative to where the command runs (CI runs from repo root)
 process.env.KV_REST_API_URL = "https://kv.mock"; process.env.KV_REST_API_TOKEN = "t";
 process.env.GROQ_API_KEY = "test-key";
 const store = new Map(); let groqCalls = 0, geminiCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
