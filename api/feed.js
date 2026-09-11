@@ -515,11 +515,15 @@ Return ONLY a JSON object:
  "bottomLine":"<2 sentences max: what to watch next 24h>"}
 Rules: 8 to 10 items. At least 3 from Saudi Arabia if the headlines contain any. Exactly one or two 'critical'. Every item's "n" must be a number from the list. Never invent facts not in the headlines; if a headline is thin, say what is known. No markdown.`;
 
-async function briefCallGroq(headlines) {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) throw Object.assign(new Error('GROQ_API_KEY not configured'), { code: 500 });
+function briefHeadlineList(headlines) {
   const ageH = ts => Math.max(0, Math.round((Date.now() / 1000 - ts) / 3600));
-  const list = headlines.map((h, i) => `[${i + 1}] (${h.src}, ${ageH(h.publishedAt)}h ago${h.corroboration > 1 ? ', ' + h.corroboration + ' sources' : ''}) ${h.title}`).join('\n');
+  return headlines.map((h, i) => `[${i + 1}] (${h.src}, ${ageH(h.publishedAt)}h ago${h.corroboration > 1 ? ', ' + h.corroboration + ' sources' : ''}) ${h.title}`).join('\n');
+}
+function briefParseJSON(text) {
+  try { return JSON.parse(String(text || '').replace(/```json|```/g, '').trim()); }
+  catch { throw Object.assign(new Error('model returned non-JSON'), { code: 502 }); }
+}
+async function briefCallGroq(headlines, key) {
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 40000);
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -528,15 +532,47 @@ async function briefCallGroq(headlines) {
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', temperature: 0.2, max_tokens: 2200,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: BRIEF_SYSTEM }, { role: 'user', content: 'Riyadh date: ' + briefRiyadhDate() + '\nHEADLINES:\n' + list }],
+        messages: [{ role: 'system', content: BRIEF_SYSTEM }, { role: 'user', content: 'Riyadh date: ' + briefRiyadhDate() + '\nHEADLINES:\n' + briefHeadlineList(headlines) }],
       }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error('groq: ' + (j.error && j.error.message ? j.error.message : r.status)), { code: 502 });
     const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-    let parsed; try { parsed = JSON.parse(String(text || '').replace(/```json|```/g, '').trim()); } catch { throw Object.assign(new Error('groq returned non-JSON'), { code: 502 }); }
-    return { parsed, usage: j.usage || null, model: j.model || 'llama-3.3-70b-versatile' };
+    return { parsed: briefParseJSON(text), usage: j.usage ? (j.usage.total_tokens || null) : null, model: 'groq/' + (j.model || 'llama-3.3-70b-versatile') };
   } finally { clearTimeout(timer); }
+}
+const BRIEF_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+async function briefCallGemini(headlines, key) {
+  let lastErr = null;
+  for (const model of BRIEF_GEMINI_MODELS) {
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 45000);
+    try {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+        method: 'POST', signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: BRIEF_SYSTEM }] },
+          contents: [{ role: 'user', parts: [{ text: 'Riyadh date: ' + briefRiyadhDate() + '\nHEADLINES:\n' + briefHeadlineList(headlines) }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 4000, responseMimeType: 'application/json' },
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        lastErr = Object.assign(new Error('gemini ' + model + ': ' + (j.error && j.error.message ? j.error.message : r.status)), { code: 502 });
+        if (r.status === 404 || r.status === 400) continue; // model not available on this key -> try next
+        throw lastErr;
+      }
+      const text = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.map(p => p.text || '').join('');
+      return { parsed: briefParseJSON(text), usage: j.usageMetadata ? (j.usageMetadata.totalTokenCount || null) : null, model: 'gemini/' + model };
+    } finally { clearTimeout(timer); }
+  }
+  throw lastErr || Object.assign(new Error('gemini: no model available'), { code: 502 });
+}
+// Engine order: Groq free tier if configured, else Gemini free tier. Both SAR 0. No other engine is ever called.
+async function briefCallModel(headlines) {
+  if (process.env.GROQ_API_KEY) return briefCallGroq(headlines, process.env.GROQ_API_KEY);
+  if (process.env.GEMINI_API_KEY) return briefCallGemini(headlines, process.env.GEMINI_API_KEY);
+  throw Object.assign(new Error('no free engine configured (GROQ_API_KEY or GEMINI_API_KEY)'), { code: 500 });
 }
 function briefValidate(parsed, headlines) {
   if (!parsed || !Array.isArray(parsed.items) || parsed.items.length < 3) throw Object.assign(new Error('brief: too few items'), { code: 502 });
@@ -566,9 +602,9 @@ async function handleBrief(req, res) {
     if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
     const { headlines, okSrc, failed } = await briefCollect();
     if (headlines.length < 8) return res.status(503).json({ ok: false, error: 'only ' + headlines.length + ' headlines collected', sources: { ok: okSrc, failed } });
-    const { parsed, usage, model } = await briefCallGroq(headlines);
+    const { parsed, usage, model } = await briefCallModel(headlines);
     const v = briefValidate(parsed, headlines);
-    const brief = { date, generatedAt: Date.now(), headline: v.headline, items: v.items, bottomLine: v.bottomLine, headlinesSeen: headlines.length, sources: { ok: okSrc, failed }, engine: model, tokens: usage ? (usage.total_tokens || null) : null, costSAR: 0 };
+    const brief = { date, generatedAt: Date.now(), headline: v.headline, items: v.items, bottomLine: v.bottomLine, headlinesSeen: headlines.length, sources: { ok: okSrc, failed }, engine: model, tokens: usage, costSAR: 0 };
     await kvSet(key, brief, 36 * 3600);
     return res.status(200).json({ ok: true, cached: false, built: true, brief });
   } catch (e) {
