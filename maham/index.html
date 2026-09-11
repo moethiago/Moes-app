@@ -168,7 +168,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="1.2", BUILD=BUILD_ID+" · 11 Sep 2026";
+var BUILD_ID="1.3", BUILD=BUILD_ID+" · 11 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -186,7 +186,21 @@ var CATS=[
  {id:"self",name:"Personal",em:"🧠"},
  {id:"other",name:"Other",em:"📌"}
 ];
-var CATALOG_V=1;
+var CATALOG_V=2;
+var TR={
+"رد على الإيميلات":"Clear the inbox","تجهيز التقرير الأسبوعي":"Weekly report","تحديث مؤشرات الأداء":"Update the KPIs","اجتماع الفريق":"Team meeting","متابعة مع المدير":"Check in with my manager","مراجعة الميزانية":"Review the budget","تجهيز عرض تقديمي":"Build a deck","مراجعة عقد":"Review a contract","متابعة مع مورد":"Follow up with a vendor","جدولة اجتماع":"Schedule a meeting","تحديث الخطة الاستراتيجية":"Update the strategy plan","مقابلة توظيف":"Interview a candidate","تقييم أداء موظف":"Performance review","ترتيب أولويات الأسبوع":"Set the week's priorities","متابعة مشروع متأخر":"Chase a late project","تجهيز محضر اجتماع":"Write up meeting notes","رفع طلب اعتماد":"Submit for approval","مراجعة تقرير فريق":"Review a team report",
+"تحديث التطبيق":"Ship an app update","فحص الأخطاء":"Check for bugs","كتابة أفكار جديدة":"Write down new ideas","تصوير محتوى":"Shoot content","نشر منشور":"Post something","مراجعة تعليقات المستخدمين":"Read user feedback","تحديث موقع":"Update the site","نسخة احتياطية للمشروع":"Back up the project","متابعة تكاليف الاشتراكات":"Review subscription costs",
+"تحويل المصروف":"Send the monthly allowance","سداد الفواتير":"Pay the bills","سداد بطاقة":"Pay the credit card","مراجعة المصروفات":"Review spending","تحديث الميزانية":"Update the budget","متابعة الاستثمار":"Check investments","تحويل ادخار":"Move money to savings","مراجعة الاشتراكات":"Audit subscriptions","إخراج الزكاة":"Zakat","مراجعة كشف الحساب":"Go through the bank statement",
+"تجديد الاستمارة":"Renew the car registration","تجديد رخصة القيادة":"Renew the driving licence","تجديد الجواز":"Renew the passport","موعد حكومي":"Government appointment","تصديق أوراق":"Get documents attested","دفع مخالفة":"Pay a traffic fine","تحديث بيانات أبشر":"Update details on Absher","تجديد التأمين":"Renew insurance","استخراج شهادة":"Request a certificate","متابعة معاملة":"Follow up an application",
+"الاتصال بالعامل":"Call the farm worker","زيارة المزرعة":"Visit the farm","فحص شبكة الري":"Check the irrigation","تسميد":"Fertilise","تقليم":"Prune","صيانة المضخة":"Service the pump","متابعة النخل":"Check on the palms","تلقيح النخل":"Pollinate the palms","جني التمر":"Date harvest","شراء أعلاف":"Buy feed","فحص السياج":"Check the fence","قراءة عداد الكهرباء":"Read the electricity meter","صيانة البئر":"Service the well","رش مبيد":"Spray pesticide","حرث الأرض":"Plough the field","متابعة حساب المزرعة":"Go through farm expenses",
+"تغيير فلتر الماء":"Change the water filter","صيانة المكيفات":"Service the AC units","تغيير لمبات":"Replace light bulbs","ترتيب المستودع":"Tidy the storeroom","تنظيف عميق":"Deep clean","رش مبيد حشرات":"Pest control","صيانة سباكة":"Plumbing repair","غسيل السجاد":"Carpet cleaning","تغيير أسطوانة الغاز":"Swap the gas cylinder","فحص طفاية الحريق":"Check the fire extinguisher","ترتيب الأوراق المهمة":"Sort the important papers","تنظيف الحوش":"Clean the yard",
+"تغيير الزيت":"Oil change","فحص الإطارات":"Check the tyres","غسيل السيارة":"Car wash","صيانة دورية":"Scheduled service","الفحص الدوري":"Annual inspection","تعبئة بنزين":"Fill up","تغيير فلتر المكيف":"Change the cabin filter","فحص البطارية":"Check the battery","تنظيف داخلي":"Interior clean",
+"الاتصال بالوالدين":"Call my parents","زيارة الأهل":"Visit family","خروج مع الزوجة":"Take my wife out","موعد المدرسة":"School appointment","شراء هدية":"Buy a gift","تجهيز مناسبة":"Plan an occasion","ترتيب سفر العائلة":"Plan a family trip","وقت مع العيال":"Time with the kids",
+"البنك":"Bank","استلام طلب":"Pick up an order","صيانة الجوال":"Phone repair","المغسلة":"Laundry","الحلاق":"Barber","الصيدلية":"Pharmacy","محل قطع غيار":"Parts shop","توصيل شي":"Drop something off","شحن أغراض":"Ship a package",
+"موعد الطبيب":"Doctor's appointment","تحاليل دورية":"Routine bloodwork","موعد الأسنان":"Dentist","تمرين":"Workout","مشي":"Walk","شراء أدوية":"Pick up medication","فحص النظر":"Eye test","نوم بدري":"Early night",
+"قراءة":"Read","تعلّم شي جديد":"Learn something new","ترتيب الملفات":"Sort my files","نسخة احتياطية للجوال":"Back up the phone","تنظيف الإيميل":"Clean out the email","مراجعة الأهداف":"Review my goals","كتابة أفكار":"Write down ideas","تنظيم جدول الأسبوع":"Plan the week"
+};
+
 /* [title, typical days between repeats (0 = one-off), emoji] */
 var SEED={
  work:[["Clear the inbox",1,"📧"],["Weekly report",7,"📊"],["Update the KPIs",7,"📈"],["Team meeting",7,"👥"],["Check in with my manager",7,"🗣️"],["Review the budget",30,"🧮"],["Build a deck",0,"🖥️"],["Review a contract",0,"📝"],["Follow up with a vendor",0,"📞"],["Schedule a meeting",0,"📅"],["Update the strategy plan",90,"🧭"],["Interview a candidate",0,"🤝"],["Performance review",180,"⭐"],["Set the week's priorities",7,"🗒️"],["Chase a late project",0,"⏰"],["Write up meeting notes",0,"🖊️"],["Submit for approval",0,"✅"],["Review a team report",7,"📑"]],
@@ -236,12 +250,20 @@ function seed(){
   return {tasks:tasks,lanes:{today:[],week:[],later:[]},log:[],catalogV:CATALOG_V};
 }
 function norm(st){
-  st=st||{};if(!st.tasks||!Object.keys(st.tasks).length)return seed();
+  st=st||{};if(!st.tasks||!Object.keys(st.tasks).length)return migrate(seed());
+  st=migrate(st);
   st.lanes=st.lanes||{};LANES.forEach(function(l){st.lanes[l.id]=st.lanes[l.id]||[];});
   st.log=st.log||[];
   // drop ids that no longer exist
   LANES.forEach(function(l){st.lanes[l.id]=st.lanes[l.id].filter(function(id){return st.tasks[id];});});
   return st;
+}
+function migrate(st){
+  if((st.catalogV||1)>=CATALOG_V)return st;
+  // one-time: the catalog was seeded in Arabic; rewrite the titles in place, keeping history and lane spots
+  Object.keys(st.tasks).forEach(function(id){var t=st.tasks[id];if(TR[t.title])t.title=TR[t.title];});
+  (st.log||[]).forEach(function(e){if(TR[e.title])e.title=TR[e.title];});
+  st.catalogV=CATALOG_V;return st;
 }
 function where(st,id){for(var i=0;i<LANES.length;i++){var k=LANES[i].id,n=st.lanes[k].indexOf(id);if(n>=0)return {lane:k,index:n};}return null;}
 function recompute(t){
@@ -319,7 +341,7 @@ function loadLocal(){try{var c=JSON.parse(localStorage.getItem("maham_state")||"
 async function pull(){
   var r=await call({action:"taskstate"});
   if(!r.state){S=seed();V=r.v||0;await push();}
-  else {S=norm(r.state);V=r.v;}
+  else {var before=r.state.catalogV||1;S=norm(r.state);V=r.v;if((S.catalogV||1)!==before)await push();}
   cacheLocal();
 }
 async function push(){
