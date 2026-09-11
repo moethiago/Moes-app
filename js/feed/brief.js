@@ -27,7 +27,7 @@ function loadBrief() {
 function buildBrief(force) {
   var body = document.getElementById('brief-body'); if (!body || briefState.loading) return;
   briefState.loading = true;
-  body.innerHTML = '<div class="brief-empty"><div class="brief-spin"></div>Reading 13 sources, ranking for you…<div class="brief-sub">Usually 15–30 seconds · SAR 0</div></div>';
+  body.innerHTML = '<div class="brief-empty"><div class="brief-spin"></div>Reading 13 sources, ranking for you…<div class="brief-sub">Usually 10–30 seconds · SAR 0</div></div>';
   fetch(BRIEF_URL + '&build=1' + (force ? '&force=1' : ''), { cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(j) {
     briefState.loading = false;
     if (j && j.ok && j.brief) { try { localStorage.setItem(BRIEF_LS, JSON.stringify(j.brief)); } catch (e) {} renderBrief(j.brief, {}); }
@@ -42,7 +42,7 @@ function renderBuildPrompt(date, last) {
       '<div class="brief-kicker">DAILY BRIEF</div>' +
       '<div class="brief-date">' + briefEsc(briefDateLine(date)) + '</div>' +
       '<div class="brief-hero-txt">No brief prepared for today yet.</div>' +
-      '<button class="brief-build" onclick="buildBrief(false)">PREPARE TODAY\'S BRIEF<span class="brief-cost">FREE · GROQ · SAR 0</span></button>' +
+      '<button class="brief-build" onclick="buildBrief(false)">PREPARE TODAY\'S BRIEF<span class="brief-cost">FREE · SAR 0</span></button>' +
     '</div>' +
     (last ? '<div class="brief-lastlink" onclick="renderBrief(JSON.parse(localStorage.getItem(BRIEF_LS)),{stale:true})">Show yesterday\'s brief (' + briefEsc(last.date) + ')</div>' : '');
 }
