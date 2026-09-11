@@ -1,8 +1,8 @@
 {
-  "name": "مهامي",
-  "short_name": "مهامي",
-  "lang": "ar",
-  "dir": "rtl",
+  "name": "Tasks",
+  "short_name": "Tasks",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
