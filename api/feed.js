@@ -419,8 +419,168 @@ function clusterByEmbedding(stories, threshold = 0.85) {
 
 
 
+
+// ==== BRIEF (Daily Brief — PDB-style, Groq free tier, cached per Riyadh day) ====
+// GET /api/feed?brief=1            -> today's cached brief, or {ok:true,cached:false} (never spends)
+// GET /api/feed?brief=1&build=1    -> build + cache (explicit tap in the UI; Groq free tier = SAR 0)
+// GET /api/feed?brief=1&build=1&force=1 -> rebuild today's brief
+// Keys: brief:<YYYY-MM-DD> (36h TTL), brief:builds:<YYYY-MM-DD> (daily build cap)
+const BRIEF_SOURCES = [
+  { url:'https://www.arabnews.com/saudiarabia/rss.xml',                   src:'Arab News',     cat:'KSA',     weight:10 },
+  { url:'https://www.arabnews.com/rss.xml',                               src:'Arab News',     cat:'KSA',     weight:9  },
+  { url:'https://www.arabnews.com/economy/rss.xml',                       src:'Arab News',     cat:'KSA',     weight:9  },
+  { url:'https://saudigazette.com.sa/rssFeed/74',                         src:'Saudi Gazette', cat:'KSA',     weight:8  },
+  { url:'https://en.majalla.com/rss.xml',                                 src:'Al Majalla',    cat:'KSA',     weight:7  },
+  { url:'https://feeds.bbci.co.uk/news/world/rss.xml',                    src:'BBC',           cat:'WORLD',   weight:9  },
+  { url:'https://www.aljazeera.com/xml/rss/all.xml',                      src:'Al Jazeera',    cat:'WORLD',   weight:8  },
+  { url:'https://www.theguardian.com/world/rss',                          src:'The Guardian',  cat:'WORLD',   weight:8  },
+  { url:'https://feeds.bbci.co.uk/news/business/rss.xml',                 src:'BBC Business',  cat:'MARKETS', weight:8  },
+  { url:'https://www.cnbc.com/id/100727362/device/rss/rss.html',          src:'CNBC',          cat:'MARKETS', weight:7  },
+  { url:'https://oilprice.com/rss/main',                                  src:'OilPrice',      cat:'OIL',     weight:8  },
+  { url:'https://techcrunch.com/category/artificial-intelligence/feed/',  src:'TechCrunch',    cat:'TECH',    weight:6  },
+  { url:'https://www.formula1.com/en/latest/all.xml',                     src:'Formula1.com',  cat:'MOTOR',   weight:5  },
+];
+const BRIEF_MAX_HEADLINES = 80;
+const BRIEF_MAX_AGE_H = 26;
+const BRIEF_DAILY_CAP = 6;
+const BRIEF_TIERS = new Set(['critical','high','watch']);
+const BRIEF_SECTIONS = ['Saudi Arabia','Gulf & Oil','World','Markets','Tech & AI','Motorsport'];
+
+function briefRiyadhDate(now = Date.now()) {
+  return new Date(now + 3 * 3600 * 1000).toISOString().slice(0, 10);
+}
+function briefExtractTag(xml, tag) {
+  const m = xml.match(new RegExp('<' + tag + '[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+  return m ? m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1').trim() : '';
+}
+function briefClean(s) {
+  return (s || '').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function briefParseRSS(xml, src) {
+  const now = Date.now(), out = [];
+  const items = xml.match(/<(item|entry)[^>]*>[\s\S]*?<\/\1>/gi) || [];
+  for (const item of items.slice(0, 30)) {
+    const title = briefClean(briefExtractTag(item, 'title'));
+    let link = briefClean(briefExtractTag(item, 'link'));
+    if (!link) { const m = item.match(/<link[^>]*href="([^"]+)"/i); if (m) link = m[1]; }
+    const pub = briefExtractTag(item, 'pubDate') || briefExtractTag(item, 'published') || briefExtractTag(item, 'updated');
+    const d = new Date(pub); const ts = d.getTime();
+    if (!title || title.length < 12 || !link || isNaN(ts)) continue;
+    if (now - ts > BRIEF_MAX_AGE_H * 3600 * 1000 || ts > now + 3600 * 1000) continue;
+    out.push({ title, url: link, src: src.src, cat: src.cat, weight: src.weight, publishedAt: Math.floor(ts / 1000) });
+  }
+  return out;
+}
+async function briefFetchSource(src) {
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(src.url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MoesApp/3.0)' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return briefParseRSS(await r.text(), src);
+  } finally { clearTimeout(timer); }
+}
+async function briefCollect() {
+  const settled = await Promise.allSettled(BRIEF_SOURCES.map(briefFetchSource));
+  const okSrc = [], failed = []; let all = [];
+  settled.forEach((r, i) => {
+    const s = BRIEF_SOURCES[i];
+    if (r.status === 'fulfilled' && r.value.length) { okSrc.push(s.src + ' (' + s.cat + ')'); all = all.concat(r.value); }
+    else failed.push(s.src + ' (' + s.cat + '): ' + (r.status === 'rejected' ? (r.reason && r.reason.message) : 'empty'));
+  });
+  // dedupe near-identical headlines across sources, keep highest-weight rep
+  const clusters = clusterStories(all, 0.5);
+  const reps = clusters.map(c => { const rep = c.slice().sort((a, b) => b.weight - a.weight)[0]; rep.corroboration = new Set(c.map(x => x.src)).size; return rep; });
+  reps.sort((a, b) => (b.corroboration - a.corroboration) || (b.weight - a.weight) || (b.publishedAt - a.publishedAt));
+  // guarantee KSA presence: take up to 30 KSA first, then fill
+  const ksa = reps.filter(r => r.cat === 'KSA').slice(0, 30);
+  const rest = reps.filter(r => r.cat !== 'KSA');
+  const picked = ksa.concat(rest).slice(0, BRIEF_MAX_HEADLINES);
+  return { headlines: picked, okSrc, failed };
+}
+const BRIEF_SYSTEM = `You are the senior briefer preparing the President's Daily Brief for Moaath — Head of Strategy & Performance at a Saudi group, based in Riyadh, owner of a date farm in Qassim. Audience: one executive who reads this in 3 minutes on a phone. Tone: crisp, factual, no hype, no filler, no moralising. British spelling.
+
+RANKING PROFILE (highest first):
+1. Saudi Arabia domestic — government decisions, regulation, Vision 2030, PIF, giga-projects, economy, labour, Qassim/agriculture, anything a Riyadh executive must know before Sunday's meetings.
+2. Gulf & oil — OPEC+, Brent, GCC politics, Iran/Israel/Yemen as they touch the Kingdom.
+3. World — wars, elections, decisions by the US/China/EU that move the region or markets.
+4. Markets — Tadawul, Fed, dollar, gold, major corporate moves.
+5. Tech & AI — model releases and regulation that change how work is done.
+6. Motorsport — only if genuinely major (title-deciding, safety, Saudi GP).
+Drop sport gossip, celebrity, crime blotter, local-only Western stories, opinion pieces.
+
+Return ONLY a JSON object:
+{"headline":"<one sentence — the single most important thing today>",
+ "items":[{"n":<headline number>,"tier":"critical|high|watch","section":"<one of: ${BRIEF_SECTIONS.join(' | ')}>","title":"<rewritten, ≤12 words, specific>","what":"<1 sentence: what happened, with the key number/name/date>","why":"<1 sentence: why it matters to him specifically — decision, risk or opportunity>"}],
+ "bottomLine":"<2 sentences max: what to watch next 24h>"}
+Rules: 8 to 10 items. At least 3 from Saudi Arabia if the headlines contain any. Exactly one or two 'critical'. Every item's "n" must be a number from the list. Never invent facts not in the headlines; if a headline is thin, say what is known. No markdown.`;
+
+async function briefCallGroq(headlines) {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw Object.assign(new Error('GROQ_API_KEY not configured'), { code: 500 });
+  const ageH = ts => Math.max(0, Math.round((Date.now() / 1000 - ts) / 3600));
+  const list = headlines.map((h, i) => `[${i + 1}] (${h.src}, ${ageH(h.publishedAt)}h ago${h.corroboration > 1 ? ', ' + h.corroboration + ' sources' : ''}) ${h.title}`).join('\n');
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 40000);
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', temperature: 0.2, max_tokens: 2200,
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'system', content: BRIEF_SYSTEM }, { role: 'user', content: 'Riyadh date: ' + briefRiyadhDate() + '\nHEADLINES:\n' + list }],
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error('groq: ' + (j.error && j.error.message ? j.error.message : r.status)), { code: 502 });
+    const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    let parsed; try { parsed = JSON.parse(String(text || '').replace(/```json|```/g, '').trim()); } catch { throw Object.assign(new Error('groq returned non-JSON'), { code: 502 }); }
+    return { parsed, usage: j.usage || null, model: j.model || 'llama-3.3-70b-versatile' };
+  } finally { clearTimeout(timer); }
+}
+function briefValidate(parsed, headlines) {
+  if (!parsed || !Array.isArray(parsed.items) || parsed.items.length < 3) throw Object.assign(new Error('brief: too few items'), { code: 502 });
+  const seen = new Set(); const items = [];
+  for (const it of parsed.items) {
+    const n = Number(it.n); const h = headlines[n - 1];
+    if (!h || seen.has(n)) continue; seen.add(n);
+    const tier = BRIEF_TIERS.has(String(it.tier).toLowerCase()) ? String(it.tier).toLowerCase() : 'watch';
+    const section = BRIEF_SECTIONS.includes(it.section) ? it.section : (h.cat === 'KSA' ? 'Saudi Arabia' : h.cat === 'OIL' ? 'Gulf & Oil' : h.cat === 'MARKETS' ? 'Markets' : h.cat === 'TECH' ? 'Tech & AI' : h.cat === 'MOTOR' ? 'Motorsport' : 'World');
+    items.push({ rank: items.length + 1, tier, section, title: String(it.title || h.title).slice(0, 140), what: String(it.what || '').slice(0, 400), why: String(it.why || '').slice(0, 400), url: h.url, source: h.src, publishedAt: h.publishedAt });
+    if (items.length >= 10) break;
+  }
+  if (items.length < 3) throw Object.assign(new Error('brief: items did not map to headlines'), { code: 502 });
+  const order = { critical: 0, high: 1, watch: 2 };
+  items.sort((a, b) => order[a.tier] - order[b.tier]).forEach((it, i) => { it.rank = i + 1; });
+  return { headline: String(parsed.headline || '').slice(0, 300), items, bottomLine: String(parsed.bottomLine || '').slice(0, 500) };
+}
+async function handleBrief(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  const date = briefRiyadhDate(); const key = 'brief:' + date;
+  const build = String(req.query.build || '') === '1', force = String(req.query.force || '') === '1';
+  try {
+    const cached = await kvGet(key);
+    if (cached && !(build && force)) return res.status(200).json({ ok: true, cached: true, brief: cached });
+    if (!build) return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · Groq' });
+    const n = await call(['INCR', 'brief:builds:' + date]); await call(['EXPIRE', 'brief:builds:' + date, '172800']);
+    if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
+    const { headlines, okSrc, failed } = await briefCollect();
+    if (headlines.length < 8) return res.status(503).json({ ok: false, error: 'only ' + headlines.length + ' headlines collected', sources: { ok: okSrc, failed } });
+    const { parsed, usage, model } = await briefCallGroq(headlines);
+    const v = briefValidate(parsed, headlines);
+    const brief = { date, generatedAt: Date.now(), headline: v.headline, items: v.items, bottomLine: v.bottomLine, headlinesSeen: headlines.length, sources: { ok: okSrc, failed }, engine: model, tokens: usage ? (usage.total_tokens || null) : null, costSAR: 0 };
+    await kvSet(key, brief, 36 * 3600);
+    return res.status(200).json({ ok: true, cached: false, built: true, brief });
+  } catch (e) {
+    console.error('brief error:', e.message);
+    return res.status(e.code || 500).json({ ok: false, error: e.message });
+  }
+}
+// ==== END BRIEF ====
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.query && req.query.brief) return handleBrief(req, res);
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
 
   if (!kvReady()) return res.status(500).json({ error: 'KV not configured' });
