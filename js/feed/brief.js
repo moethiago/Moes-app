@@ -27,7 +27,7 @@ function loadBrief() {
 function buildBrief(force) {
   var body = document.getElementById('brief-body'); if (!body || briefState.loading) return;
   briefState.loading = true;
-  body.innerHTML = '<div class="brief-empty"><div class="brief-spin"></div>Reading 13 sources, ranking for you…<div class="brief-sub">Usually 10–30 seconds · SAR 0</div></div>';
+  body.innerHTML = '<div class="brief-empty"><div class="brief-spin"></div>Reading 17 sources + Saudi X trends, ranking for you…<div class="brief-sub">Usually 20–60 seconds · SAR 0</div></div>';
   fetch(BRIEF_URL + '&build=1' + (force ? '&force=1' : ''), { cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(j) {
     briefState.loading = false;
     if (j && j.ok && j.brief) { try { localStorage.setItem(BRIEF_LS, JSON.stringify(j.brief)); } catch (e) {} renderBrief(j.brief, {}); }
@@ -55,7 +55,7 @@ function renderBriefError(msg, last, canRetry) {
 
 function renderBrief(b, opts) {
   var body = document.getElementById('brief-body'); if (!body || !b) return;
-  var sections = {}; var order = ['Saudi Arabia', 'Gulf & Oil', 'World', 'Markets', 'Tech & AI', 'Motorsport'];
+  var sections = {}; var order = ['Saudi Arabia', 'Gulf & Oil', 'World', 'Markets', 'Tech & AI', 'Sport', 'Society', 'Motorsport'];
   (b.items || []).forEach(function(it) { (sections[it.section] = sections[it.section] || []).push(it); });
   var html = '<div class="brief-head">' +
     '<div class="brief-kicker">DAILY BRIEF' + (opts.stale ? ' · SAVED COPY' : '') + '</div>' +
@@ -76,6 +76,21 @@ function renderBrief(b, opts) {
     });
     html += '</div>';
   });
+  if (b.trending && b.trending.length) {
+    html += '<div class="brief-sec brief-trend"><div class="brief-sec-lbl">SAUDI X RIGHT NOW</div>';
+    b.trending.forEach(function(t) { html += '<div class="brief-trend-row"><span class="brief-trend-tag">' + briefEsc(t.topic) + '</span><span class="brief-trend-what">' + briefEsc(t.what) + '</span></div>'; });
+    html += '</div>';
+  }
+  if (b.also && b.also.length) {
+    var alsoSec = {}; b.also.forEach(function(a) { (alsoSec[a.section] = alsoSec[a.section] || []).push(a); });
+    html += '<div class="brief-also"><div class="brief-also-head">ALSO TODAY<span>' + b.also.length + ' MORE — SO NOTHING IS NEW TO YOU TONIGHT</span></div>';
+    order.forEach(function(sec) {
+      var list = alsoSec[sec]; if (!list || !list.length) return;
+      html += '<div class="brief-also-sec">' + briefEsc(sec.toUpperCase()) + '</div>';
+      list.forEach(function(a) { html += '<a class="brief-also-line" href="' + briefEsc(a.url) + '" target="_blank" rel="noopener"><span class="brief-also-dot"></span><span class="brief-also-txt">' + briefEsc(a.line) + '</span><span class="brief-also-src">' + briefEsc(a.source) + '</span></a>'; });
+    });
+    html += '</div>';
+  }
   if (b.bottomLine) html += '<div class="brief-bottom"><div class="brief-sec-lbl">BOTTOM LINE · NEXT 24H</div><div class="brief-bottom-txt">' + briefEsc(b.bottomLine) + '</div></div>';
   html += '<div class="brief-foot">' + briefEsc(b.engine || '') + (b.tokens ? ' · ' + briefEsc(b.tokens) + ' tokens' : '') + ' · SAR 0' +
     '<button class="brief-rebuild" onclick="buildBrief(true)">REBUILD · FREE</button></div>';
