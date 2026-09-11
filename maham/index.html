@@ -60,6 +60,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .tile.add{background:var(--sf);border:2px dashed var(--line);box-shadow:none;color:var(--dim)}
 .tile.add .pic{background:none;font-size:34px;color:var(--go)}
 .tile .cnt{position:absolute;top:8px;inset-inline-end:10px;min-width:22px;height:22px;border-radius:999px;background:var(--go);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px}
+.tile .del{position:absolute;top:6px;inset-inline-end:6px;width:26px;height:26px;border-radius:999px;background:var(--late);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .tile .dot{position:absolute;top:10px;inset-inline-start:12px;width:8px;height:8px;border-radius:50%;background:var(--soon)}
 
 .lane{margin-top:18px}
@@ -167,7 +168,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="1.1", BUILD=BUILD_ID+" · 11 Sep 2026";
+var BUILD_ID="1.2", BUILD=BUILD_ID+" · 11 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -204,7 +205,7 @@ var SEED={
 
 
 /* ================= state ================= */
-var S=null,V=0,PIN="",view="pick",catPage="",query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
+var S=null,V=0,PIN="",view="pick",pruning=false,query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -215,6 +216,12 @@ function dstr(ts){var d=new Date(ts),t=new Date(),y=new Date(Date.now()-DAY);
   if(d.toDateString()===t.toDateString())return "Today";
   if(d.toDateString()===y.toDateString())return "Yesterday";
   return d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});}
+var TINTS=["work","proj","money","gov","farm","home","car","fam","errand","health","self","other"];
+function tintOf(t){
+  if(t.cat&&TINTS.indexOf(t.cat)>=0)return t.cat;
+  var h=0,x=String(t.id||t.title);for(var i=0;i<x.length;i++)h=(h*31+x.charCodeAt(i))>>>0;
+  return TINTS[h%TINTS.length];
+}
 function cat(id){for(var i=0;i<CATS.length;i++)if(CATS[i].id===id)return CATS[i];return CATS[CATS.length-1];}
 function lane(id){for(var i=0;i<LANES.length;i++)if(LANES[i].id===id)return LANES[i];return LANES[0];}
 function normAr(s){return String(s||"").replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[()،,.\-_/]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
@@ -367,12 +374,13 @@ function hd(title,sub,acts){
 
 /* ---- add ---- */
 function rPick(){
-  var c=catPage?cat(catPage):null,n=total();
+  var n=total(),all=Object.keys(S.tasks).length;
   var acts=[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,query);}}];
-  if(c)acts.unshift({icon:"→",label:"Back",fn:function(){catPage="";window.scrollTo(0,0);render();}});
-  var h=hd(c?c.em+" "+c.name:"What’s on you?",n?"<b>"+n+"</b> on your list â tap what you just remembered":"Tap anything you remember. It goes to Today.",acts);
+  acts.unshift({icon:pruning?"✓":"✎",label:pruning?"Done editing":"Edit the list",fn:function(){pruning=!pruning;render();}});
+  var h=hd(pruning?"Edit your list":"What’s on you?",
+    pruning?"Tap ✕ on anything you never do":(n?"<b>"+n+"</b> on your list · "+all+" to choose from":"Tap anything you remember. It goes to Today."),acts);
   var sr=document.createElement("div");sr.className="search";
-  sr.innerHTML='<input id="q" placeholder="'+(c?"Search "+esc(c.name)+"…":"Search every task…")+'" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
+  sr.innerHTML='<input id="q" placeholder="Search or type something new…" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
   h.appendChild(sr);
   var qi=$("q");qi.addEventListener("input",function(){query=qi.value;rGrid();rSug();$("qx").classList.toggle("hidden",!query);});
   $("qx").onclick=function(){query="";render();};
@@ -381,14 +389,14 @@ function rPick(){
 }
 function rSug(){
   var box=$("sugbox");if(!box)return;box.innerHTML="";
-  if(query||catPage)return;
+  if(query||pruning)return;
   var sg=suggestions(6);if(!sg.length)return;
   var sec=document.createElement("div");sec.className="sec";sec.style.cssText="padding:0 16px;margin-top:14px";
   sec.innerHTML='<h2>Probably due today <button id="sugAll">Add all</button></h2>';
   var card=document.createElement("div");card.className="card";card.style.padding="4px 16px";
   sg.forEach(function(t){
     var r=document.createElement("div");r.className="sug";
-    r.innerHTML='<span class="em">'+(t.em||cat(t.cat).em)+'</span><div class="nm">'+esc(t.title)+'<small>last '+ago(t.last)+' · usually every '+nd(t.cycle)+'</small></div>';
+    r.innerHTML='<span class="em">'+(t.em||"📌")+'</span><div class="nm">'+esc(t.title)+'<small>last '+ago(t.last)+' · usually every '+nd(t.cycle)+'</small></div>';
     var a=document.createElement("button");a.className="add";a.textContent="+";a.onclick=function(){op("add",{id:t.id,lane:"today"});};
     var no=document.createElement("button");no.className="no";no.textContent="×";no.onclick=function(){op("dismiss",{id:t.id});toast("Fine â we’ll stop nudging for now");};
     r.appendChild(a);r.appendChild(no);card.appendChild(r);
@@ -399,42 +407,40 @@ function rSug(){
 function rGrid(){
   var g=$("grid");if(!g)return;g.innerHTML="";
   var q=normAr(query);
-  if(!q&&!catPage){
-    CATS.forEach(function(c){
-      var n=0,inl=0,due=false;
-      Object.keys(S.tasks).forEach(function(id){var t=S.tasks[id];if(t.cat!==c.id)return;n++;if(where(S,id))inl++;var r=ratio(t);if(r!==null&&r>=1)due=true;});
-      if(!n&&c.id!=="other")return;
-      var b=document.createElement("button");b.className="tile";b.style.setProperty("--tint","var(--"+c.id+")");
-      b.innerHTML=(inl?'<span class="cnt">'+ar(inl)+'</span>':(due?'<span class="dot"></span>':""))+'<div class="pic">'+c.em+'</div><div class="nm">'+esc(c.name)+'<small>'+n+' task'+(n===1?'':'s')+'</small></div>';
-      b.onclick=function(){catPage=c.id;query="";window.scrollTo(0,0);render();};
-      g.appendChild(b);
-    });
-    return;
+  var list=Object.keys(S.tasks).map(function(id){return S.tasks[id];})
+    .filter(function(t){return !q||normAr(t.title).indexOf(q)>=0;})
+    .sort(function(a,b){return a.title.localeCompare(b.title,"en");});
+  list.forEach(function(t){g.appendChild(taskTile(t));});
+  if(!pruning){
+    var add=document.createElement("button");add.className="tile add";
+    add.innerHTML='<div class="pic">+</div><div class="nm">'+(query?"Add “"+esc(query)+"”":"New task")+'</div>';
+    add.onclick=function(){sheetTask(null,query);};
+    g.appendChild(add);
   }
-  Object.keys(S.tasks).map(function(id){return S.tasks[id];})
-    .filter(function(t){return q?normAr(t.title).indexOf(q)>=0:t.cat===catPage;})
-    .sort(function(a,b){var ra=ratio(a),rb=ratio(b);return (rb===null?-1:rb)-(ra===null?-1:ra);})
-    .forEach(function(t){g.appendChild(taskTile(t));});
-  var add=document.createElement("button");add.className="tile add";
-  add.innerHTML='<div class="pic">+</div><div class="nm">'+(query?"Add “"+esc(query)+"”":"New task")+'</div>';
-  add.onclick=function(){sheetTask(null,query);};
-  g.appendChild(add);
+  if(!list.length&&!query)g.innerHTML='<div class="card muted" style="grid-column:1/-1">Your list is empty. Tap + to add your first task.</div>';
 }
 function taskTile(t){
-  var c=cat(t.cat),w=where(S,t.id),r=ratio(t);
-  var b=document.createElement("button");b.className="tile";b.style.setProperty("--tint","var(--"+c.id+")");
-  b.innerHTML=((r!==null&&r>=1&&!w)?'<span class="dot"></span>':"")+'<div class="pic">'+(t.em||c.em)+'</div><div class="nm">'+esc(t.title)+(t.last?'<small>'+ago(t.last)+'</small>':"")+'</div>'+(w?'<div class="on"><i>✓</i>'+esc(lane(w.lane).name)+'</div>':"");
+  var w=where(S,t.id),r=ratio(t);
+  var b=document.createElement("button");b.className="tile";b.style.setProperty("--tint","var(--"+tintOf(t)+")");
+  b.innerHTML=(pruning?'<span class="del">✕</span>':((r!==null&&r>=1&&!w)?'<span class="dot"></span>':""))+'<div class="pic">'+(t.em||"📌")+'</div><div class="nm">'+esc(t.title)+(t.last?'<small>'+ago(t.last)+'</small>':"")+'</div>'+((w&&!pruning)?'<div class="on"><i>✓</i>'+esc(lane(w.lane).name)+'</div>':"");
   var pressed=false,timer=null;
   function longPress(){pressed=true;sheetPlace(t);}
-  b.addEventListener("touchstart",function(){pressed=false;timer=setTimeout(longPress,500);},{passive:true});
+  b.addEventListener("touchstart",function(){pressed=false;if(pruning)return;timer=setTimeout(longPress,500);},{passive:true});
   b.addEventListener("touchend",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("touchmove",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("contextmenu",function(e){e.preventDefault();});
   b.onclick=function(){if(pressed){pressed=false;return;}
+    if(pruning){deleteTask(t);return;}
     if(w)op("remove",{id:t.id});
     else op("add",{id:t.id,lane:"today"});
   };
   return b;
+}
+
+function deleteTask(t){
+  var copy=JSON.parse(JSON.stringify(t)),w=where(S,t.id);
+  op("task.remove",{id:t.id});
+  toast("Removed “"+t.title+"”",false,{label:"Undo",fn:function(){op("task.add",{task:copy});if(w)op("add",{id:copy.id,lane:w.lane});}});
 }
 
 /* ---- list ---- */
@@ -476,7 +482,7 @@ function rList(){
 function taskRow(t,laneId){
   if(!t)return document.createElement("div");
   var r=document.createElement("div");r.className="row";r.dataset.id=t.id;
-  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||cat(t.cat).em)+'</div><div class="nm">'+esc(t.title)+'<small>'+esc(cat(t.cat).name)+(t.cycle?' · usually every '+nd(t.cycle):'')+'</small></div><div class="gr">⣿</div>';
+  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||"📌")+'</div><div class="nm">'+esc(t.title)+'<small>'+(t.cycle?'usually every '+nd(t.cycle):'one-off')+'</small></div><div class="gr">⣿</div>';
   r.querySelector(".cb").onclick=function(e){e.stopPropagation();complete(t);};
   attachDrag(r,t,laneId);
   return r;
@@ -583,7 +589,7 @@ function rDone(){
     var card=document.createElement("div");card.className="card";
     days[k].forEach(function(e){
       var h=document.createElement("div");h.className="hist";
-      h.innerHTML='<span class="em" style="font-size:20px">'+(e.em||"")+'</span><div class="d"><b>'+esc(e.title)+'</b><small>'+esc(cat(e.cat).name)+' · '+new Date(e.ts).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit"})+'</small></div>';
+      h.innerHTML='<span class="em" style="font-size:20px">'+(e.em||"")+'</span><div class="d"><b>'+esc(e.title)+'</b><small>'+new Date(e.ts).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit"})+'</small></div>';
       var rb=document.createElement("button");rb.className="link";rb.textContent="Again";rb.onclick=function(){if(S.tasks[e.id]){op("add",{id:e.id,lane:"today",top:true});toast("Back on Today");}else toast("That task was deleted from the catalog");};
       var db=document.createElement("button");db.className="link";db.style.color="var(--late)";db.textContent="Delete";db.onclick=function(){op("log.remove",{lid:e.lid});};
       h.appendChild(rb);h.appendChild(db);card.appendChild(h);
@@ -604,9 +610,10 @@ function sheet(html){
 }
 function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null;}}
 function sheetPlace(t){
-  sheet('<h3>'+esc(t.title)+'</h3><div class="fld"><label>Where does it go?</label><div class="opts" id="op"></div></div><div class="cta"><button class="btn soft" id="ed">Edit task</button></div>');
+  sheet('<h3>'+esc(t.title)+'</h3><div class="fld"><label>Where does it go?</label><div class="opts" id="op"></div></div><div class="cta"><button class="btn soft" id="ed">Edit</button><button class="btn red" id="dl" style="flex:0 0 auto">Delete</button></div>');
   LANES.forEach(function(L){var b=document.createElement("button");b.textContent=L.name;b.onclick=function(){closeSheet();op("add",{id:t.id,lane:L.id});toast("Added to "+L.name);};$("op").appendChild(b);});
   $("ed").onclick=function(){closeSheet();sheetTask(t);};
+  $("dl").onclick=function(){closeSheet();deleteTask(t);};
 }
 function sheetRow(t){
   var w=where(S,t.id)||{lane:"today",index:0};
@@ -625,30 +632,31 @@ function sheetRow(t){
 }
 function sheetTask(t,preset){
   var isNew=!t;
-  var draft={title:t?t.title:(preset||""),cat:t?t.cat:(catPage||"other"),em:t?t.em:"📌",cycle0:t?(t.cycle0||0):0};
+  var draft={title:t?t.title:(preset||""),em:t?t.em:"📌",cycle0:t?(t.cycle0||0):0};
   sheet('<h3>'+(isNew?"New task":"Edit task")+'</h3>'+
     '<div class="fld"><label>What is it?</label><input id="fT" placeholder="e.g. Follow up the vendor contract" value="'+esc(draft.title)+'"></div>'+
-    '<div class="fld"><label>Category</label><div class="cats" id="fC"></div></div>'+
+    '<div class="fld"><label>Icon</label><div class="cats" id="fE"></div></div>'+
     '<div class="fld"><label>Repeats every how many days? <span style="font-weight:400;opacity:.7">— leave 0 for a one-off</span></label><input id="fR" inputmode="numeric" value="'+(draft.cycle0||0)+'"></div>'+
-    '<div class="cta"><button class="btn" id="fS">'+(isNew?"Add to Today":"Save")+'</button>'+(isNew||!t.custom?"":'<button class="btn red" id="fD" style="flex:0 0 auto">Delete</button>')+'</div>');
-  function cats(){var c=$("fC");c.innerHTML="";CATS.forEach(function(k){var b=document.createElement("button");b.textContent=k.em+" "+k.name;b.style.setProperty("--tint","var(--"+k.id+")");b.className=draft.cat===k.id?"on":"";b.onclick=function(){draft.cat=k.id;cats();};c.appendChild(b);});}
-  cats();
+    '<div class="cta"><button class="btn" id="fS">'+(isNew?"Add to Today":"Save")+'</button>'+(isNew?"":'<button class="btn red" id="fD" style="flex:0 0 auto">Delete</button>')+'</div>');
+  var EM=["📌","📞","💧","🌱","🧾","🔧","🚗","🏠","💼","📄","💰","🛒","📦","📅","✍️","🎯","🧹","⚙️","🌴","🩺","📱","🎁","✈️","🔋"];
+  function ems(){var c=$("fE");c.innerHTML="";EM.forEach(function(e){var b=document.createElement("button");b.textContent=e;b.style.fontSize="20px";b.className=draft.em===e?"on":"";b.onclick=function(){draft.em=e;ems();};c.appendChild(b);});}
+  ems();
   $("fS").onclick=function(){
     var title=$("fT").value.trim();if(!title){$("fT").focus();return;}
     var cyc=Math.max(0,Math.min(730,parseInt($("fR").value,10)||0));
     if(isNew){
       var dup=Object.keys(S.tasks).map(function(id){return S.tasks[id];}).filter(function(x){return normAr(x.title)===normAr(title);})[0];
       if(dup){closeSheet();query="";if(where(S,dup.id))toast("“"+dup.title+"” is already in "+lane(where(S,dup.id).lane).name);else{op("add",{id:dup.id,lane:"today"});toast("“"+dup.title+"” already exists — added to Today");}return;}
-      var id=draft.cat+":"+title+":"+uid().slice(-3);
-      op("task.add",{task:{id:id,title:title,cat:draft.cat,em:cat(draft.cat).em,cycle:cyc,cycle0:cyc,doneAt:[],learned:0,dismissed:[],custom:true}});
+      var id="t:"+title+":"+uid().slice(-3);
+      op("task.add",{task:{id:id,title:title,em:draft.em,cycle:cyc,cycle0:cyc,doneAt:[],learned:0,dismissed:[],custom:true}});
       op("add",{id:id,lane:"today"});
       closeSheet();query="";toast("Added to Today");
     } else {
-      op("task.update",{id:t.id,patch:{title:title,cat:draft.cat,cycle0:cyc,cycle:t.learned?t.cycle:cyc,em:t.em||cat(draft.cat).em}});
+      op("task.update",{id:t.id,patch:{title:title,cycle0:cyc,cycle:t.learned?t.cycle:cyc,em:draft.em}});
       closeSheet();toast("Saved");
     }
   };
-  if($("fD"))$("fD").onclick=function(){if(confirm("Delete “"+t.title+"” from the catalog for good?")){op("task.remove",{id:t.id});closeSheet();}};
+  if($("fD"))$("fD").onclick=function(){closeSheet();deleteTask(t);};
   setTimeout(function(){if(isNew)$("fT").focus();},50);
 }
 
