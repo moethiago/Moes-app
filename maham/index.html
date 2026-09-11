@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="مهامي">
+<meta name="apple-mobile-web-app-title" content="Tasks">
 <meta name="theme-color" content="#F3F4F6">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>مهامي</title>
+<title>Tasks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -142,10 +142,10 @@ button{cursor:pointer;border:0;background:none;padding:0}
 </head>
 <body>
 <div id="gate" class="gate hidden">
-  <h1>مهامي</h1>
-  <p>رمزك مرة وحدة، وبعدها ما يسألك.</p>
+  <h1>Tasks</h1>
+  <p>Your code once, then never again.</p>
   <input id="pin" inputmode="numeric" autocomplete="one-time-code" placeholder="••••">
-  <button class="btn" id="pinGo">ادخل</button>
+  <button class="btn" id="pinGo">Enter</button>
   <div class="err" id="pinErr"></div>
 </div>
 
@@ -155,62 +155,66 @@ button{cursor:pointer;border:0;background:none;padding:0}
 </div>
 
 <div class="tabs hidden" id="tabs"><div class="in">
-  <button data-v="pick" class="on"><i>🗂️</i>أضف</button>
-  <button data-v="list"><i>✅</i>مهامي<span class="b hidden" id="bList"></span></button>
-  <button data-v="done"><i>🏁</i>خلصت</button>
+  <button data-v="pick" class="on"><i>🗂️</i>Add</button>
+  <button data-v="list"><i>✅</i>Tasks<span class="b hidden" id="bList"></span></button>
+  <button data-v="done"><i>🏁</i>Done</button>
 </div></div>
 
-<button id="upd" class="net hidden" style="background:var(--go-soft);color:var(--go);top:calc(env(safe-area-inset-top) + 34px)">فيه إصدار جديد — اضغط للتحديث</button>
-<div id="net" class="net hidden">بدون اتصال — التعديلات محفوظة وبترفع لما يرجع النت</div>
+<button id="upd" class="net hidden" style="background:var(--go-soft);color:var(--go);top:calc(env(safe-area-inset-top) + 34px)">New version — tap to update</button>
+<div id="net" class="net hidden">Offline â changes saved, will sync when you’re back</div>
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
 "use strict";
-var BUILD_ID="1.0", BUILD=BUILD_ID+" · ١١ سبتمبر ٢٠٢٦";
+var BUILD_ID="1.1", BUILD=BUILD_ID+" · 11 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
-var LANES=[{id:"today",name:"اليوم",c:"#D64545"},{id:"week",name:"هذا الأسبوع",c:"#C98A12"},{id:"later",name:"لاحقاً",c:"#9AA1AD"}];
+var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
 var CATS=[
- {id:"work",name:"الشغل",em:"💼"},
- {id:"proj",name:"مشاريعي",em:"🚀"},
- {id:"money",name:"مالية",em:"💰"},
- {id:"gov",name:"أوراق وحكومي",em:"📄"},
- {id:"farm",name:"المزرعة",em:"🌾"},
- {id:"home",name:"البيت",em:"🏠"},
- {id:"car",name:"السيارة",em:"🚗"},
- {id:"fam",name:"العائلة",em:"👨‍👩‍👦"},
- {id:"errand",name:"مشاوير",em:"🛵"},
- {id:"health",name:"صحة",em:"🩺"},
- {id:"self",name:"شخصي",em:"🧠"},
- {id:"other",name:"أشياء ثانية",em:"📌"}
+ {id:"work",name:"Work",em:"💼"},
+ {id:"proj",name:"My projects",em:"🚀"},
+ {id:"money",name:"Money",em:"💰"},
+ {id:"gov",name:"Paperwork",em:"📄"},
+ {id:"farm",name:"Farm",em:"🌾"},
+ {id:"home",name:"Home",em:"🏠"},
+ {id:"car",name:"Car",em:"🚗"},
+ {id:"fam",name:"Family",em:"👨‍👩‍👦"},
+ {id:"errand",name:"Errands",em:"🛵"},
+ {id:"health",name:"Health",em:"🩺"},
+ {id:"self",name:"Personal",em:"🧠"},
+ {id:"other",name:"Other",em:"📌"}
 ];
 var CATALOG_V=1;
 /* [title, typical days between repeats (0 = one-off), emoji] */
 var SEED={
- work:[["رد على الإيميلات",1,"📧"],["تجهيز التقرير الأسبوعي",7,"📊"],["تحديث مؤشرات الأداء",7,"📈"],["اجتماع الفريق",7,"👥"],["متابعة مع المدير",7,"🗣️"],["مراجعة الميزانية",30,"🧮"],["تجهيز عرض تقديمي",0,"🖥️"],["مراجعة عقد",0,"📝"],["متابعة مع مورد",0,"📞"],["جدولة اجتماع",0,"📅"],["تحديث الخطة الاستراتيجية",90,"🧭"],["مقابلة توظيف",0,"🤝"],["تقييم أداء موظف",180,"⭐"],["ترتيب أولويات الأسبوع",7,"🗒️"],["متابعة مشروع متأخر",0,"⏰"],["تجهيز محضر اجتماع",0,"🖊️"],["رفع طلب اعتماد",0,"✅"],["مراجعة تقرير فريق",7,"📑"]],
- proj:[["تحديث التطبيق",0,"📱"],["فحص الأخطاء",7,"🐞"],["كتابة أفكار جديدة",7,"💡"],["تصوير محتوى",7,"📷"],["نشر منشور",3,"📢"],["مراجعة تعليقات المستخدمين",7,"💬"],["تحديث موقع",0,"🌐"],["نسخة احتياطية للمشروع",30,"💾"],["متابعة تكاليف الاشتراكات",30,"💳"]],
- money:[["تحويل المصروف",30,"💸"],["سداد الفواتير",30,"🧾"],["سداد بطاقة",30,"💳"],["مراجعة المصروفات",30,"📉"],["تحديث الميزانية",30,"🧮"],["متابعة الاستثمار",30,"📊"],["تحويل ادخار",30,"🏦"],["مراجعة الاشتراكات",90,"🔁"],["إخراج الزكاة",365,"🤲"],["مراجعة كشف الحساب",30,"📋"]],
- gov:[["تجديد الاستمارة",365,"🚙"],["تجديد رخصة القيادة",0,"🪪"],["تجديد الجواز",0,"🛂"],["موعد حكومي",0,"🏛️"],["تصديق أوراق",0,"✍️"],["دفع مخالفة",0,"⚠️"],["تحديث بيانات أبشر",0,"📲"],["تجديد التأمين",365,"🛡️"],["استخراج شهادة",0,"📜"],["متابعة معاملة",0,"🗃️"]],
- farm:[["الاتصال بالعامل",7,"📞"],["زيارة المزرعة",14,"🚜"],["فحص شبكة الري",14,"💧"],["تسميد",30,"🌱"],["تقليم",60,"✂️"],["صيانة المضخة",90,"⚙️"],["متابعة النخل",30,"🌴"],["تلقيح النخل",365,"🌴"],["جني التمر",365,"🧺"],["شراء أعلاف",30,"🌾"],["فحص السياج",90,"🚧"],["قراءة عداد الكهرباء",30,"🔌"],["صيانة البئر",180,"🕳️"],["رش مبيد",60,"🧴"],["حرث الأرض",180,"🚜"],["متابعة حساب المزرعة",30,"🧾"]],
- home:[["تغيير فلتر الماء",90,"💧"],["صيانة المكيفات",180,"❄️"],["تغيير لمبات",0,"💡"],["ترتيب المستودع",90,"📦"],["تنظيف عميق",30,"🧽"],["رش مبيد حشرات",90,"🪳"],["صيانة سباكة",0,"🔧"],["غسيل السجاد",180,"🧼"],["تغيير أسطوانة الغاز",60,"🔥"],["فحص طفاية الحريق",365,"🧯"],["ترتيب الأوراق المهمة",90,"🗂️"],["تنظيف الحوش",30,"🧹"]],
- car:[["تغيير الزيت",120,"🛢️"],["فحص الإطارات",30,"🛞"],["غسيل السيارة",14,"🚿"],["صيانة دورية",180,"🔧"],["الفحص الدوري",365,"🔍"],["تعبئة بنزين",7,"⛽"],["تغيير فلتر المكيف",180,"❄️"],["فحص البطارية",180,"🔋"],["تنظيف داخلي",30,"🧽"]],
- fam:[["الاتصال بالوالدين",3,"📞"],["زيارة الأهل",7,"🏡"],["خروج مع الزوجة",7,"🍽️"],["موعد المدرسة",0,"🎒"],["شراء هدية",0,"🎁"],["تجهيز مناسبة",0,"🎉"],["ترتيب سفر العائلة",0,"✈️"],["وقت مع العيال",1,"🧸"]],
- errand:[["البنك",0,"🏦"],["استلام طلب",0,"📦"],["صيانة الجوال",0,"📱"],["المغسلة",14,"👕"],["الحلاق",21,"💈"],["الصيدلية",0,"💊"],["محل قطع غيار",0,"🔩"],["توصيل شي",0,"🚗"],["شحن أغراض",0,"📮"]],
- health:[["موعد الطبيب",0,"🩺"],["تحاليل دورية",180,"🧪"],["موعد الأسنان",180,"🦷"],["تمرين",2,"🏋️"],["مشي",1,"🚶"],["شراء أدوية",30,"💊"],["فحص النظر",365,"👓"],["نوم بدري",1,"😴"]],
- self:[["قراءة",1,"📖"],["تعلّم شي جديد",7,"🎓"],["ترتيب الملفات",30,"🗄️"],["نسخة احتياطية للجوال",30,"☁️"],["تنظيف الإيميل",30,"📬"],["مراجعة الأهداف",30,"🎯"],["كتابة أفكار",7,"✍️"],["تنظيم جدول الأسبوع",7,"📅"]],
+ work:[["Clear the inbox",1,"📧"],["Weekly report",7,"📊"],["Update the KPIs",7,"📈"],["Team meeting",7,"👥"],["Check in with my manager",7,"🗣️"],["Review the budget",30,"🧮"],["Build a deck",0,"🖥️"],["Review a contract",0,"📝"],["Follow up with a vendor",0,"📞"],["Schedule a meeting",0,"📅"],["Update the strategy plan",90,"🧭"],["Interview a candidate",0,"🤝"],["Performance review",180,"⭐"],["Set the week's priorities",7,"🗒️"],["Chase a late project",0,"⏰"],["Write up meeting notes",0,"🖊️"],["Submit for approval",0,"✅"],["Review a team report",7,"📑"]],
+ proj:[["Ship an app update",0,"📱"],["Check for bugs",7,"🐞"],["Write down new ideas",7,"💡"],["Shoot content",7,"📷"],["Post something",3,"📢"],["Read user feedback",7,"💬"],["Update the site",0,"🌐"],["Back up the project",30,"💾"],["Review subscription costs",30,"💳"]],
+ money:[["Send the monthly allowance",30,"💸"],["Pay the bills",30,"🧾"],["Pay the credit card",30,"💳"],["Review spending",30,"📉"],["Update the budget",30,"🧮"],["Check investments",30,"📊"],["Move money to savings",30,"🏦"],["Audit subscriptions",90,"🔁"],["Zakat",365,"🤲"],["Go through the bank statement",30,"📋"]],
+ gov:[["Renew the car registration",365,"🚙"],["Renew the driving licence",0,"🪪"],["Renew the passport",0,"🛂"],["Government appointment",0,"🏛️"],["Get documents attested",0,"✍️"],["Pay a traffic fine",0,"⚠️"],["Update details on Absher",0,"📲"],["Renew insurance",365,"🛡️"],["Request a certificate",0,"📜"],["Follow up an application",0,"🗃️"]],
+ farm:[["Call the farm worker",7,"📞"],["Visit the farm",14,"🚜"],["Check the irrigation",14,"💧"],["Fertilise",30,"🌱"],["Prune",60,"✂️"],["Service the pump",90,"⚙️"],["Check on the palms",30,"🌴"],["Pollinate the palms",365,"🌴"],["Date harvest",365,"🧺"],["Buy feed",30,"🌾"],["Check the fence",90,"🚧"],["Read the electricity meter",30,"🔌"],["Service the well",180,"🕳️"],["Spray pesticide",60,"🧴"],["Plough the field",180,"🚜"],["Go through farm expenses",30,"🧾"]],
+ home:[["Change the water filter",90,"💧"],["Service the AC units",180,"❄️"],["Replace light bulbs",0,"💡"],["Tidy the storeroom",90,"📦"],["Deep clean",30,"🧽"],["Pest control",90,"🪳"],["Plumbing repair",0,"🔧"],["Carpet cleaning",180,"🧼"],["Swap the gas cylinder",60,"🔥"],["Check the fire extinguisher",365,"🧯"],["Sort the important papers",90,"🗂️"],["Clean the yard",30,"🧹"]],
+ car:[["Oil change",120,"🛢️"],["Check the tyres",30,"🛞"],["Car wash",14,"🚿"],["Scheduled service",180,"🔧"],["Annual inspection",365,"🔍"],["Fill up",7,"⛽"],["Change the cabin filter",180,"❄️"],["Check the battery",180,"🔋"],["Interior clean",30,"🧽"]],
+ fam:[["Call my parents",3,"📞"],["Visit family",7,"🏡"],["Take my wife out",7,"🍽️"],["School appointment",0,"🎒"],["Buy a gift",0,"🎁"],["Plan an occasion",0,"🎉"],["Plan a family trip",0,"✈️"],["Time with the kids",1,"🧸"]],
+ errand:[["Bank",0,"🏦"],["Pick up an order",0,"📦"],["Phone repair",0,"📱"],["Laundry",14,"👕"],["Barber",21,"💈"],["Pharmacy",0,"💊"],["Parts shop",0,"🔩"],["Drop something off",0,"🚗"],["Ship a package",0,"📮"]],
+ health:[["Doctor's appointment",0,"🩺"],["Routine bloodwork",180,"🧪"],["Dentist",180,"🦷"],["Workout",2,"🏋️"],["Walk",1,"🚶"],["Pick up medication",30,"💊"],["Eye test",365,"👓"],["Early night",1,"😴"]],
+ self:[["Read",1,"📖"],["Learn something new",7,"🎓"],["Sort my files",30,"🗄️"],["Back up the phone",30,"☁️"],["Clean out the email",30,"📬"],["Review my goals",30,"🎯"],["Write down ideas",7,"✍️"],["Plan the week",7,"📅"]],
  other:[]
 };
+
 
 /* ================= state ================= */
 var S=null,V=0,PIN="",view="pick",catPage="",query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
 function $(i){return document.getElementById(i);}
-function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
+function ar(n){return String(n);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function nd(n){n=Math.round(n);if(n<=1)return "يوم";if(n===2)return "يومين";if(n<=10)return ar(n)+" أيام";if(n<30)return ar(n)+" يوم";if(n<365)return ar(Math.round(n/30))+" شهر";return ar(Math.round(n/365))+" سنة";}
-function ago(ts){var d=Math.floor((Date.now()-ts)/DAY);if(d<=0)return "اليوم";if(d===1)return "أمس";if(d===2)return "قبل يومين";return "قبل "+nd(d);}
-function dstr(ts){return new Date(ts).toLocaleDateString("ar-SA-u-ca-gregory",{weekday:"long",day:"numeric",month:"long"});}
+function nd(n){n=Math.round(n);if(n<=1)return "day";if(n<30)return n+" days";if(n<365){var m=Math.round(n/30);return m===1?"month":m+" months";}var y=Math.round(n/365);return y===1?"year":y+" years";}
+function ago(ts){var d=Math.floor((Date.now()-ts)/DAY);if(d<=0)return "today";if(d===1)return "yesterday";return nd(d)+" ago";}
+function dstr(ts){var d=new Date(ts),t=new Date(),y=new Date(Date.now()-DAY);
+  if(d.toDateString()===t.toDateString())return "Today";
+  if(d.toDateString()===y.toDateString())return "Yesterday";
+  return d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});}
 function cat(id){for(var i=0;i<CATS.length;i++)if(CATS[i].id===id)return CATS[i];return CATS[CATS.length-1];}
 function lane(id){for(var i=0;i<LANES.length;i++)if(LANES[i].id===id)return LANES[i];return LANES[0];}
 function normAr(s){return String(s||"").replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[()،,.\-_/]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
@@ -327,7 +331,7 @@ async function flush(){
     var batch=pending.slice(),ok=await push();
     if(!ok){batch.forEach(function(o){apply(S,o);});ok=await push();if(!ok){batch.forEach(function(o){apply(S,o);});ok=await push();}}
     if(ok){pending=pending.slice(batch.length);cacheLocal();}
-  }catch(e){if(String(e.message)==="pin"||String(e.message)==="role")gate(String(e.message)==="role"?"هذا الرمز ما يفتح المهام":"الرمز غلط");}
+  }catch(e){if(String(e.message)==="pin"||String(e.message)==="role")gate(String(e.message)==="role"?"That code doesn’t open Tasks":"Wrong code");}
   finally{saving=false;if(pending.length&&online)setTimeout(flush,1500);}
 }
 async function poll(){
@@ -361,14 +365,14 @@ function hd(title,sub,acts){
   return h;
 }
 
-/* ---- أضف ---- */
+/* ---- add ---- */
 function rPick(){
   var c=catPage?cat(catPage):null,n=total();
-  var acts=[{icon:"+",go:true,label:"مهمة جديدة",fn:function(){sheetTask(null,query);}}];
-  if(c)acts.unshift({icon:"→",label:"رجوع",fn:function(){catPage="";window.scrollTo(0,0);render();}});
-  var h=hd(c?c.em+" "+c.name:"وش عليك؟",n?"<b>"+ar(n)+"</b> مهمة في القائمة — اضغط اللي تذكرته":"اضغط أي مهمة تذكرتها، تروح لليوم",acts);
+  var acts=[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,query);}}];
+  if(c)acts.unshift({icon:"→",label:"Back",fn:function(){catPage="";window.scrollTo(0,0);render();}});
+  var h=hd(c?c.em+" "+c.name:"What’s on you?",n?"<b>"+n+"</b> on your list â tap what you just remembered":"Tap anything you remember. It goes to Today.",acts);
   var sr=document.createElement("div");sr.className="search";
-  sr.innerHTML='<input id="q" placeholder="'+(c?"دوّر في "+esc(c.name)+"…":"دوّر في كل المهام…")+'" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
+  sr.innerHTML='<input id="q" placeholder="'+(c?"Search "+esc(c.name)+"…":"Search every task…")+'" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
   h.appendChild(sr);
   var qi=$("q");qi.addEventListener("input",function(){query=qi.value;rGrid();rSug();$("qx").classList.toggle("hidden",!query);});
   $("qx").onclick=function(){query="";render();};
@@ -380,17 +384,17 @@ function rSug(){
   if(query||catPage)return;
   var sg=suggestions(6);if(!sg.length)return;
   var sec=document.createElement("div");sec.className="sec";sec.style.cssText="padding:0 16px;margin-top:14px";
-  sec.innerHTML='<h2>غالبًا عليك اليوم <button id="sugAll">أضف الكل</button></h2>';
+  sec.innerHTML='<h2>Probably due today <button id="sugAll">Add all</button></h2>';
   var card=document.createElement("div");card.className="card";card.style.padding="4px 16px";
   sg.forEach(function(t){
     var r=document.createElement("div");r.className="sug";
-    r.innerHTML='<span class="em">'+(t.em||cat(t.cat).em)+'</span><div class="nm">'+esc(t.title)+'<small>آخر مرة '+ago(t.last)+' · عادةً كل '+nd(t.cycle)+'</small></div>';
+    r.innerHTML='<span class="em">'+(t.em||cat(t.cat).em)+'</span><div class="nm">'+esc(t.title)+'<small>last '+ago(t.last)+' · usually every '+nd(t.cycle)+'</small></div>';
     var a=document.createElement("button");a.className="add";a.textContent="+";a.onclick=function(){op("add",{id:t.id,lane:"today"});};
-    var no=document.createElement("button");no.className="no";no.textContent="×";no.onclick=function(){op("dismiss",{id:t.id});toast("تمام، ما بنذكّرك فيها الحين");};
+    var no=document.createElement("button");no.className="no";no.textContent="×";no.onclick=function(){op("dismiss",{id:t.id});toast("Fine â we’ll stop nudging for now");};
     r.appendChild(a);r.appendChild(no);card.appendChild(r);
   });
   sec.appendChild(card);box.appendChild(sec);
-  $("sugAll").onclick=function(){sg.forEach(function(t){op("add",{id:t.id,lane:"today"});});toast("أضفنا "+ar(sg.length)+" مهمة لليوم");};
+  $("sugAll").onclick=function(){sg.forEach(function(t){op("add",{id:t.id,lane:"today"});});toast("Added "+sg.length+" to Today");};
 }
 function rGrid(){
   var g=$("grid");if(!g)return;g.innerHTML="";
@@ -401,7 +405,7 @@ function rGrid(){
       Object.keys(S.tasks).forEach(function(id){var t=S.tasks[id];if(t.cat!==c.id)return;n++;if(where(S,id))inl++;var r=ratio(t);if(r!==null&&r>=1)due=true;});
       if(!n&&c.id!=="other")return;
       var b=document.createElement("button");b.className="tile";b.style.setProperty("--tint","var(--"+c.id+")");
-      b.innerHTML=(inl?'<span class="cnt">'+ar(inl)+'</span>':(due?'<span class="dot"></span>':""))+'<div class="pic">'+c.em+'</div><div class="nm">'+esc(c.name)+'<small>'+ar(n)+' مهمة</small></div>';
+      b.innerHTML=(inl?'<span class="cnt">'+ar(inl)+'</span>':(due?'<span class="dot"></span>':""))+'<div class="pic">'+c.em+'</div><div class="nm">'+esc(c.name)+'<small>'+n+' task'+(n===1?'':'s')+'</small></div>';
       b.onclick=function(){catPage=c.id;query="";window.scrollTo(0,0);render();};
       g.appendChild(b);
     });
@@ -412,7 +416,7 @@ function rGrid(){
     .sort(function(a,b){var ra=ratio(a),rb=ratio(b);return (rb===null?-1:rb)-(ra===null?-1:ra);})
     .forEach(function(t){g.appendChild(taskTile(t));});
   var add=document.createElement("button");add.className="tile add";
-  add.innerHTML='<div class="pic">+</div><div class="nm">'+(query?"أضف «"+esc(query)+"»":"مهمة جديدة")+'</div>';
+  add.innerHTML='<div class="pic">+</div><div class="nm">'+(query?"Add “"+esc(query)+"”":"New task")+'</div>';
   add.onclick=function(){sheetTask(null,query);};
   g.appendChild(add);
 }
@@ -433,20 +437,20 @@ function taskTile(t){
   return b;
 }
 
-/* ---- مهامي ---- */
+/* ---- list ---- */
 function rList(){
   var n=total();
-  hd("مهامي",n?"<b>"+ar(S.lanes.today.length)+"</b> اليوم · "+ar(n)+" الإجمالي":"ما في شي — اضغط «أضف»",n?[{icon:"+",go:true,label:"مهمة جديدة",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"مهمة جديدة",fn:function(){sheetTask(null,"");}}]);
+  hd("Tasks",n?"<b>"+S.lanes.today.length+"</b> today · "+n+" in total":"Nothing yet — go to Add",n?[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]);
   var v=$("view");v.innerHTML="";
   var pad=document.createElement("div");pad.className="pad";pad.id="lanes";v.appendChild(pad);
   if(!n){
-    pad.innerHTML='<div class="sec"><div class="card muted">القائمة فاضية. روح «أضف»، اختر القسم واضغط اللي تذكرته — بيجيك هنا تحت «اليوم»، وتقدر تسحبه لأي مكان.</div></div>';
+    pad.innerHTML='<div class="sec"><div class="card muted">Nothing here yet. Go to Add, pick a category and tap what you remember — it lands under Today, and you can drag it anywhere.</div></div>';
   } else {
     LANES.forEach(function(L){
       var box=document.createElement("div");box.className="lane";box.dataset.lane=L.id;
       box.innerHTML='<h3><i style="background:'+L.c+'"></i>'+L.name+' <span>'+(S.lanes[L.id].length?ar(S.lanes[L.id].length):"")+'</span></h3>';
       var body=document.createElement("div");body.className="body";body.dataset.lane=L.id;
-      if(!S.lanes[L.id].length){var d=document.createElement("div");d.className="drop";d.textContent="اسحب مهمة هنا";body.appendChild(d);}
+      if(!S.lanes[L.id].length){var d=document.createElement("div");d.className="drop";d.textContent="Drag a task here";body.appendChild(d);}
       S.lanes[L.id].forEach(function(id){body.appendChild(taskRow(S.tasks[id],L.id));});
       box.appendChild(body);pad.appendChild(box);
     });
@@ -454,13 +458,13 @@ function rList(){
   var recent=(S.log||[]).filter(function(x){return Date.now()-x.ts<DAY;});
   if(recent.length){
     var s=document.createElement("div");s.className="sec";
-    s.innerHTML='<h2><button id="dt">خلصت اليوم ('+ar(recent.length)+') '+(doneOpen?"▴":"▾")+'</button></h2>';
+    s.innerHTML='<h2><button id="dt">Done today ('+recent.length+') '+(doneOpen?"▴":"▾")+'</button></h2>';
     if(doneOpen){
       var card=document.createElement("div");card.className="card";card.style.padding="4px 16px";
       recent.forEach(function(e){
         var r=document.createElement("div");r.className="sug";
         r.innerHTML='<span class="em">'+(e.em||"")+'</span><div class="nm" style="text-decoration:line-through;opacity:.6">'+esc(e.title)+'</div>';
-        var u=document.createElement("button");u.className="link";u.textContent="تراجع";u.onclick=function(){op("undone",{lid:e.lid});};
+        var u=document.createElement("button");u.className="link";u.textContent="Undo";u.onclick=function(){op("undone",{lid:e.lid});};
         r.appendChild(u);card.appendChild(r);
       });
       s.appendChild(card);
@@ -472,7 +476,7 @@ function rList(){
 function taskRow(t,laneId){
   if(!t)return document.createElement("div");
   var r=document.createElement("div");r.className="row";r.dataset.id=t.id;
-  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||cat(t.cat).em)+'</div><div class="nm">'+esc(t.title)+'<small>'+esc(cat(t.cat).name)+(t.cycle?' · عادةً كل '+nd(t.cycle):'')+'</small></div><div class="gr">⣿</div>';
+  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||cat(t.cat).em)+'</div><div class="nm">'+esc(t.title)+'<small>'+esc(cat(t.cat).name)+(t.cycle?' · usually every '+nd(t.cycle):'')+'</small></div><div class="gr">⣿</div>';
   r.querySelector(".cb").onclick=function(e){e.stopPropagation();complete(t);};
   attachDrag(r,t,laneId);
   return r;
@@ -480,7 +484,7 @@ function taskRow(t,laneId){
 function complete(t){
   var lid=uid();
   op("done",{id:t.id,lid:lid});
-  toast("✓ "+t.title,false,{label:"تراجع",fn:function(){op("undone",{lid:lid});}});
+  toast("✓ "+t.title,false,{label:"Undo",fn:function(){op("undone",{lid:lid});}});
 }
 
 /* ---- drag & drop ---- */
@@ -561,33 +565,33 @@ function dragEnd(){
   var cur=where(S,d.t.id);
   if(!cur||cur.lane!==laneId||cur.index!==idx){
     op("move",{id:d.t.id,lane:laneId,index:idx});
-    if(cur&&cur.lane!==laneId)toast("نقلناها إلى "+lane(laneId).name);
+    if(cur&&cur.lane!==laneId)toast("Moved to "+lane(laneId).name);
   } else render();
 }
 
-/* ---- خلصت ---- */
+/* ---- done ---- */
 function rDone(){
   var log=S.log||[];
-  hd("خلصت",log.length?"<b>"+ar(log.length)+"</b> مهمة خلّصتها":"ما خلّصت شي بعد");
+  hd("Done",log.length?"<b>"+log.length+"</b> finished":"Nothing finished yet");
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
-  if(!log.length){pad.innerHTML='<div class="sec"><div class="card muted">كل مهمة تأشّر عليها تنحفظ هنا بتاريخها، وتقدر ترجّعها بضغطة.</div></div>';return;}
+  if(!log.length){pad.innerHTML='<div class="sec"><div class="card muted">Everything you tick off is kept here by date, and one tap brings it back.</div></div>';return;}
   var days={};
   log.forEach(function(e){var k=new Date(e.ts).toDateString();(days[k]=days[k]||[]).push(e);});
   Object.keys(days).slice(0,30).forEach(function(k){
     var s=document.createElement("div");s.className="sec";
-    s.innerHTML='<h2>'+dstr(days[k][0].ts)+' <span class="muted" style="font-weight:400">'+ar(days[k].length)+'</span></h2>';
+    s.innerHTML='<h2>'+dstr(days[k][0].ts)+' <span class="muted" style="font-weight:400">'+days[k].length+'</span></h2>';
     var card=document.createElement("div");card.className="card";
     days[k].forEach(function(e){
       var h=document.createElement("div");h.className="hist";
-      h.innerHTML='<span class="em" style="font-size:20px">'+(e.em||"")+'</span><div class="d"><b>'+esc(e.title)+'</b><small>'+esc(cat(e.cat).name)+' · '+new Date(e.ts).toLocaleTimeString("ar-SA-u-ca-gregory",{hour:"numeric",minute:"2-digit"})+'</small></div>';
-      var rb=document.createElement("button");rb.className="link";rb.textContent="كرر";rb.onclick=function(){if(S.tasks[e.id]){op("add",{id:e.id,lane:"today",top:true});toast("رجّعناها لليوم");}else toast("المهمة انحذفت من القائمة");};
-      var db=document.createElement("button");db.className="link";db.style.color="var(--late)";db.textContent="حذف";db.onclick=function(){op("log.remove",{lid:e.lid});};
+      h.innerHTML='<span class="em" style="font-size:20px">'+(e.em||"")+'</span><div class="d"><b>'+esc(e.title)+'</b><small>'+esc(cat(e.cat).name)+' · '+new Date(e.ts).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit"})+'</small></div>';
+      var rb=document.createElement("button");rb.className="link";rb.textContent="Again";rb.onclick=function(){if(S.tasks[e.id]){op("add",{id:e.id,lane:"today",top:true});toast("Back on Today");}else toast("That task was deleted from the catalog");};
+      var db=document.createElement("button");db.className="link";db.style.color="var(--late)";db.textContent="Delete";db.onclick=function(){op("log.remove",{lid:e.lid});};
       h.appendChild(rb);h.appendChild(db);card.appendChild(h);
     });
     s.appendChild(card);pad.appendChild(s);
   });
   var f=document.createElement("div");f.className="muted";f.style.cssText="text-align:center;padding:24px 0 0;font-size:12px";
-  f.innerHTML='الإصدار '+BUILD+'<br>'+ar(Object.keys(S.tasks).length)+' مهمة في الفهرس · <button class="link" id="logout">تغيير الرمز</button>';
+  f.innerHTML='Version '+BUILD+'<br>'+Object.keys(S.tasks).length+' tasks in the catalog · <button class="link" id="logout">Change code</button>';
   pad.appendChild(f);$("logout").onclick=function(){localStorage.removeItem("maham_pin");location.reload();};
 }
 
@@ -600,33 +604,33 @@ function sheet(html){
 }
 function closeSheet(){if(sheetEl){sheetEl.remove();sheetEl=null;}}
 function sheetPlace(t){
-  sheet('<h3>'+esc(t.title)+'</h3><div class="fld"><label>وين تحطها؟</label><div class="opts" id="op"></div></div><div class="cta"><button class="btn soft" id="ed">تعديل المهمة</button></div>');
-  LANES.forEach(function(L){var b=document.createElement("button");b.textContent=L.name;b.onclick=function(){closeSheet();op("add",{id:t.id,lane:L.id});toast("أضفناها إلى "+L.name);};$("op").appendChild(b);});
+  sheet('<h3>'+esc(t.title)+'</h3><div class="fld"><label>Where does it go?</label><div class="opts" id="op"></div></div><div class="cta"><button class="btn soft" id="ed">Edit task</button></div>');
+  LANES.forEach(function(L){var b=document.createElement("button");b.textContent=L.name;b.onclick=function(){closeSheet();op("add",{id:t.id,lane:L.id});toast("Added to "+L.name);};$("op").appendChild(b);});
   $("ed").onclick=function(){closeSheet();sheetTask(t);};
 }
 function sheetRow(t){
   var w=where(S,t.id)||{lane:"today",index:0};
   sheet('<h3>'+esc(t.title)+'</h3>'+
-    '<div class="fld"><label>انقلها</label><div class="opts" id="op"></div></div>'+
-    '<div class="fld"><label>الترتيب</label><div class="opts" id="ord"></div></div>'+
-    '<div class="cta"><button class="btn" id="dn">✓ خلصتها</button><button class="btn soft" id="ed" style="flex:0 0 auto">تعديل</button><button class="btn red" id="rm" style="flex:0 0 auto">شيلها</button></div>');
-  LANES.forEach(function(L){var b=document.createElement("button");b.textContent=L.name;if(L.id===w.lane)b.className="on";b.onclick=function(){closeSheet();op("move",{id:t.id,lane:L.id,index:0});toast("نقلناها إلى "+L.name);};$("op").appendChild(b);});
-  var up=document.createElement("button");up.textContent="⬆︎ للأعلى";up.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:Math.max(0,w.index-1)});};
-  var top=document.createElement("button");top.textContent="⤒ الأول";top.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:0});};
-  var dn=document.createElement("button");dn.textContent="⬇︎ للأسفل";dn.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:w.index+1});};
+    '<div class="fld"><label>Move to</label><div class="opts" id="op"></div></div>'+
+    '<div class="fld"><label>Order</label><div class="opts" id="ord"></div></div>'+
+    '<div class="cta"><button class="btn" id="dn">✓ Done</button><button class="btn soft" id="ed" style="flex:0 0 auto">Edit</button><button class="btn red" id="rm" style="flex:0 0 auto">Remove</button></div>');
+  LANES.forEach(function(L){var b=document.createElement("button");b.textContent=L.name;if(L.id===w.lane)b.className="on";b.onclick=function(){closeSheet();op("move",{id:t.id,lane:L.id,index:0});toast("Moved to "+L.name);};$("op").appendChild(b);});
+  var up=document.createElement("button");up.textContent="⬆︎ Up";up.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:Math.max(0,w.index-1)});};
+  var top=document.createElement("button");top.textContent="⤒ To top";top.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:0});};
+  var dn=document.createElement("button");dn.textContent="⬇︎ Down";dn.onclick=function(){closeSheet();op("move",{id:t.id,lane:w.lane,index:w.index+1});};
   $("ord").appendChild(top);$("ord").appendChild(up);$("ord").appendChild(dn);
   $("dn").onclick=function(){closeSheet();complete(t);};
   $("ed").onclick=function(){closeSheet();sheetTask(t);};
-  $("rm").onclick=function(){closeSheet();op("remove",{id:t.id});toast("شلناها من القائمة");};
+  $("rm").onclick=function(){closeSheet();op("remove",{id:t.id});toast("Removed from the list");};
 }
 function sheetTask(t,preset){
   var isNew=!t;
   var draft={title:t?t.title:(preset||""),cat:t?t.cat:(catPage||"other"),em:t?t.em:"📌",cycle0:t?(t.cycle0||0):0};
-  sheet('<h3>'+(isNew?"مهمة جديدة":"تعديل المهمة")+'</h3>'+
-    '<div class="fld"><label>وش هي؟</label><input id="fT" placeholder="مثال: متابعة عقد المورد" value="'+esc(draft.title)+'"></div>'+
-    '<div class="fld"><label>القسم</label><div class="cats" id="fC"></div></div>'+
-    '<div class="fld"><label>تتكرر كل كم يوم؟ <span style="font-weight:400;opacity:.7">— اتركها ٠ لو مرة وحدة</span></label><input id="fR" inputmode="numeric" value="'+(draft.cycle0||0)+'"></div>'+
-    '<div class="cta"><button class="btn" id="fS">'+(isNew?"أضفها لليوم":"احفظ")+'</button>'+(isNew||!t.custom?"":'<button class="btn red" id="fD" style="flex:0 0 auto">احذف</button>')+'</div>');
+  sheet('<h3>'+(isNew?"New task":"Edit task")+'</h3>'+
+    '<div class="fld"><label>What is it?</label><input id="fT" placeholder="e.g. Follow up the vendor contract" value="'+esc(draft.title)+'"></div>'+
+    '<div class="fld"><label>Category</label><div class="cats" id="fC"></div></div>'+
+    '<div class="fld"><label>Repeats every how many days? <span style="font-weight:400;opacity:.7">— leave 0 for a one-off</span></label><input id="fR" inputmode="numeric" value="'+(draft.cycle0||0)+'"></div>'+
+    '<div class="cta"><button class="btn" id="fS">'+(isNew?"Add to Today":"Save")+'</button>'+(isNew||!t.custom?"":'<button class="btn red" id="fD" style="flex:0 0 auto">Delete</button>')+'</div>');
   function cats(){var c=$("fC");c.innerHTML="";CATS.forEach(function(k){var b=document.createElement("button");b.textContent=k.em+" "+k.name;b.style.setProperty("--tint","var(--"+k.id+")");b.className=draft.cat===k.id?"on":"";b.onclick=function(){draft.cat=k.id;cats();};c.appendChild(b);});}
   cats();
   $("fS").onclick=function(){
@@ -634,17 +638,17 @@ function sheetTask(t,preset){
     var cyc=Math.max(0,Math.min(730,parseInt($("fR").value,10)||0));
     if(isNew){
       var dup=Object.keys(S.tasks).map(function(id){return S.tasks[id];}).filter(function(x){return normAr(x.title)===normAr(title);})[0];
-      if(dup){closeSheet();query="";if(where(S,dup.id))toast("«"+dup.title+"» موجودة أصلاً في "+lane(where(S,dup.id).lane).name);else{op("add",{id:dup.id,lane:"today"});toast("«"+dup.title+"» موجودة عندك — أضفناها لليوم");}return;}
+      if(dup){closeSheet();query="";if(where(S,dup.id))toast("“"+dup.title+"” is already in "+lane(where(S,dup.id).lane).name);else{op("add",{id:dup.id,lane:"today"});toast("“"+dup.title+"” already exists — added to Today");}return;}
       var id=draft.cat+":"+title+":"+uid().slice(-3);
       op("task.add",{task:{id:id,title:title,cat:draft.cat,em:cat(draft.cat).em,cycle:cyc,cycle0:cyc,doneAt:[],learned:0,dismissed:[],custom:true}});
       op("add",{id:id,lane:"today"});
-      closeSheet();query="";toast("أضفناها لليوم");
+      closeSheet();query="";toast("Added to Today");
     } else {
       op("task.update",{id:t.id,patch:{title:title,cat:draft.cat,cycle0:cyc,cycle:t.learned?t.cycle:cyc,em:t.em||cat(draft.cat).em}});
-      closeSheet();toast("تم");
+      closeSheet();toast("Saved");
     }
   };
-  if($("fD"))$("fD").onclick=function(){if(confirm("تحذف «"+t.title+"» من الفهرس نهائياً؟")){op("task.remove",{id:t.id});closeSheet();}};
+  if($("fD"))$("fD").onclick=function(){if(confirm("Delete “"+t.title+"” from the catalog for good?")){op("task.remove",{id:t.id});closeSheet();}};
   setTimeout(function(){if(isNew)$("fT").focus();},50);
 }
 
@@ -654,7 +658,7 @@ async function checkUpdate(silent){
     var r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});var j=await r.json();
     if(!j.build||j.build===BUILD_ID)return false;
     var already=location.search.indexOf("v="+j.build)>=0;
-    if(!silent||already){var b=$("upd");b.classList.remove("hidden");b.onclick=function(){forceReload(j.build);};return true;}
+    if(!silent||already){var b=$("upd");b.classList.remove("hidden");b.onclick=function(){forceReload(j.build);};return false;}
     forceReload(j.build);return true;
   }catch(e){return false;}
 }
@@ -669,7 +673,7 @@ function gate(err){
   $("pinGo").onclick=async function(){
     var p=$("pin").value.trim();if(!p)return;PIN=p;$("pinErr").textContent="";$("pinGo").textContent="…";
     try{await pull();localStorage.setItem("maham_pin",p);start();}
-    catch(e){$("pinGo").textContent="ادخل";$("pinErr").textContent=String(e.message)==="pin"?"الرمز غلط":(String(e.message)==="role"?"هذا الرمز ما يفتح المهام":"ما قدرنا نوصل للخادم: "+e.message);}
+    catch(e){$("pinGo").textContent="Enter";$("pinErr").textContent=String(e.message)==="pin"?"Wrong code":(String(e.message)==="role"?"That code doesn’t open Tasks":"Couldn’t reach the server: "+e.message);}
   };
   $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")$("pinGo").click();});
   setTimeout(function(){$("pin").focus();},80);
@@ -687,8 +691,8 @@ function start(){
   loadLocal();
   PIN=localStorage.getItem("maham_pin")||"";
   if(!PIN){gate();return;}
-  if(S){start();try{await pull();render();}catch(e){if(String(e.message)==="pin"||String(e.message)==="role")gate("الرمز غلط");}}
-  else{try{await pull();start();}catch(e){gate(String(e.message)==="pin"?"الرمز غلط":(String(e.message)==="role"?"هذا الرمز ما يفتح المهام":"ما قدرنا نوصل للخادم: "+e.message));}}
+  if(S){start();try{await pull();render();}catch(e){if(String(e.message)==="pin"||String(e.message)==="role")gate("Wrong code");}}
+  else{try{await pull();start();}catch(e){gate(String(e.message)==="pin"?"Wrong code":(String(e.message)==="role"?"That code doesn’t open Tasks":"Couldn’t reach the server: "+e.message));}}
 })();
 })();
 </script>
