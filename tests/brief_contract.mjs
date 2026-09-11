@@ -7,8 +7,8 @@ process.env.GROQ_API_KEY = "test-key";
 const store = new Map(); let groqCalls = 0, geminiCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
 const now = new Date();
 const WORDS = ['ministry','budget','oil','election','parliament','tariff','airline','rainfall','harvest','pipeline','summit','ceasefire','inflation','chip','satellite','port','tunnel','drought','vaccine','currency','census','railway','refinery','festival','tender','merger','strike','fleet','cabinet','reservoir'];
-let wi = 0; const distinct = () => { const a = WORDS[wi++ % WORDS.length], b = WORDS[(wi*7) % WORDS.length], c = WORDS[(wi*11+3) % WORDS.length]; return `${a} ${b} ${c} ${wi} announced overnight`; };
-const rss = (src, n) => `<rss><channel>${Array.from({length:n},(_,i)=>`<item><title>${distinct()} (${src})</title><link>https://x.test/${src}/${i}</link><pubDate>${new Date(now - (i+1)*3600e3).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
+let wi = 0; const distinct = () => { const a = WORDS[wi++ % WORDS.length], b = WORDS[(wi*7) % WORDS.length], c = WORDS[(wi*11+3) % WORDS.length]; return `${a}${wi} ${b}${wi}x ${c}${wi}y kq${wi}z`; };
+const rss = (src, n, suffix='') => `<rss><channel>${Array.from({length:n},(_,i)=>`<item><title>${distinct()} (${src})${suffix}</title><link>https://x.test/${src}/${i}</link><pubDate>${new Date(now - (i+1)*3600e3).toUTCString()}</pubDate></item>`).join('')}</channel></rss>`;
 globalThis.fetch = async (url, opts = {}) => {
   url = String(url);
   if (url.startsWith("https://kv.mock")) {
@@ -22,8 +22,10 @@ globalThis.fetch = async (url, opts = {}) => {
   }
   if (url.includes("generativelanguage.googleapis.com")) { geminiCalls++; if (url.includes("gemini-3.6-flash") && process.env.T_GEMINI25_404) return new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404 }); return new Response(JSON.stringify(groqStatus === 200 ? { usageMetadata: { totalTokenCount: 2100 }, candidates: [{ content: { parts: [{ text: groqReply }] } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   if (url.includes("api.groq.com")) { groqCalls++; return new Response(JSON.stringify(groqStatus === 200 ? { model: "llama-3.3-70b-versatile", usage: { total_tokens: 3210 }, choices: [{ message: { content: groqReply } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
+  if (url.includes("trends24.in")) { if (failSources.has("trends24_in")) return new Response("x", { status: 500 }); return new Response('<a class="trend-link" href="#">#الهلال_النصر</a><a class="trend-link">العراق</a><a class="trend-link">#اعلن_ترند_0570273243</a><a class="trend-link">#الهلال_النصر</a>', { status: 200 }); }
   rssCalls++;
   const name = url.replace(/https?:\/\//,'').split('/')[0].replace(/\W/g,'_');
+  if (name === "news_google_com" && !failSources.has(name)) return new Response(rss("gn", 6, " - صحيفة سبق"), { status: 200 });
   if (failSources.has(name)) return new Response("nope", { status: 500 });
   return new Response(rss(name, 6), { status: 200 });
 };
@@ -31,7 +33,7 @@ const mod = await import(file);
 function call(query) { return new Promise((resolve) => { const res = { code: 200, h: {}, setHeader(k, v) { this.h[k] = v; }, status(c) { this.code = c; return this; }, json(j) { resolve({ code: this.code, j, h: this.h }); }, end() { resolve({ code: this.code, j: null }); } }; mod.default({ method: "GET", query, body: {}, headers: {} }, res); }); }
 let pass = 0, fail = 0; const failures = [];
 const check = (name, cond) => { if (cond) pass++; else { fail++; failures.push(name); } };
-const goodReply = () => JSON.stringify({ headline: "Test headline of the day", items: [1,2,3,4,5,6,7,8,9,10,11].map(n => ({ n, tier: n===1?"critical":n<5?"high":"watch", section: n%2?"Saudi Arabia":"World", title:"T"+n, what:"W"+n, why:"Y"+n })), bottomLine: "Watch X." });
+const goodReply = () => JSON.stringify({ headline: "Test headline of the day", items: [1,2,3,4,5,6,7,8,9,10,11].map(n => ({ n, tier: n===1?"critical":n<5?"high":"watch", section: n%2?"Saudi Arabia":"World", title:"T"+n, what:"W"+n, why:"Y"+n })), also: [12,13,14,15,16,17,18,19,20,3,999].map(n => ({ n, section: n%3?"Sport":"Society", line: "L"+n })), trending: [{ topic: "#الهلال_النصر", what: "derby tonight" }, { topic: "العراق", what: "drone attack" }], bottomLine: "Watch X." });
 
 // 1. Plain feed still works (regression)
 let r = await call({}); check("plain GET /feed still returns ok+stories", r.code === 200 && r.j.ok === true && Array.isArray(r.j.stories));
@@ -40,12 +42,16 @@ r = await call({ brief: "1" }); check("brief no-cache -> cached:false", r.code =
 // 3. build=1 builds, maps urls, caches
 groqReply = goodReply(); r = await call({ brief: "1", build: "1" });
 check("build -> 200 built", r.code === 200 && r.j.built === true && r.j.brief);
-check("build called Groq once", groqCalls === 1); check("build fetched all sources", rssCalls === 13);
+check("build called Groq once", groqCalls === 1); check("build fetched all sources", rssCalls === 17);
 check("items capped at 10", r.j.brief.items.length === 10);
 check("items carry url+source from headlines", r.j.brief.items.every(i => i.url && i.url.startsWith("https://x.test/") && i.source));
 check("critical ranked first", r.j.brief.items[0].tier === "critical" && r.j.brief.items[0].rank === 1);
 check("costSAR is 0 and tokens recorded", r.j.brief.costSAR === 0 && r.j.brief.tokens === 3210);
 check("cached under brief:<date>", [...store.keys()].some(k => /^brief:\d{4}-\d{2}-\d{2}$/.test(k)));
+check("also layer mapped, dedupes vs items (n=3) and drops bad n (999)", r.j.brief.also.length === 9 && r.j.brief.also.every(a => a.url && a.source && a.line));
+check("also sections validated", r.j.brief.also.every(a => ["Sport","Society"].includes(a.section)));
+check("google news source name taken from title suffix", r.j.brief.items.concat(r.j.brief.also).some(x => x.source === "صحيفة سبق"));
+check("trending passed through, spam trend filtered before the model", r.j.brief.trending.length === 2 && r.j.brief.trendsSeen === 2);
 // 4. second read is cached, no spend
 r = await call({ brief: "1" }); check("read after build -> cached:true", r.j.cached === true && r.j.brief.items.length === 10); check("cached read made no Groq call", groqCalls === 1);
 // 5. build again same day without force -> cached
@@ -54,7 +60,10 @@ r = await call({ brief: "1", build: "1" }); check("re-build without force return
 r = await call({ brief: "1", build: "1", force: "1" }); check("force rebuild calls Groq again", r.j.built === true && groqCalls === 2);
 // 7. one source down still builds
 failSources = new Set(["www_arabnews_com"]); r = await call({ brief: "1", build: "1", force: "1" });
-check("build survives a failing source and reports it", r.code === 200 && r.j.brief.sources.failed.length === 3 && r.j.brief.sources.ok.length === 10); failSources = new Set();
+check("build survives a failing source and reports it", r.code === 200 && r.j.brief.sources.failed.length === 1 && r.j.brief.sources.ok.length === 16); failSources = new Set();
+failSources = new Set(["trends24_in"]); r = await call({ brief: "1", build: "1", force: "1" }); check("trends page down -> brief still builds, trendsSeen 0", r.code === 200 && r.j.brief.trendsSeen === 0); failSources = new Set();
+const resetCap = () => { for (const k of [...store.keys()]) if (k.startsWith("brief:builds:")) store.delete(k); };
+resetCap();
 // 8. garbage from Groq -> 502, cache untouched
 const before = store.get([...store.keys()].find(k => /^brief:\d{4}/.test(k)));
 groqReply = "not json at all"; r = await call({ brief: "1", build: "1", force: "1" }); check("non-JSON Groq -> 502", r.code === 502 && r.j.ok === false);
@@ -62,7 +71,8 @@ groqReply = JSON.stringify({ items: [{ n: 999, tier: "high" }] }); r = await cal
 check("failed builds did not overwrite cache", store.get([...store.keys()].find(k => /^brief:\d{4}/.test(k))) === before);
 // 9. Groq HTTP error -> 502
 groqStatus = 429; groqReply = goodReply(); r = await call({ brief: "1", build: "1", force: "1" }); check("Groq 429 -> 502 with message", r.code === 502 && /rate limited/.test(r.j.error)); groqStatus = 200;
-// 10. daily cap: builds so far = 7 (INCR each build attempt) -> next must be 429 (cap 6)
+// 10. daily cap: 6 builds allowed per day, the 7th must be 429
+resetCap(); for (let i = 0; i < 6; i++) await call({ brief: "1", build: "1", force: "1" });
 r = await call({ brief: "1", build: "1", force: "1" }); check("daily build cap -> 429", r.code === 429);
 // 11. engine selection: no Groq key + Gemini key -> Gemini (free), engine label + tokens recorded
 store.clear(); delete process.env.GROQ_API_KEY; process.env.GEMINI_API_KEY = "gk"; groqReply = goodReply(); let g = groqCalls;
@@ -72,6 +82,6 @@ store.clear(); process.env.T_GEMINI25_404 = "1"; r = await call({ brief: "1", bu
 store.clear(); process.env.GROQ_API_KEY = "test-key"; r = await call({ brief: "1", build: "1" }); check("Groq key present -> Groq preferred", r.j.brief.engine.startsWith("groq/") && groqCalls === g + 1);
 store.clear(); delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; g = groqCalls; const ge = geminiCalls; r = await call({ brief: "1", build: "1" }); check("no engine key -> 500, no call", r.code === 500 && groqCalls === g && geminiCalls === ge);
 // 12. too few headlines -> 503
-process.env.GROQ_API_KEY = "test-key"; store.clear(); failSources = new Set(["www_arabnews_com","saudigazette_com_sa","en_majalla_com","feeds_bbci_co_uk","www_aljazeera_com","www_theguardian_com","www_cnbc_com","oilprice_com","techcrunch_com","www_formula1_com"]);
+process.env.GROQ_API_KEY = "test-key"; store.clear(); failSources = new Set(["news_google_com","www_okaz_com_sa","www_arabnews_com","saudigazette_com_sa","en_majalla_com","feeds_bbci_co_uk","www_aljazeera_com","www_theguardian_com","www_cnbc_com","oilprice_com","techcrunch_com","www_formula1_com"]);
 r = await call({ brief: "1", build: "1" }); check("all sources down -> 503, no Groq", r.code === 503 && groqCalls === g);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILURES:", failures); process.exit(1); }
