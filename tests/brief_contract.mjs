@@ -3,7 +3,7 @@
 const file = process.argv[2] || './api/feed.js';
 process.env.KV_REST_API_URL = "https://kv.mock"; process.env.KV_REST_API_TOKEN = "t";
 process.env.GROQ_API_KEY = "test-key";
-const store = new Map(); let groqCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
+const store = new Map(); let groqCalls = 0, geminiCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
 const now = new Date();
 const WORDS = ['ministry','budget','oil','election','parliament','tariff','airline','rainfall','harvest','pipeline','summit','ceasefire','inflation','chip','satellite','port','tunnel','drought','vaccine','currency','census','railway','refinery','festival','tender','merger','strike','fleet','cabinet','reservoir'];
 let wi = 0; const distinct = () => { const a = WORDS[wi++ % WORDS.length], b = WORDS[(wi*7) % WORDS.length], c = WORDS[(wi*11+3) % WORDS.length]; return `${a} ${b} ${c} ${wi} announced overnight`; };
@@ -19,6 +19,7 @@ globalThis.fetch = async (url, opts = {}) => {
     else if (op === "ZRANGE") result = [];
     return new Response(JSON.stringify({ result }), { status: 200 });
   }
+  if (url.includes("generativelanguage.googleapis.com")) { geminiCalls++; if (url.includes("gemini-2.5-flash") && process.env.T_GEMINI25_404) return new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404 }); return new Response(JSON.stringify(groqStatus === 200 ? { usageMetadata: { totalTokenCount: 2100 }, candidates: [{ content: { parts: [{ text: groqReply }] } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   if (url.includes("api.groq.com")) { groqCalls++; return new Response(JSON.stringify(groqStatus === 200 ? { model: "llama-3.3-70b-versatile", usage: { total_tokens: 3210 }, choices: [{ message: { content: groqReply } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   rssCalls++;
   const name = url.replace(/https?:\/\//,'').split('/')[0].replace(/\W/g,'_');
@@ -62,8 +63,13 @@ check("failed builds did not overwrite cache", store.get([...store.keys()].find(
 groqStatus = 429; groqReply = goodReply(); r = await call({ brief: "1", build: "1", force: "1" }); check("Groq 429 -> 502 with message", r.code === 502 && /rate limited/.test(r.j.error)); groqStatus = 200;
 // 10. daily cap: builds so far = 7 (INCR each build attempt) -> next must be 429 (cap 6)
 r = await call({ brief: "1", build: "1", force: "1" }); check("daily build cap -> 429", r.code === 429);
-// 11. missing key -> 500 and no Groq call
-store.clear(); delete process.env.GROQ_API_KEY; const g = groqCalls; r = await call({ brief: "1", build: "1" }); check("no GROQ_API_KEY -> 500, no call", r.code === 500 && groqCalls === g);
+// 11. engine selection: no Groq key + Gemini key -> Gemini (free), engine label + tokens recorded
+store.clear(); delete process.env.GROQ_API_KEY; process.env.GEMINI_API_KEY = "gk"; groqReply = goodReply(); let g = groqCalls;
+r = await call({ brief: "1", build: "1" }); check("no Groq key -> Gemini builds", r.code === 200 && r.j.built === true && geminiCalls === 1 && groqCalls === g);
+check("gemini engine labelled + tokens", /^gemini\//.test(r.j.brief.engine) && r.j.brief.tokens === 2100 && r.j.brief.costSAR === 0);
+store.clear(); process.env.T_GEMINI25_404 = "1"; r = await call({ brief: "1", build: "1" }); check("gemini 2.5 missing -> falls back to 2.0-flash", r.code === 200 && r.j.brief.engine === "gemini/gemini-2.0-flash"); delete process.env.T_GEMINI25_404;
+store.clear(); process.env.GROQ_API_KEY = "test-key"; r = await call({ brief: "1", build: "1" }); check("Groq key present -> Groq preferred", r.j.brief.engine.startsWith("groq/") && groqCalls === g + 1);
+store.clear(); delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; g = groqCalls; const ge = geminiCalls; r = await call({ brief: "1", build: "1" }); check("no engine key -> 500, no call", r.code === 500 && groqCalls === g && geminiCalls === ge);
 // 12. too few headlines -> 503
 process.env.GROQ_API_KEY = "test-key"; store.clear(); failSources = new Set(["www_arabnews_com","saudigazette_com_sa","en_majalla_com","feeds_bbci_co_uk","www_aljazeera_com","www_theguardian_com","www_cnbc_com","oilprice_com","techcrunch_com","www_formula1_com"]);
 r = await call({ brief: "1", build: "1" }); check("all sources down -> 503, no Groq", r.code === 503 && groqCalls === g);
