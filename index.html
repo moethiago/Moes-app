@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Archivo+Black&family=Archivo:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css?v=1781280000">
 <link rel="stylesheet" href="css/components.css?v=1781280000">
-<link rel="stylesheet" href="css/tabs.css?v=1781280000">
+<link rel="stylesheet" href="css/tabs.css?v=1789200000">
 </head>
 <body>
 <div id="app">
@@ -29,6 +29,10 @@
       <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/></svg></span>
         <span class="nav-lbl">Home</span>
+      </button>
+      <button class="nav-btn" id="nav-brief" onclick="switchTab('brief')">
+        <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7M9 8h3"/></svg></span>
+        <span class="nav-lbl">Brief</span>
       </button>
       <button class="nav-btn" id="nav-feed" onclick="switchTab('feed')">
         <span class="nav-icon"><svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg></span>
@@ -54,6 +58,11 @@
 <!-- ═══ HOME ═══════════════════════════════════════════ -->
 <div class="tab-panel active" id="panel-home">
   <div id="home-body" style="min-height:200px;padding-top:6px;"></div>
+</div>
+
+<!-- ═══ DAILY BRIEF ═══════════════════════════════════ -->
+<div class="tab-panel" id="panel-brief">
+  <div id="brief-body"></div>
 </div>
 
 <!-- ═══ FEED ═══════════════════════════════════════════ -->
@@ -396,6 +405,7 @@
 <script src="js/football/wc-results.js?v=1781280000"></script>
 <script src="js/football/wc-subtabs.js?v=1781280000"></script>
 <!-- Feed -->
+<script src="js/feed/brief.js?v=1789200000"></script>
 <script src="js/feed/feed-utils.js?v=1781280000"></script>
 <script src="js/feed/feed-ticker.js?v=1781280000"></script>
 <script src="js/feed/feed-render.js?v=1781280000"></script>
@@ -408,6 +418,6 @@
 <script src="js/home/taste.js?v=1781280000"></script>
 <script src="js/home/notify.js?v=1781280000"></script>
 <script src="js/home/home.js?v=1781280000"></script>
-<script src="js/core.js?v=1781280000"></script>
+<script src="js/core.js?v=1789200000"></script>
 </body>
 </html>
