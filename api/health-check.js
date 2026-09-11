@@ -371,12 +371,84 @@ async function maqadiHandler(req, res) {
 }
 
 
+// ---- وين نروح؟ (wain) backend — routed by ?app=wain, folded in for the 12-function limit ----
+// Actions: state | save | resolve | eta
+// Env: KV_REST_API_URL, KV_REST_API_TOKEN, (optional) GOOGLE_MAPS_KEY, WAIN_PIN, WAIN_PIN_2
+const WAIN_KEY = "wain:state";
+const WAIN_PINS = [process.env.WAIN_PIN || PIN_FULL, process.env.WAIN_PIN_2 || PIN_LITE].filter(Boolean);
+const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || "";
+
+async function wainRead() {
+  const raw = await kv(["GET", WAIN_KEY]);
+  if (!raw) return { v: 0, state: null };
+  try { const j = JSON.parse(raw); return { v: Number(j.v || 0), state: j.state || null }; } catch { return { v: 0, state: null }; }
+}
+function parseCoords(u) {
+  const m = u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || u.match(/[?&](?:q|ll|query|destination|center)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null;
+}
+async function wainResolve(url) {
+  let final = String(url || "").trim();
+  if (!/^https?:\/\//.test(final)) return { lat: null, lng: null };
+  let html = "";
+  try {
+    const r = await fetch(final, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0" } });
+    final = r.url || final;
+    html = (await r.text().catch(() => "")).slice(0, 400000);
+  } catch {}
+  let c = parseCoords(final) || parseCoords(html) || null;
+  let name = null;
+  const nm = final.match(/\/place\/([^/@?]+)/); if (nm) name = decodeURIComponent(nm[1]).replace(/\+/g, " ");
+  return { lat: c ? c.lat : null, lng: c ? c.lng : null, name, url: final };
+}
+async function wainEta(body) {
+  if (!GMAPS_KEY) return { ok: false, reason: "no key" };
+  const o = body.from, d = (body.to || []).slice(0, 25);
+  if (!o || !d.length) return { ok: false };
+  const u = new URL("https://maps.googleapis.com/maps/api/distancematrix/json");
+  u.searchParams.set("origins", o.lat + "," + o.lng);
+  u.searchParams.set("destinations", d.map(x => x.lat + "," + x.lng).join("|"));
+  u.searchParams.set("departure_time", "now"); u.searchParams.set("key", GMAPS_KEY);
+  const j = await (await fetch(u)).json();
+  const row = j.rows && j.rows[0] && j.rows[0].elements || [];
+  return { ok: true, etas: row.map(e => e.status === "OK" ? { min: Math.round((e.duration_in_traffic || e.duration).value / 60), km: Math.round(e.distance.value / 1000) } : null) };
+}
+async function wainHandler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Pin");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  try {
+    const body = req.method === "POST" ? (typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})) : {};
+    const action = body.action || req.query.action || "state";
+    const pin = String(req.headers["x-pin"] || body.pin || req.query.pin || "").trim();
+    if (!pin || !WAIN_PINS.includes(pin)) return res.status(401).json({ error: "pin" });
+    if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
+    if (action === "state") { const s = await wainRead(); return res.status(200).json(s); }
+    if (action === "save") {
+      const cur = await wainRead();
+      if (Number(body.v) !== Number(cur.v)) return res.status(409).json({ conflict: true, ...cur });
+      const st = body.state || {};
+      if (JSON.stringify(st).length > 900000) return res.status(413).json({ error: "too big" });
+      const nv = cur.v + 1;
+      await kv(["SET", WAIN_KEY, JSON.stringify({ v: nv, state: st, ts: Date.now() })]);
+      return res.status(200).json({ v: nv });
+    }
+    if (action === "resolve") return res.status(200).json(await wainResolve(body.url));
+    if (action === "eta") return res.status(200).json(await wainEta(body));
+    return res.status(400).json({ error: "unknown action" });
+  } catch (e) {
+    return res.status(500).json({ error: String(e && e.message ? e.message : e) });
+  }
+}
+
 // ============================================================
 // Router: GET = health check (unchanged). POST/OPTIONS = مقاضي app.
 // ============================================================
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
+  if (req.query && req.query.app === 'wain') return wainHandler(req, res);
   if (req.method === 'POST' || req.method === 'OPTIONS' || (req.query && req.query.app === 'maqadi')) {
     return maqadiHandler(req, res);
   }
