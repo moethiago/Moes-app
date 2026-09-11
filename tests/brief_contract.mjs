@@ -19,7 +19,7 @@ globalThis.fetch = async (url, opts = {}) => {
     else if (op === "ZRANGE") result = [];
     return new Response(JSON.stringify({ result }), { status: 200 });
   }
-  if (url.includes("generativelanguage.googleapis.com")) { geminiCalls++; if (url.includes("gemini-2.5-flash") && process.env.T_GEMINI25_404) return new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404 }); return new Response(JSON.stringify(groqStatus === 200 ? { usageMetadata: { totalTokenCount: 2100 }, candidates: [{ content: { parts: [{ text: groqReply }] } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
+  if (url.includes("generativelanguage.googleapis.com")) { geminiCalls++; if (url.includes("gemini-3.6-flash") && process.env.T_GEMINI25_404) return new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404 }); return new Response(JSON.stringify(groqStatus === 200 ? { usageMetadata: { totalTokenCount: 2100 }, candidates: [{ content: { parts: [{ text: groqReply }] } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   if (url.includes("api.groq.com")) { groqCalls++; return new Response(JSON.stringify(groqStatus === 200 ? { model: "llama-3.3-70b-versatile", usage: { total_tokens: 3210 }, choices: [{ message: { content: groqReply } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   rssCalls++;
   const name = url.replace(/https?:\/\//,'').split('/')[0].replace(/\W/g,'_');
@@ -67,7 +67,7 @@ r = await call({ brief: "1", build: "1", force: "1" }); check("daily build cap -
 store.clear(); delete process.env.GROQ_API_KEY; process.env.GEMINI_API_KEY = "gk"; groqReply = goodReply(); let g = groqCalls;
 r = await call({ brief: "1", build: "1" }); check("no Groq key -> Gemini builds", r.code === 200 && r.j.built === true && geminiCalls === 1 && groqCalls === g);
 check("gemini engine labelled + tokens", /^gemini\//.test(r.j.brief.engine) && r.j.brief.tokens === 2100 && r.j.brief.costSAR === 0);
-store.clear(); process.env.T_GEMINI25_404 = "1"; r = await call({ brief: "1", build: "1" }); check("gemini 2.5 missing -> falls back to 2.0-flash", r.code === 200 && r.j.brief.engine === "gemini/gemini-2.0-flash"); delete process.env.T_GEMINI25_404;
+store.clear(); process.env.T_GEMINI25_404 = "1"; r = await call({ brief: "1", build: "1" }); check("gemini 3.6 missing -> falls back to next model", r.code === 200 && r.j.brief.engine === "gemini/gemini-3.5-flash"); delete process.env.T_GEMINI25_404;
 store.clear(); process.env.GROQ_API_KEY = "test-key"; r = await call({ brief: "1", build: "1" }); check("Groq key present -> Groq preferred", r.j.brief.engine.startsWith("groq/") && groqCalls === g + 1);
 store.clear(); delete process.env.GROQ_API_KEY; delete process.env.GEMINI_API_KEY; g = groqCalls; const ge = geminiCalls; r = await call({ brief: "1", build: "1" }); check("no engine key -> 500, no call", r.code === 500 && groqCalls === g && geminiCalls === ge);
 // 12. too few headlines -> 503
