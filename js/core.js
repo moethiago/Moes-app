@@ -46,6 +46,10 @@ function switchTab(tab) {
     try { if (typeof loadHome === 'function') loadHome(); } catch(e) { console.warn('home', e); }
   }
 
+  if (tab === 'brief') {
+    try { if (typeof loadBrief === 'function') loadBrief(); } catch(e) { console.warn('brief', e); }
+  }
+
   if (tab === 'feed') {
     try { if (typeof loadNewsFeed === 'function') loadNewsFeed(); } catch(e) { console.warn('feed', e); }
   }
