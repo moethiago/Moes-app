@@ -1,0 +1,15 @@
+name: daily brief
+# Builds Moaath's Daily Brief before he wakes (05:30 Riyadh). Free engine only (SAR 0), server-side cap 6/day.
+on:
+  schedule:
+    - cron: "30 2 * * *"   # 05:30 Riyadh
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: build today's brief (SAR 0)
+        run: |
+          out=$(curl -s -m 120 "https://moes-app-two.vercel.app/api/feed?brief=1&build=1")
+          echo "$out" | head -c 400; echo
+          echo "$out" | python3 -c "import sys,json;j=json.load(sys.stdin);assert j.get('ok'),j;b=j['brief'];print('items',len(b['items']),'also',len(b['also']),'trending',len(b['trending']),'engine',b['engine'],'cost',b['costSAR'])"
