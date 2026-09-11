@@ -16,5 +16,6 @@ chk "maham refuses wife code"                 '[ "$(code "$B/health-check" "{\"a
 chk "maham state loads"                       'post "$B/health-check" "{\"action\":\"taskstate\",\"pin\":\"2026\"}" | grep -q "\"v\""'
 chk "thoughts backend answers"                '[ "$(code "$B/aqwal" "{\"app\":\"thoughts\",\"action\":\"state\",\"pin\":\"0000\"}")" != 500 ]'
 for p in maqadi maham wain thoughts; do chk "PWA $p served" '[ "$(curl -s -m 20 -o /dev/null -w "%{http_code}" https://moethiago.github.io/Moes-app/'$p'/)" = 200 ]'; done
+chk "brief route answers (read-only, no build)" 'curl -s -m 20 "/feed?brief=1" | grep -q ""cached""'
 chk "feed alive" 'curl -s -m 20 "$B/feed" | grep -q "\"ok\""'
 exit $fail
