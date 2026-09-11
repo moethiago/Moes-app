@@ -48,6 +48,31 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .card{background:var(--sf);border-radius:18px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .muted{color:var(--dim);font-size:13.5px;line-height:1.7}
 
+.cap{background:var(--sf);border-radius:16px;padding:6px 8px 6px 14px;margin-top:12px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.cap input{flex:1;border:0;outline:none;background:none;padding:12px 0;font-size:16px;min-width:0}
+.cap input::placeholder{color:var(--dimmer)}
+.cap button{flex:0 0 auto;background:var(--go);color:#fff;border-radius:12px;width:44px;height:40px;font-size:20px;font-weight:600}
+.cap button:disabled{opacity:.35}
+.quick{display:flex;gap:7px;overflow-x:auto;padding:12px 16px 2px;scrollbar-width:none}
+.quick::-webkit-scrollbar{display:none}
+.quick button{flex:0 0 auto;background:var(--sf);border-radius:999px;padding:9px 14px;font-size:13.5px;font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.05);display:flex;align-items:center;gap:6px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:0 16px 2px;margin-top:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:0 0 auto;background:var(--sf);color:var(--dim);border-radius:999px;padding:7px 13px;font-size:13px;font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.chips button.on{background:var(--ink);color:#fff}
+.nag{background:var(--soon-soft);border-radius:18px;padding:14px 16px;margin-top:16px}
+.nag b{display:block;font-size:15px;margin-bottom:2px}
+.nag .why{font-size:12.5px;color:var(--soon);font-weight:600}
+.nag .acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.nag .acts button{flex:1 1 30%;background:var(--sf);border-radius:12px;padding:11px;font-size:13.5px;font-weight:600}
+.cnt{font-size:12px;font-weight:700;color:var(--dim)}
+.cnt.full{color:var(--late)}
+.row .badge{flex:0 0 auto;background:var(--soon-soft);color:var(--soon);font-size:11px;font-weight:700;border-radius:999px;padding:3px 7px}
+.row .nm em{font-style:normal;color:var(--dim);font-weight:400}
+.sum{background:var(--sf);border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.sum .big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.sum .big small{font-size:14px;color:var(--dim);font-weight:500;margin-inline-start:6px}
+.fld textarea{width:100%;background:var(--bg);border:0;border-radius:12px;padding:13px 14px;font-size:15px;outline:none;min-height:84px;resize:vertical;font-family:inherit}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 16px 0}
 .tile{position:relative;aspect-ratio:1/1.06;border-radius:20px;background:var(--tint,var(--other));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 8px;text-align:center;transition:transform .12s ease;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .tile:active{transform:scale(.95)}
@@ -156,9 +181,9 @@ button{cursor:pointer;border:0;background:none;padding:0}
 </div>
 
 <div class="tabs hidden" id="tabs"><div class="in">
-  <button data-v="pick" class="on"><i>🗂️</i>Add</button>
+  <button data-v="pick" class="on"><i>✍️</i>Capture</button>
   <button data-v="list"><i>✅</i>Tasks<span class="b hidden" id="bList"></span></button>
-  <button data-v="done"><i>🏁</i>Done</button>
+  <button data-v="done"><i>📈</i>Review</button>
 </div></div>
 
 <button id="upd" class="net hidden" style="background:var(--go-soft);color:var(--go);top:calc(env(safe-area-inset-top) + 34px)">New version — tap to update</button>
@@ -168,7 +193,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="1.3", BUILD=BUILD_ID+" · 11 Sep 2026";
+var BUILD_ID="2.0", BUILD=BUILD_ID+" · 11 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -186,7 +211,13 @@ var CATS=[
  {id:"self",name:"Personal",em:"🧠"},
  {id:"other",name:"Other",em:"📌"}
 ];
-var CATALOG_V=2;
+var CATALOG_V=3;
+var TODAY_CAP=5;
+var CTX=[{id:"any",name:"Anytime",em:"•"},{id:"phone",name:"Phone",em:"📞"},{id:"out",name:"Out",em:"🚗"},{id:"desk",name:"Desk",em:"💻"},{id:"farm",name:"Farm",em:"🌾"},{id:"home",name:"Home",em:"🏠"}];
+var CTX_HINT=[[/call|phone|ring/i,"phone"],[/bank|pick up|barber|pharmacy|shop|ship|drop|wash|fill up|inspection|service|appointment|dentist|doctor|attested|government|absher|fine|licence|passport|registration/i,"out"],[/email|inbox|report|kpi|deck|contract|budget|invoice|statement|subscription|site|app|backup|back up|files|goals|plan|notes|approval|review|interview|schedule/i,"desk"],[/farm|irrigation|palm|fertilis|prune|pump|feed|fence|meter|well|pesticide|plough|harvest|worker/i,"farm"],[/filter|ac units|bulb|storeroom|clean|pest|plumb|carpet|gas|extinguisher|papers|yard|laundry/i,"home"]];
+function guessCtx(title){for(var i=0;i<CTX_HINT.length;i++)if(CTX_HINT[i][0].test(title))return CTX_HINT[i][1];return "any";}
+function ctxOf(id){for(var i=0;i<CTX.length;i++)if(CTX[i].id===id)return CTX[i];return CTX[0];}
+function dayStart(ts){var d=new Date(ts||Date.now());d.setHours(0,0,0,0);return d.getTime();}
 var TR={
 "رد على الإيميلات":"Clear the inbox","تجهيز التقرير الأسبوعي":"Weekly report","تحديث مؤشرات الأداء":"Update the KPIs","اجتماع الفريق":"Team meeting","متابعة مع المدير":"Check in with my manager","مراجعة الميزانية":"Review the budget","تجهيز عرض تقديمي":"Build a deck","مراجعة عقد":"Review a contract","متابعة مع مورد":"Follow up with a vendor","جدولة اجتماع":"Schedule a meeting","تحديث الخطة الاستراتيجية":"Update the strategy plan","مقابلة توظيف":"Interview a candidate","تقييم أداء موظف":"Performance review","ترتيب أولويات الأسبوع":"Set the week's priorities","متابعة مشروع متأخر":"Chase a late project","تجهيز محضر اجتماع":"Write up meeting notes","رفع طلب اعتماد":"Submit for approval","مراجعة تقرير فريق":"Review a team report",
 "تحديث التطبيق":"Ship an app update","فحص الأخطاء":"Check for bugs","كتابة أفكار جديدة":"Write down new ideas","تصوير محتوى":"Shoot content","نشر منشور":"Post something","مراجعة تعليقات المستخدمين":"Read user feedback","تحديث موقع":"Update the site","نسخة احتياطية للمشروع":"Back up the project","متابعة تكاليف الاشتراكات":"Review subscription costs",
@@ -219,7 +250,7 @@ var SEED={
 
 
 /* ================= state ================= */
-var S=null,V=0,PIN="",view="pick",pruning=false,query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
+var S=null,V=0,PIN="",view="pick",histOpen=false,pruning=false,showAll=false,justRendered=false,ctxFilter="",query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -260,9 +291,15 @@ function norm(st){
 }
 function migrate(st){
   if((st.catalogV||1)>=CATALOG_V)return st;
+  if((st.catalogV||1)>=2){Object.keys(st.tasks).forEach(function(id){var t=st.tasks[id];if(!t.ctx)t.ctx=guessCtx(t.title);if(t.note==null)t.note="";if(t.moves==null)t.moves=0;});st.catalogV=CATALOG_V;return st;}
   // one-time: the catalog was seeded in Arabic; rewrite the titles in place, keeping history and lane spots
   Object.keys(st.tasks).forEach(function(id){var t=st.tasks[id];if(TR[t.title])t.title=TR[t.title];});
   (st.log||[]).forEach(function(e){if(TR[e.title])e.title=TR[e.title];});
+  Object.keys(st.tasks).forEach(function(id){var t=st.tasks[id];
+    if(!t.ctx)t.ctx=guessCtx(t.title);
+    if(t.note==null)t.note="";
+    if(t.moves==null)t.moves=0;
+  });
   st.catalogV=CATALOG_V;return st;
 }
 function where(st,id){for(var i=0;i<LANES.length;i++){var k=LANES[i].id,n=st.lanes[k].indexOf(id);if(n>=0)return {lane:k,index:n};}return null;}
@@ -285,6 +322,7 @@ function apply(st,op){
       w=where(st,p.id); if(w)st.lanes[w.lane].splice(w.index,1);
       var L=p.lane||"today"; if(!st.lanes[L])L="today";
       if(p.top)st.lanes[L].unshift(p.id); else st.lanes[L].push(p.id);
+      if(!w){var ta=st.tasks[p.id];ta.placedAt=op.ts;ta.moves=0;}
       break;
     case "move":
       w=where(st,p.id); if(!w)break;
@@ -292,6 +330,7 @@ function apply(st,op){
       var tl=st.lanes[p.lane]?p.lane:w.lane;
       var idx=Math.max(0,Math.min(st.lanes[tl].length,p.index==null?st.lanes[tl].length:p.index));
       st.lanes[tl].splice(idx,0,p.id);
+      if(tl!==w.lane){var tm=st.tasks[p.id];tm.moves=(tm.moves||0)+1;tm.movedAt=op.ts;}
       break;
     case "remove":
       w=where(st,p.id); if(w)st.lanes[w.lane].splice(w.index,1);
@@ -300,8 +339,8 @@ function apply(st,op){
       w=where(st,p.id); if(!w)break;
       st.lanes[w.lane].splice(w.index,1);
       var t=st.tasks[p.id];
-      if(t){t.doneAt=(t.doneAt||[]).concat([op.ts]).slice(-12);recompute(t);}
-      st.log=[{lid:p.lid||uid(),id:p.id,title:t?t.title:"",em:t?t.em:"",cat:t?t.cat:"other",ts:op.ts,lane:w.lane}].concat(st.log).slice(0,400);
+      if(t){t.doneAt=(t.doneAt||[]).concat([op.ts]).slice(-12);recompute(t);t.moves=0;t.placedAt=null;t.uses=(t.uses||0)+1;}
+      st.log=[{lid:p.lid||uid(),id:p.id,title:t?t.title:"",em:t?t.em:"",moves:t?(t.moves||0):0,ts:op.ts,lane:w.lane}].concat(st.log).slice(0,400);
       break;
     case "undone":
       var e=(st.log||[]).find(function(x){return x.lid===p.lid;}); if(!e)break;
@@ -378,6 +417,25 @@ function suggestions(max){
     .filter(function(t){var r=ratio(t);return r!==null&&r>=.8&&!where(S,t.id)&&!suppressed(t);})
     .sort(function(a,b){return ratio(b)-ratio(a);}).slice(0,max||6);
 }
+function stuck(){
+  var out=[];
+  LANES.forEach(function(L){S.lanes[L.id].forEach(function(id){
+    var t=S.tasks[id];if(!t)return;
+    var age=t.placedAt?(Date.now()-t.placedAt)/DAY:0;
+    if((t.moves||0)>=3||age>=21)out.push({t:t,lane:L.id,moves:t.moves||0,age:Math.round(age)});
+  });});
+  return out.sort(function(a,b){return (b.moves*10+b.age)-(a.moves*10+a.age);});
+}
+function leftovers(){
+  var d=dayStart();
+  return S.lanes.today.map(function(id){return S.tasks[id];}).filter(function(t){return t&&t.placedAt&&t.placedAt<d;});
+}
+function popular(n){
+  return Object.keys(S.tasks).map(function(id){return S.tasks[id];})
+    .filter(function(t){return !where(S,t.id)&&((t.uses||0)>0||(t.doneAt||[]).length>0);})
+    .sort(function(a,b){return ((b.uses||0)+(b.doneAt||[]).length)-((a.uses||0)+(a.doneAt||[]).length)||(b.last||0)-(a.last||0);})
+    .slice(0,n||8);
+}
 function total(){return LANES.reduce(function(a,l){return a+S.lanes[l.id].length;},0);}
 
 /* ================= render ================= */
@@ -396,18 +454,64 @@ function hd(title,sub,acts){
 
 /* ---- add ---- */
 function rPick(){
-  var n=total(),all=Object.keys(S.tasks).length;
-  var acts=[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,query);}}];
+  var n=total(),all=Object.keys(S.tasks).length,td=S.lanes.today.length;
+  var acts=[{icon:"+",go:true,label:"New task with details",fn:function(){sheetTask(null,query);}}];
   acts.unshift({icon:pruning?"✓":"✎",label:pruning?"Done editing":"Edit the list",fn:function(){pruning=!pruning;render();}});
-  var h=hd(pruning?"Edit your list":"What’s on you?",
-    pruning?"Tap ✕ on anything you never do":(n?"<b>"+n+"</b> on your list · "+all+" to choose from":"Tap anything you remember. It goes to Today."),acts);
-  var sr=document.createElement("div");sr.className="search";
-  sr.innerHTML='<input id="q" placeholder="Search or type something new…" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
-  h.appendChild(sr);
-  var qi=$("q");qi.addEventListener("input",function(){query=qi.value;rGrid();rSug();$("qx").classList.toggle("hidden",!query);});
-  $("qx").onclick=function(){query="";render();};
-  $("view").innerHTML='<div id="sugbox"></div><div class="grid" id="grid"></div>';
-  rSug();rGrid();
+  var h=hd(pruning?"Edit your list":"What do you need to do?",
+    pruning?"Tap ✕ on anything you never do":(td>=TODAY_CAP?"<b>Today is full</b> — "+td+"/"+TODAY_CAP:"<b>"+td+"/"+TODAY_CAP+"</b> on today · "+n+" in total"),acts);
+  if(!pruning){
+    var cap=document.createElement("div");cap.className="cap";
+    cap.innerHTML='<input id="cap" placeholder="Type it and hit +" autocomplete="off" autocapitalize="sentences" value="'+esc(query)+'"><button id="capGo" aria-label="Add">+</button>';
+    h.appendChild(cap);
+  } else {
+    var sr=document.createElement("div");sr.className="search";
+    sr.innerHTML='<input id="cap" placeholder="Search…" autocomplete="off" value="'+esc(query)+'"><button class="x'+(query?"":" hidden")+'" id="qx">×</button>';
+    h.appendChild(sr);
+    if($("qx"))$("qx").onclick=function(){query="";render();};
+  }
+  var qi=$("cap");
+  qi.addEventListener("input",function(){query=qi.value;if($("capGo"))$("capGo").disabled=!query.trim();rGrid();rSug();rQuick();});
+  qi.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();capture();}});
+  if($("capGo")){$("capGo").disabled=!query.trim();$("capGo").onclick=capture;}
+  $("view").innerHTML='<div id="sugbox"></div><div id="quick"></div><div class="grid" id="grid"></div>';
+  rSug();rQuick();rGrid();
+  if(!pruning&&!justRendered){justRendered=true;setTimeout(function(){try{qi.focus({preventScroll:true});}catch(e){}},60);}
+}
+function capture(){
+  var title=(query||"").trim();if(!title)return;
+  var dup=Object.keys(S.tasks).map(function(id){return S.tasks[id];}).filter(function(x){return normAr(x.title)===normAr(title);})[0];
+  if(dup){ query="";addToToday(dup); return; }
+  var id="t:"+title+":"+uid().slice(-3);
+  op("task.add",{task:{id:id,title:title,em:"📌",ctx:guessCtx(title),note:"",cycle:0,cycle0:0,doneAt:[],learned:0,dismissed:[],moves:0,custom:true}});
+  query="";addToToday(S.tasks[id]);
+}
+function addToToday(t,silent){
+  if(where(S,t.id)){query="";render();toast("“"+t.title+"” is already on your list");return;}
+  if(S.lanes.today.length>=TODAY_CAP){sheetFull(t);return;}
+  op("add",{id:t.id,lane:"today"});
+  if(!silent)toast("Added to Today");
+}
+function sheetFull(t){
+  var sh=sheet('<h3>Today is full</h3><div class="muted" style="margin:-8px 0 14px">Five is a day you can actually finish. To add <b>'+esc(t.title)+'</b>, something has to come off — tap it.</div><div id="swap"></div>'+
+    '<div class="cta"><button class="btn soft" id="wk">Put it in This week instead</button></div>');
+  var box=$("swap");
+  S.lanes.today.forEach(function(id){
+    var x=S.tasks[id];if(!x)return;
+    var r=document.createElement("div");r.className="sug";
+    r.innerHTML='<span class="em">'+(x.em||"📌")+'</span><div class="nm">'+esc(x.title)+'<small>moves to This week</small></div>';
+    var b=document.createElement("button");b.className="no";b.textContent="⇄";
+    r.onclick=function(){closeSheet();op("move",{id:x.id,lane:"week",index:0});op("add",{id:t.id,lane:"today"});toast("Swapped — "+x.title+" → This week");};
+    r.appendChild(b);box.appendChild(r);
+  });
+  $("wk").onclick=function(){closeSheet();op("add",{id:t.id,lane:"week"});toast("Added to This week");};
+}
+function rQuick(){
+  var box=$("quick");if(!box)return;box.innerHTML="";
+  if(query||pruning)return;
+  var pop=popular(8);if(!pop.length)return;
+  var d=document.createElement("div");d.className="quick";
+  pop.forEach(function(t){var b=document.createElement("button");b.innerHTML='<span>'+(t.em||"📌")+'</span>'+esc(t.title);b.onclick=function(){addToToday(t);};d.appendChild(b);});
+  box.appendChild(d);
 }
 function rSug(){
   var box=$("sugbox");if(!box)return;box.innerHTML="";
@@ -419,16 +523,22 @@ function rSug(){
   sg.forEach(function(t){
     var r=document.createElement("div");r.className="sug";
     r.innerHTML='<span class="em">'+(t.em||"📌")+'</span><div class="nm">'+esc(t.title)+'<small>last '+ago(t.last)+' · usually every '+nd(t.cycle)+'</small></div>';
-    var a=document.createElement("button");a.className="add";a.textContent="+";a.onclick=function(){op("add",{id:t.id,lane:"today"});};
+    var a=document.createElement("button");a.className="add";a.textContent="+";a.onclick=function(){addToToday(t);};
     var no=document.createElement("button");no.className="no";no.textContent="×";no.onclick=function(){op("dismiss",{id:t.id});toast("Fine â we’ll stop nudging for now");};
     r.appendChild(a);r.appendChild(no);card.appendChild(r);
   });
   sec.appendChild(card);box.appendChild(sec);
-  $("sugAll").onclick=function(){sg.forEach(function(t){op("add",{id:t.id,lane:"today"});});toast("Added "+sg.length+" to Today");};
+  $("sugAll").onclick=function(){var room=TODAY_CAP-S.lanes.today.length;sg.slice(0,Math.max(0,room)).forEach(function(t){op("add",{id:t.id,lane:"today"});});sg.slice(Math.max(0,room)).forEach(function(t){op("add",{id:t.id,lane:"week"});});toast(room>0?"Added "+Math.min(room,sg.length)+" to Today"+(sg.length>room?", rest to This week":""):"Today was full — added to This week");};
 }
 function rGrid(){
   var g=$("grid");if(!g)return;g.innerHTML="";
   var q=normAr(query);
+  if(!q&&!pruning&&!showAll){
+    var b=document.createElement("button");b.className="card muted";b.style.cssText="grid-column:1/-1;text-align:center;font-weight:500;color:var(--go)";
+    b.textContent="Browse all "+Object.keys(S.tasks).length+" saved tasks";
+    b.onclick=function(){showAll=true;render();};
+    g.appendChild(b);return;
+  }
   var list=Object.keys(S.tasks).map(function(id){return S.tasks[id];})
     .filter(function(t){return !q||normAr(t.title).indexOf(q)>=0;})
     .sort(function(a,b){return a.title.localeCompare(b.title,"en");});
@@ -439,7 +549,7 @@ function rGrid(){
     add.onclick=function(){sheetTask(null,query);};
     g.appendChild(add);
   }
-  if(!list.length&&!query)g.innerHTML='<div class="card muted" style="grid-column:1/-1">Your list is empty. Tap + to add your first task.</div>';
+  if(!list.length&&!query)g.innerHTML='<div class="card muted" style="grid-column:1/-1">Nothing saved yet. Type what you need to do above.</div>';
 }
 function taskTile(t){
   var w=where(S,t.id),r=ratio(t);
@@ -454,7 +564,7 @@ function taskTile(t){
   b.onclick=function(){if(pressed){pressed=false;return;}
     if(pruning){deleteTask(t);return;}
     if(w)op("remove",{id:t.id});
-    else op("add",{id:t.id,lane:"today"});
+    else addToToday(t);
   };
   return b;
 }
@@ -468,18 +578,42 @@ function deleteTask(t){
 /* ---- list ---- */
 function rList(){
   var n=total();
-  hd("Tasks",n?"<b>"+S.lanes.today.length+"</b> today · "+n+" in total":"Nothing yet — go to Add",n?[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]);
+  hd("Tasks",n?"<b>"+S.lanes.today.length+"/"+TODAY_CAP+"</b> today · "+n+" in total":"Nothing yet — capture something",n?[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]);
   var v=$("view");v.innerHTML="";
   var pad=document.createElement("div");pad.className="pad";pad.id="lanes";v.appendChild(pad);
+  var lo=leftovers();
+  if(lo.length){
+    var rv=document.createElement("div");rv.className="nag";rv.style.background="var(--go-soft)";
+    rv.innerHTML='<b>'+lo.length+' left over from before today</b><div class="why" style="color:var(--go)">Clear them in 30 seconds</div><div class="acts"><button id="rvGo" style="flex:1 1 100%">Review them</button></div>';
+    pad.appendChild(rv);$("rvGo").onclick=function(){reviewNext(lo,0);};
+  }
+  var sk=stuck();
+  if(sk.length&&!lo.length){
+    var it=sk[0];
+    var nag=document.createElement("div");nag.className="nag";
+    nag.innerHTML='<b>'+esc(it.t.title)+'</b><div class="why">'+(it.moves>=3?("You\u2019ve moved this "+it.moves+" times"):("Sitting here "+it.age+" days"))+'</div><div class="acts"><button id="nagNow">Do it today</button><button id="nagSplit">Break it down</button><button id="nagDel">Delete it</button></div>';
+    pad.appendChild(nag);
+    $("nagNow").onclick=function(){if(S.lanes.today.length>=TODAY_CAP&&where(S,it.t.id).lane!=="today")sheetFull(it.t);else{op("move",{id:it.t.id,lane:"today",index:0});op("task.update",{id:it.t.id,patch:{moves:0,placedAt:Date.now()}});toast("On today, first");}};
+    $("nagSplit").onclick=function(){sheetSplit(it.t);};
+    $("nagDel").onclick=function(){deleteTask(it.t);};
+  }
+  var used={};LANES.forEach(function(L){S.lanes[L.id].forEach(function(id){var t=S.tasks[id];if(t)used[t.ctx||"any"]=(used[t.ctx||"any"]||0)+1;});});
+  if(n&&Object.keys(used).length>1){
+    var ch=document.createElement("div");ch.className="chips";ch.style.padding="0";ch.style.margin="14px 0 0";
+    var all=document.createElement("button");all.textContent="All";all.className=ctxFilter?"":"on";all.onclick=function(){ctxFilter="";render();};ch.appendChild(all);
+    CTX.forEach(function(c){if(!used[c.id])return;var b=document.createElement("button");b.textContent=(c.id==="any"?"":c.em+" ")+c.name+" "+used[c.id];b.className=ctxFilter===c.id?"on":"";b.onclick=function(){ctxFilter=ctxFilter===c.id?"":c.id;render();};ch.appendChild(b);});
+    pad.appendChild(ch);
+  }
   if(!n){
     pad.innerHTML='<div class="sec"><div class="card muted">Nothing here yet. Go to Add, pick a category and tap what you remember — it lands under Today, and you can drag it anywhere.</div></div>';
   } else {
     LANES.forEach(function(L){
       var box=document.createElement("div");box.className="lane";box.dataset.lane=L.id;
-      box.innerHTML='<h3><i style="background:'+L.c+'"></i>'+L.name+' <span>'+(S.lanes[L.id].length?ar(S.lanes[L.id].length):"")+'</span></h3>';
+      box.innerHTML='<h3><i style="background:'+L.c+'"></i>'+L.name+' <span class="'+(L.id==="today"?"cnt"+(S.lanes.today.length>=TODAY_CAP?" full":""):"")+'">'+(L.id==="today"?(S.lanes.today.length+"/"+TODAY_CAP):(S.lanes[L.id].length||""))+'</span></h3>';
       var body=document.createElement("div");body.className="body";body.dataset.lane=L.id;
-      if(!S.lanes[L.id].length){var d=document.createElement("div");d.className="drop";d.textContent="Drag a task here";body.appendChild(d);}
-      S.lanes[L.id].forEach(function(id){body.appendChild(taskRow(S.tasks[id],L.id));});
+      var ids=S.lanes[L.id].filter(function(id){var t=S.tasks[id];return t&&(!ctxFilter||(t.ctx||"any")===ctxFilter);});
+      if(!ids.length){var d=document.createElement("div");d.className="drop";d.textContent=ctxFilter?"Nothing here for this":"Drag a task here";body.appendChild(d);}
+      ids.forEach(function(id){body.appendChild(taskRow(S.tasks[id],L.id));});
       box.appendChild(body);pad.appendChild(box);
     });
   }
@@ -504,7 +638,8 @@ function rList(){
 function taskRow(t,laneId){
   if(!t)return document.createElement("div");
   var r=document.createElement("div");r.className="row";r.dataset.id=t.id;
-  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||"📌")+'</div><div class="nm">'+esc(t.title)+'<small>'+(t.cycle?'usually every '+nd(t.cycle):'one-off')+'</small></div><div class="gr">⣿</div>';
+  var sub=[];if(t.ctx&&t.ctx!=="any")sub.push(ctxOf(t.ctx).em+" "+ctxOf(t.ctx).name);if(t.note)sub.push(t.note.split("\n")[0].slice(0,48));else if(t.cycle)sub.push("every "+nd(t.cycle));
+  r.innerHTML='<div class="cb"></div><div class="em">'+(t.em||"📌")+'</div><div class="nm">'+esc(t.title)+(sub.length?'<small>'+esc(sub.join(" · "))+'</small>':'')+'</div>'+((t.moves||0)>=2?'<span class="badge">moved '+t.moves+'\u00d7</span>':'')+'<div class="gr">⣿</div>';
   r.querySelector(".cb").onclick=function(e){e.stopPropagation();complete(t);};
   attachDrag(r,t,laneId);
   return r;
@@ -513,6 +648,28 @@ function complete(t){
   var lid=uid();
   op("done",{id:t.id,lid:lid});
   toast("✓ "+t.title,false,{label:"Undo",fn:function(){op("undone",{lid:lid});}});
+}
+
+function reviewNext(list,i){
+  if(i>=list.length){closeSheet();toast("Day is set");render();return;}
+  var t=list[i];
+  sheet('<h3>'+esc(t.title)+'</h3><div class="muted" style="margin:-8px 0 14px">Left over from '+ago(t.placedAt)+'. '+(i+1)+' of '+list.length+'</div>'+
+    '<div class="opts" id="rv"><button id="a">Still today</button><button id="b">This week</button><button id="c">Drop it</button></div>');
+  $("a").onclick=function(){op("task.update",{id:t.id,patch:{placedAt:Date.now()}});reviewNext(list,i+1);};
+  $("b").onclick=function(){op("move",{id:t.id,lane:"week",index:0});reviewNext(list,i+1);};
+  $("c").onclick=function(){op("remove",{id:t.id});reviewNext(list,i+1);};
+}
+function sheetSplit(t){
+  sheet('<h3>Break down: '+esc(t.title)+'</h3><div class="muted" style="margin:-8px 0 12px">What is the first small piece you could actually finish today?</div>'+
+    '<div class="fld"><input id="sp" placeholder="e.g. Find the phone number"></div><div class="cta"><button class="btn" id="spGo">Add that to Today</button></div>');
+  $("spGo").onclick=function(){
+    var v=$("sp").value.trim();if(!v){$("sp").focus();return;}
+    var id="t:"+v+":"+uid().slice(-3);
+    op("task.add",{task:{id:id,title:v,em:"📌",ctx:t.ctx||"any",note:"part of: "+t.title,cycle:0,cycle0:0,doneAt:[],learned:0,dismissed:[],moves:0,custom:true}});
+    op("task.update",{id:t.id,patch:{moves:0}});
+    closeSheet();addToToday(S.tasks[id]);
+  };
+  setTimeout(function(){$("sp").focus();},60);
 }
 
 /* ---- drag & drop ---- */
@@ -599,27 +756,49 @@ function dragEnd(){
 
 /* ---- done ---- */
 function rDone(){
-  var log=S.log||[];
-  hd("Done",log.length?"<b>"+log.length+"</b> finished":"Nothing finished yet");
+  var log=S.log||[],wk=Date.now()-7*DAY;
+  var week=log.filter(function(e){return e.ts>=wk;});
+  var dodged=week.filter(function(e){return (e.moves||0)>=3;}).length;
+  hd("Review","How the week actually went");
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
-  if(!log.length){pad.innerHTML='<div class="sec"><div class="card muted">Everything you tick off is kept here by date, and one tap brings it back.</div></div>';return;}
-  var days={};
-  log.forEach(function(e){var k=new Date(e.ts).toDateString();(days[k]=days[k]||[]).push(e);});
-  Object.keys(days).slice(0,30).forEach(function(k){
-    var s=document.createElement("div");s.className="sec";
-    s.innerHTML='<h2>'+dstr(days[k][0].ts)+' <span class="muted" style="font-weight:400">'+days[k].length+'</span></h2>';
-    var card=document.createElement("div");card.className="card";
-    days[k].forEach(function(e){
-      var h=document.createElement("div");h.className="hist";
-      h.innerHTML='<span class="em" style="font-size:20px">'+(e.em||"")+'</span><div class="d"><b>'+esc(e.title)+'</b><small>'+new Date(e.ts).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit"})+'</small></div>';
-      var rb=document.createElement("button");rb.className="link";rb.textContent="Again";rb.onclick=function(){if(S.tasks[e.id]){op("add",{id:e.id,lane:"today",top:true});toast("Back on Today");}else toast("That task was deleted from the catalog");};
-      var db=document.createElement("button");db.className="link";db.style.color="var(--late)";db.textContent="Delete";db.onclick=function(){op("log.remove",{lid:e.lid});};
-      h.appendChild(rb);h.appendChild(db);card.appendChild(h);
+  var s1=document.createElement("div");s1.className="sec";
+  var sk=stuck(),lo=leftovers();
+  s1.innerHTML='<div class="sum"><div class="big">'+week.length+'<small>finished in the last 7 days</small></div>'+
+    '<div class="muted" style="margin-top:10px">'+
+      (dodged?dodged+' of them you had moved three times or more first. ':'')+
+      (sk.length?'<b>'+sk.length+'</b> '+(sk.length===1?'task is':'tasks are')+' being avoided right now. ':'')+
+      (lo.length?'<b>'+lo.length+'</b> left over from before today. ':'')+
+      (!sk.length&&!lo.length?'Nothing is stuck — the list is honest.':'')+
+    '</div></div>';
+  pad.appendChild(s1);
+  if(sk.length){
+    var s2=document.createElement("div");s2.className="sec";s2.innerHTML="<h2>Being avoided</h2>";
+    var card=document.createElement("div");card.className="card";card.style.padding="4px 16px";
+    sk.slice(0,6).forEach(function(it){
+      var r=document.createElement("div");r.className="sug";
+      r.innerHTML='<span class="em">'+(it.t.em||"📌")+'</span><div class="nm">'+esc(it.t.title)+'<small>'+(it.moves>=3?("moved "+it.moves+"\u00d7"):("sitting "+it.age+" days"))+' \u00b7 '+esc(lane(it.lane).name)+'</small></div>';
+      var b=document.createElement("button");b.className="link";b.textContent="Break down";b.onclick=function(){sheetSplit(it.t);};
+      var d=document.createElement("button");d.className="link";d.style.color="var(--late)";d.style.marginInlineStart="12px";d.textContent="Delete";d.onclick=function(){deleteTask(it.t);};
+      r.appendChild(b);r.appendChild(d);card.appendChild(r);
     });
-    s.appendChild(card);pad.appendChild(s);
-  });
+    s2.appendChild(card);pad.appendChild(s2);
+  }
+  if(log.length){
+    var s3=document.createElement("div");s3.className="sec";s3.innerHTML='<h2>Finished <button id="tog">'+(histOpen?"hide":"show all")+'</button></h2>';
+    var card3=document.createElement("div");card3.className="card";card3.style.padding="4px 16px";
+    (histOpen?log.slice(0,60):log.slice(0,6)).forEach(function(e){
+      var r=document.createElement("div");r.className="sug";
+      r.innerHTML='<span class="em">'+(e.em||"")+'</span><div class="nm">'+esc(e.title)+'<small>'+dstr(e.ts)+'</small></div>';
+      var rb=document.createElement("button");rb.className="link";rb.textContent="Again";rb.onclick=function(){if(S.tasks[e.id])addToToday(S.tasks[e.id]);else toast("That task was deleted");};
+      r.appendChild(rb);card3.appendChild(r);
+    });
+    s3.appendChild(card3);pad.appendChild(s3);
+    s3.querySelector("#tog").onclick=function(){histOpen=!histOpen;render();};
+  } else {
+    var e0=document.createElement("div");e0.className="sec";e0.innerHTML='<div class="card muted">Nothing finished yet. Tick something off and it shows up here.</div>';pad.appendChild(e0);
+  }
   var f=document.createElement("div");f.className="muted";f.style.cssText="text-align:center;padding:24px 0 0;font-size:12px";
-  f.innerHTML='Version '+BUILD+'<br>'+Object.keys(S.tasks).length+' tasks in the catalog · <button class="link" id="logout">Change code</button>';
+  f.innerHTML='Version '+BUILD+'<br>'+Object.keys(S.tasks).length+' tasks saved · <button class="link" id="logout">Change code</button>';
   pad.appendChild(f);$("logout").onclick=function(){localStorage.removeItem("maham_pin");location.reload();};
 }
 
@@ -640,6 +819,8 @@ function sheetPlace(t){
 function sheetRow(t){
   var w=where(S,t.id)||{lane:"today",index:0};
   sheet('<h3>'+esc(t.title)+'</h3>'+
+    (t.note?'<div class="muted" style="margin:-8px 0 14px;white-space:pre-wrap">'+esc(t.note)+'</div>':'')+
+    ((t.moves||0)>=2?'<div class="muted" style="margin:-8px 0 14px;color:var(--soon)">You\u2019ve moved this '+t.moves+' times.</div>':'')+
     '<div class="fld"><label>Move to</label><div class="opts" id="op"></div></div>'+
     '<div class="fld"><label>Order</label><div class="opts" id="ord"></div></div>'+
     '<div class="cta"><button class="btn" id="dn">✓ Done</button><button class="btn soft" id="ed" style="flex:0 0 auto">Edit</button><button class="btn red" id="rm" style="flex:0 0 auto">Remove</button></div>');
@@ -654,15 +835,19 @@ function sheetRow(t){
 }
 function sheetTask(t,preset){
   var isNew=!t;
-  var draft={title:t?t.title:(preset||""),em:t?t.em:"📌",cycle0:t?(t.cycle0||0):0};
+  var draft={title:t?t.title:(preset||""),em:t?t.em:"📌",cycle0:t?(t.cycle0||0):0,note:t?(t.note||""):"",ctx:t?(t.ctx||"any"):guessCtx(preset||"")};
   sheet('<h3>'+(isNew?"New task":"Edit task")+'</h3>'+
     '<div class="fld"><label>What is it?</label><input id="fT" placeholder="e.g. Follow up the vendor contract" value="'+esc(draft.title)+'"></div>'+
+    '<div class="fld"><label>Notes <span style="font-weight:400;opacity:.7">— numbers, links, what "done" means</span></label><textarea id="fN" placeholder="e.g. Ahmed 0555\u2026 — needs the quote before Thursday">'+esc(draft.note)+'</textarea></div>'+
+    '<div class="fld"><label>When can you do it?</label><div class="cats" id="fX"></div></div>'+
     '<div class="fld"><label>Icon</label><div class="cats" id="fE"></div></div>'+
     '<div class="fld"><label>Repeats every how many days? <span style="font-weight:400;opacity:.7">— leave 0 for a one-off</span></label><input id="fR" inputmode="numeric" value="'+(draft.cycle0||0)+'"></div>'+
     '<div class="cta"><button class="btn" id="fS">'+(isNew?"Add to Today":"Save")+'</button>'+(isNew?"":'<button class="btn red" id="fD" style="flex:0 0 auto">Delete</button>')+'</div>');
   var EM=["📌","📞","💧","🌱","🧾","🔧","🚗","🏠","💼","📄","💰","🛒","📦","📅","✍️","🎯","🧹","⚙️","🌴","🩺","📱","🎁","✈️","🔋"];
   function ems(){var c=$("fE");c.innerHTML="";EM.forEach(function(e){var b=document.createElement("button");b.textContent=e;b.style.fontSize="20px";b.className=draft.em===e?"on":"";b.onclick=function(){draft.em=e;ems();};c.appendChild(b);});}
   ems();
+  function ctxs(){var c=$("fX");c.innerHTML="";CTX.forEach(function(k){var b=document.createElement("button");b.textContent=(k.id==="any"?"":k.em+" ")+k.name;b.className=draft.ctx===k.id?"on":"";b.onclick=function(){draft.ctx=k.id;ctxs();};c.appendChild(b);});}
+  ctxs();
   $("fS").onclick=function(){
     var title=$("fT").value.trim();if(!title){$("fT").focus();return;}
     var cyc=Math.max(0,Math.min(730,parseInt($("fR").value,10)||0));
@@ -670,11 +855,10 @@ function sheetTask(t,preset){
       var dup=Object.keys(S.tasks).map(function(id){return S.tasks[id];}).filter(function(x){return normAr(x.title)===normAr(title);})[0];
       if(dup){closeSheet();query="";if(where(S,dup.id))toast("“"+dup.title+"” is already in "+lane(where(S,dup.id).lane).name);else{op("add",{id:dup.id,lane:"today"});toast("“"+dup.title+"” already exists — added to Today");}return;}
       var id="t:"+title+":"+uid().slice(-3);
-      op("task.add",{task:{id:id,title:title,em:draft.em,cycle:cyc,cycle0:cyc,doneAt:[],learned:0,dismissed:[],custom:true}});
-      op("add",{id:id,lane:"today"});
-      closeSheet();query="";toast("Added to Today");
+      op("task.add",{task:{id:id,title:title,em:draft.em,ctx:draft.ctx,note:$("fN").value.trim(),cycle:cyc,cycle0:cyc,doneAt:[],learned:0,dismissed:[],moves:0,custom:true}});
+      closeSheet();query="";addToToday(S.tasks[id]);
     } else {
-      op("task.update",{id:t.id,patch:{title:title,cycle0:cyc,cycle:t.learned?t.cycle:cyc,em:draft.em}});
+      op("task.update",{id:t.id,patch:{title:title,cycle0:cyc,cycle:t.learned?t.cycle:cyc,em:draft.em,note:$("fN").value.trim(),ctx:draft.ctx}});
       closeSheet();toast("Saved");
     }
   };
