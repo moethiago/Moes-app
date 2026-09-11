@@ -541,7 +541,7 @@ async function briefCallGroq(headlines, key) {
     return { parsed: briefParseJSON(text), usage: j.usage ? (j.usage.total_tokens || null) : null, model: 'groq/' + (j.model || 'llama-3.3-70b-versatile') };
   } finally { clearTimeout(timer); }
 }
-const BRIEF_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const BRIEF_GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 async function briefCallGemini(headlines, key) {
   let lastErr = null;
   for (const model of BRIEF_GEMINI_MODELS) {
@@ -597,7 +597,7 @@ async function handleBrief(req, res) {
   try {
     const cached = await kvGet(key);
     if (cached && !(build && force)) return res.status(200).json({ ok: true, cached: true, brief: cached });
-    if (!build) return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · Groq' });
+    if (!build) return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · SAR 0' });
     const n = await call(['INCR', 'brief:builds:' + date]); await call(['EXPIRE', 'brief:builds:' + date, '172800']);
     if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
     const { headlines, okSrc, failed } = await briefCollect();
