@@ -1,5 +1,6 @@
 // Local contract test for api/health-check.js — in-memory Upstash + mocked network. No real calls.
-const file = process.argv[2];
+import { pathToFileURL } from 'node:url'; import { resolve as _resolvePath } from 'node:path';
+const file = pathToFileURL(_resolvePath(process.cwd(), process.argv[2] || './api/health-check.js')).href; // resolve relative to where the command runs (CI runs from repo root)
 process.env.KV_REST_API_URL = "https://kv.mock"; process.env.KV_REST_API_TOKEN = "t";
 process.env.DEPLOY_SECRET = "moes-deploy-2026"; process.env.ANTHROPIC_API_KEY = "";
 const store = new Map(); const kvLog = [];
