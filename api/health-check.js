@@ -552,8 +552,10 @@ async function claudeScan(imgs, mime, extra) {
     return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system: SCAN_PROMPT + (extra || ""), messages: [{ role: "user", content }] })));
   };
   // slices go out together: total latency is the slowest slice, not the sum of them
-  const per = (await Promise.all(imgs.map((b, i) => one(b, i).catch(() => null)))).filter(Boolean);
-  if (!per.length) throw new Error("claude: no response");
+  // keep the first real error: swallowing it turns every failure into "no response"
+  let firstErr = null;
+  const per = (await Promise.all(imgs.map((b, i) => one(b, i).catch((e) => { if (!firstErr) firstErr = e; return null; })))).filter(Boolean);
+  if (!per.length) throw new Error("claude: " + (firstErr ? String(firstErr.message || firstErr).slice(0, 200) : "no response"));
   const merged = { items: [], receipt_total_sar: 0 };
   per.forEach((r) => {
     if (Array.isArray(r.items)) merged.items = merged.items.concat(r.items);
