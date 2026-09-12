@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="3.5", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.0", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -1167,8 +1167,8 @@ function queueScan(slices,preview){
 function queuedScan(){try{return JSON.parse(localStorage.getItem("maqadi_scanq")||"null");}catch(e){return null;}}
 function clearScanQ(){try{localStorage.removeItem("maqadi_scanq");}catch(e){}}
 async function sendScan(slices,preview,fromQueue){
-  var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
-  var r=await call({action:"scan",images:slices,mime:"image/jpeg",catalog:names,known:Object.keys(S.codes||{})},59000);
+  var r=await call({action:"scan",images:slices,mime:"image/jpeg",store:guessStoreForScan(),
+    candidates:buildCandidates(),known:Object.keys(S.codes||{})},59000);
   if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — صوّرها مفرودة وأقرب");
   clearScanQ();
   openScanReview(r,preview);
@@ -1195,12 +1195,15 @@ async function scanReceipt(file){
       rcptUI={mode:"idle",error:"ما فيه شبكة — حفظنا الصورة وبنقرأها أول ما ترجع الشبكة."};render();return;
     }
     try{
-      var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
-      var r=await call({action:"scan",images:slices,mime:"image/jpeg",catalog:names,known:Object.keys(S.codes||{})},59000);
+      var r=await call({action:"scan",images:slices,mime:"image/jpeg",store:guessStoreForScan(),
+        candidates:buildCandidates(),known:Object.keys(S.codes||{})},59000);
       if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — صوّرها مفرودة وأقرب");
       // the QR beats the reader on the money fields, because it is data not print
       if(z){if(z.total>0)r.total=z.total;if(z.vat!=null)r.vat=z.vat;if(z.seller)r.seller=z.seller;if(z.ts)r.date=String(z.ts).slice(0,10);r.fromQR=true;}
       clearScanQ();
+      if(r.solved&&r.solved.retake){
+        rcptUI={mode:"idle",error:"ما قدرت أتأكد من هذي القراءة — صوّرها مرة ثانية مفرودة وأقرب. ما سجّلنا شي."};render();return;
+      }
       openScanReview(r,preview);
     }catch(e){
       if(!navigator.onLine){queueScan(slices,preview);rcptUI={mode:"idle",error:"انقطعت الشبكة — حفظنا الصورة وبنقرأها أول ما ترجع."};render();return;}
@@ -1210,22 +1213,46 @@ async function scanReceipt(file){
     }
   });
 }
+/* The candidate set is the whole trick: the reader is choosing from things he was
+   actually buying, not transcribing an unknown language. Ticked cart first, then what
+   he buys at this shop, then last trip, then the rest of the catalogue. */
+function guessStoreForScan(){
+  var t=(S.trips||[])[0];
+  return (t&&t.store)||(S.stores&&S.stores[0])||"Other";
+}
+function buildCandidates(){
+  var store=guessStoreForScan(),out=[],seen={};
+  function add(id,inCart,qty){
+    if(seen[id]||!S.items[id])return;seen[id]=1;
+    var it=S.items[id],pr=lastPriceAt(it,store);
+    out.push({id:id,name:it.name,price:pr||0,qty:qty||1,inCart:!!inCart});
+  }
+  Object.keys(S.cart||{}).forEach(function(id){add(id,true,(S.list[id]||{}).qty||1);});
+  Object.keys(S.list||{}).forEach(function(id){add(id,true,(S.list[id]||{}).qty||1);});
+  var lt=(S.trips||[])[0];if(lt)(lt.items||[]).forEach(function(x){add(x.id,false,x.qty||1);});
+  Object.keys(S.items).forEach(function(id){var it=S.items[id];if(it.prices&&it.prices[store])add(id,false,1);});
+  Object.keys(S.items).forEach(function(id){add(id,false,1);});
+  return out.slice(0,200);
+}
 function openScanReview(r,preview){
-  var codes=S.codes||{},namesMap=S.names||{};
-  var lines=r.lines.map(function(l){
-    var it=null,how="";
+  var codes=S.codes||{},namesMap=S.names||{},sv=r.solved||{lines:[]};
+  var lines=r.lines.map(function(l,i){
+    var sl=sv.lines[i]||{},it=sl.itemId?S.items[sl.itemId]:null,how=sl.how||"";
+    // safety net: if the solver named a catalog item, link it even if the id drifted
+    if(!it&&sl.name){var byName=Object.keys(S.items).find(function(k){return normAr(S.items[k].name)===normAr(sl.name);});if(byName)it=S.items[byName];}
+    // a code or a name he has confirmed before overrides everything: it is not a guess
     if(l.code&&codes[l.code]&&S.items[codes[l.code]]){it=S.items[codes[l.code]];how="code";}
-    if(!it&&l.name_ar&&namesMap[normAr(l.name_ar)]&&S.items[namesMap[normAr(l.name_ar)]]){it=S.items[namesMap[normAr(l.name_ar)]];how="name";}
-    if(!it&&l.confidence!=="low"&&l.match){var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});if(id){it=S.items[id];how="match";}}
-    if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
-    return {itemId:it?it.id:null,name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,
+    else if(l.name_ar&&namesMap[normAr(l.name_ar)]&&S.items[namesMap[normAr(l.name_ar)]]){it=S.items[namesMap[normAr(l.name_ar)]];how="name";}
+    return {itemId:it?it.id:null,name:(it?it.name:(sl.name||l.name_ar||"")),printed:l.name_ar||"",code:l.code||null,
+            sure:!sl.doubt||!!it,how:how,doubt:(it?null:(sl.doubt||null)),
             qty:l.qty||1,unit:l.unit_price,total:l.line_total};
   });
   var when=r.date?new Date(r.date):new Date();if(isNaN(when.getTime()))when=new Date();
   var trip=recentTrip();
   rcptUI={mode:"review",data:{store:storeFromSeller(r.seller||r.store_raw),seller:r.seller||r.store_raw||"",vatNo:"",
     ts:when.getTime(),total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),vat:r.vat||null,
-    fromQR:!!r.fromQR,engine:r.engine||"",scanned:true,mismatch:r.mismatch||0,sum:r.sum||0,printed:r.total||0,
+    fromQR:!!r.fromQR,engine:r.engine||"",scanned:true,mismatch:r.mismatch||0,sum:sv.sum||r.sum||0,printed:r.total||0,
+    verified:!!sv.verified,totalOK:sv.totalOK,piecesOK:sv.piecesOK,pieces:sv.pieces||null,retake:!!sv.retake,
     tripId:trip?trip.id:null,lines:lines}};
   view="rcpt";render();
 }
@@ -1241,6 +1268,44 @@ function rReview(){
   var R=rcptUI.data;
   hd("راجع الفاتورة",'<b>'+money(R.total)+'</b>'+(R.vat?' · شامل ضريبة '+money(R.vat):'')+' · '+new Date(R.ts).toLocaleDateString("ar-SA-u-ca-gregory",{weekday:"long",day:"numeric",month:"long"}),[{icon:"→",label:"رجوع",fn:function(){rcptUI={mode:"idle"};render();}}]);
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
+  // THE VERDICT. He should be able to finish on this line alone.
+  if(R.scanned){
+    var vd=document.createElement("div");vd.className="sec";
+    var ok=R.verified,ask=R.lines.filter(function(l){return l.doubt;}).length;
+    vd.innerHTML='<div class="card" style="padding:18px;text-align:center">'
+      +'<div style="font-size:26px;font-weight:800;letter-spacing:-.5px">'+ar(R.lines.length)+' صنف · '+money(R.total)+'</div>'
+      +'<div style="margin-top:8px;font-size:14px;font-weight:700;color:'+(ok?'var(--go)':(ask?'var(--soon)':'var(--late)'))+'">'
+        +(ok?'مطابق ✓ — المجموع يطلع صح':(ask?'باقي '+ar(ask)+' سؤال بس':'المجموع ما طلع — راجع الأصناف'))+'</div>'
+      +(R.totalOK===false?'<div style="margin-top:6px;font-size:12.5px;color:var(--late)">مجموع الأسطر '+money(R.sum)+' والمكتوب '+money(R.printed)+'</div>':'')
+      +'<button class="link" id="vdet" style="margin-top:12px;font-size:12.5px">'+(rcptUI.open?'اخفِ الأصناف':'شوف الأصناف ('+ar(R.lines.length)+')')+'</button>'
+      +'</div>';
+    pad.appendChild(vd);
+    $("vdet").onclick=function(){rcptUI.open=!rcptUI.open;render();};
+  }
+  // the few questions, if any: one tap each, never an empty field
+  if(R.scanned){
+    var qs=R.lines.filter(function(l){return l.doubt;});
+    if(qs.length){
+      var qb=document.createElement("div");qb.className="sec";
+      qb.innerHTML="<h2>تأكيد سريع</h2>";
+      qs.forEach(function(l){
+        var i=R.lines.indexOf(l),opts=(l.doubt.options||[]);
+        var c=document.createElement("div");c.className="card";c.style.cssText="padding:14px;margin-bottom:10px";
+        c.innerHTML='<div style="font-size:13px;color:var(--dim)">مكتوب في الفاتورة: <b style="color:var(--ink)">'+esc(l.printed||"غير واضح")+'</b> · '+money(l.total)+'</div>'
+          +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap" id="q'+i+'"></div>';
+        qb.appendChild(c);
+        pad.appendChild(qb);
+        var row=c.querySelector("#q"+i);
+        opts.forEach(function(o){
+          var b=document.createElement("button");b.className="btn";b.style.cssText="flex:1 1 auto;padding:12px";b.textContent=o.name;
+          b.onclick=function(){l.itemId=o.id;l.name=o.name;l.doubt=null;l.sure=true;render();};row.appendChild(b);
+        });
+        var nb=document.createElement("button");nb.className="alt";nb.style.cssText="flex:1 1 auto;padding:12px";
+        nb.textContent=opts.length?"ولا واحد":"اختر الصنف";
+        nb.onclick=function(){sheetLink(l,function(){l.doubt=null;render();});};row.appendChild(nb);
+      });
+    }
+  }
   var src=document.createElement("div");src.className="sec";
   src.innerHTML='<div class="card" style="padding:12px;font-size:13px;line-height:1.7;color:var(--dim)">'+(R.scanned?('<b style="color:var(--go)">قرأنا '+ar(R.lines.length)+' صنف من الصورة</b>'+(R.fromQR?' · الإجمالي من رمز الفاتورة ✓':'')+(R.mismatch?'<br><span style="color:var(--late)">مجموع الأسطر '+money(R.sum)+' والإجمالي '+money(R.printed)+' — فرق '+money(Math.abs(R.mismatch))+'</span>':'')):"")+(R.fromQR&&!R.scanned?'<b style="color:var(--go)">من رمز الفاتورة ✓</b> '+(R.seller?esc(R.seller):'')+(R.vatNo?' · الرقم الضريبي '+esc(R.vatNo):''):'<b>إجمالي مكتوب بنفسك</b>')+'</div>';pad.appendChild(src);
   var st=document.createElement("div");st.className="sec";st.innerHTML="<h2>المتجر</h2>";
@@ -1263,7 +1328,9 @@ function rReview(){
     card.appendChild(d);
   });
   ls.appendChild(card);pad.appendChild(ls);
-  $("addLines").onclick=function(){sheetPickItems(R,function(){render();});};
+  var _al=$("addLines");if(_al)_al.onclick=function(){sheetPickItems(R,function(){render();});};
+  // a scanned receipt shows its verdict, not its rows - the rows are one tap away
+  if(R.scanned&&!rcptUI.open)ls.innerHTML="";
   var priced=R.lines.filter(function(l){return l.unit!=null;}),ps=priced.reduce(function(a,l){return a+l.unit*l.qty;},0);
   if(priced.length){var note=document.createElement("div");note.className="muted";note.style.cssText="margin-top:8px;font-size:12.5px";note.textContent="سجّلت "+ar(priced.length)+" سعر · مجموعها "+money(ps)+" من "+money(R.total);pad.appendChild(note);}
   var cta=document.createElement("div");cta.className="cta";
