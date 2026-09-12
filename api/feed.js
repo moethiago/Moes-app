@@ -513,6 +513,13 @@ async function briefFetchTrends() {
     return out;
   } catch { return []; }
 }
+async function briefCollectRSS() {
+  const settled = await Promise.allSettled(BRIEF_SOURCES.map(briefFetchSource));
+  const okSrc = [], failed = []; let all = [];
+  settled.forEach((r, i) => { const src = BRIEF_SOURCES[i]; if (r.status === 'fulfilled' && r.value.length) { okSrc.push(src.src + ' (' + src.cat + ')'); all = all.concat(r.value); } else failed.push(src.src + ' (' + src.cat + '): ' + (r.status === 'rejected' ? (r.reason && r.reason.message) : 'empty')); });
+  const headlines = briefRank(all); const trends = await briefFetchTrends();
+  return { headlines, okSrc, failed, trends };
+}
 async function briefAccounts() {
   const extra = await kvGet('brief:accounts');
   const list = BRIEF_X_DEFAULT.slice();
@@ -747,7 +754,7 @@ async function handleBrief(req, res) {
     if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
     // X blocks Vercel's IPs, so collection runs on a GitHub Actions runner (see .github/workflows/daily-brief.yml):
     // we dispatch it with a one-time nonce; it fetches the timelines and POSTs them back to ?brief=1&ingest=1.
-    if (process.env.GITHUB_TOKEN) {
+    if (process.env.GITHUB_TOKEN && String(req.query.rss || '') !== '1') {
       const st0 = await kvGet('brief:status:' + date);
       if (st0 && (st0.state === 'queued' || st0.state === 'ranking') && Date.now() - Number(st0.at || 0) < 4 * 60 * 1000) return res.status(202).json({ ok: true, queued: true, date, eta: 60, dedup: true });
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -759,8 +766,8 @@ async function handleBrief(req, res) {
       if (gh.status !== 204) { const t = await gh.text(); await kvSet('brief:status:' + date, { state: 'error', error: 'dispatch ' + gh.status + ': ' + t.slice(0, 200), at: Date.now() }, 30 * 60); return res.status(502).json({ ok: false, error: 'could not start the X collector (GitHub ' + gh.status + ')' }); }
       return res.status(202).json({ ok: true, queued: true, date, eta: 90 });
     }
-    // Fallback when no GitHub token: try collecting directly (works only where X does not block the egress IP)
-    const { headlines, okSrc, failed, trends } = await briefCollect();
+    // rss=1: collect from the news feeds directly on Vercel (the runner calls this when X blocks it). Otherwise try X directly.
+    const { headlines, okSrc, failed, trends } = String(req.query.rss || '') === '1' ? await briefCollectRSS() : await briefCollect();
     return await briefFinish(res, date, key, headlines, okSrc, failed, trends);
   } catch (e) {
     console.error('brief error:', e.message);
