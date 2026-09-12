@@ -63,7 +63,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
-const LITE_BLOCKED = ["receipt", "compare", "photoset"];
+const LITE_BLOCKED = ["receipt", "reconcile", "compare", "photoset"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
@@ -231,7 +231,6 @@ Schema:
  "total": <number, SAR, grand total paid> | null,
  "lines": [
    { "code": "<item code digits as printed>" | null,
-     "raw": "<every printed fragment for this item, verbatim>",
      "name_ar": "<product name exactly as printed>" | null,
      "confidence": "high" | "low",
      "qty": <number, default 1>,
@@ -258,9 +257,9 @@ ${names.join("\n")}`;
   const messages = [{ role: "user", content }];
 
   let out = null;
-  try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 8000, system, messages }))); } catch (e) { out = null; }
+  try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages }))); } catch (e) { out = null; }
   if (!out || !Array.isArray(out.lines) || !out.lines.length) {
-    out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 8000, system, messages })));
+    out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 4000, system, messages })));
   }
   await bump("receipts", 1);
 
@@ -289,8 +288,7 @@ ${names.join("\n")}`;
       known: !!code && knownSet.has(code),
     });
   }
-  out.lines = await reconcile({ store: out.store_raw || out.store, lines, names });
-  out.lines.forEach((l) => { delete l.known; });
+  out.lines = lines;
 
   // Reconcile: if the lines don't add up to the printed total, say so instead of
   // presenting a tidy screen that is quietly missing or double-counting an item.
@@ -459,6 +457,14 @@ async function maqadiHandler(req, res) {
       if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
       const out = await readReceipt(body);
       return res.status(200).json(out);
+    }
+    if (action === "reconcile") {
+      if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
+      const names = (body.catalog || []).slice(0, 400);
+      const lines = (Array.isArray(body.lines) ? body.lines : []).slice(0, 80).map((l) => ({ ...l, known: !!l.known }));
+      const out = await reconcile({ store: body.store, lines, names });
+      out.forEach((l) => { delete l.known; });
+      return res.status(200).json({ lines: out, unreadable: out.filter((l) => l.confidence === "low").length });
     }
     if (action === "compare") {
       if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
