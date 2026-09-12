@@ -682,6 +682,11 @@ async function handleBrief(req, res) {
   const date = briefRiyadhDate(); const key = 'brief:' + date;
   const build = String(req.query.build || '') === '1', force = String(req.query.force || '') === '1';
   try {
+    if (String(req.query.resetcap || '') === '1') {
+      const editCode = process.env.BRIEF_EDIT_CODE || process.env.DEPLOY_SECRET;
+      if (!editCode || String(req.query.code || '') !== editCode) return res.status(401).json({ ok: false, error: 'bad code' });
+      await call(['DEL', 'brief:builds:' + date]); return res.status(200).json({ ok: true, reset: true, date });
+    }
     if (String(req.query.accounts || '') === '1') {
       if (req.query.add || req.query.remove) {
         const editCode = process.env.BRIEF_EDIT_CODE || process.env.DEPLOY_SECRET; if (!editCode || String(req.query.code || '') !== editCode) return res.status(401).json({ ok: false, error: 'bad code' });
