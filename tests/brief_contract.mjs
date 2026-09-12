@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'; import { resolve as _resolvePath } fro
 const file = pathToFileURL(_resolvePath(process.cwd(), process.argv[2] || './api/feed.js')).href; // resolve relative to where the command runs (CI runs from repo root)
 process.env.KV_REST_API_URL = "https://kv.mock"; process.env.KV_REST_API_TOKEN = "t";
 process.env.GROQ_API_KEY = "test-key";
-const store = new Map(); let groqCalls = 0, geminiCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
+const store = new Map(); let ghDispatch = 0, ghStatus = 204; let groqCalls = 0, geminiCalls = 0, rssCalls = 0; let groqReply = null; let failSources = new Set(); let groqStatus = 200;
 const now = new Date();
 const WORDS = ['ministry','budget','oil','election','parliament','tariff','airline','rainfall','harvest','pipeline','summit','ceasefire','inflation','chip','satellite','port','tunnel','drought','vaccine','currency','census','railway','refinery','festival','tender','merger','strike','fleet','cabinet','reservoir'];
 let wi = 0; const distinct = () => { const a = WORDS[wi++ % WORDS.length], b = WORDS[(wi*7) % WORDS.length], c = WORDS[(wi*11+3) % WORDS.length]; return `${a}${wi} ${b}${wi}x ${c}${wi}y kq${wi}z`; };
@@ -21,6 +21,7 @@ globalThis.fetch = async (url, opts = {}) => {
     else if (op === "ZRANGE") result = [];
     return new Response(JSON.stringify({ result }), { status: 200 });
   }
+  if (url.includes("api.github.com") && url.includes("/dispatches")) { ghDispatch++; return ghStatus === 204 ? { status: 204, text: async () => "" } : new Response("{\"message\":\"nope\"}", { status: ghStatus }); }
   if (url.includes("generativelanguage.googleapis.com")) { geminiCalls++; if (url.includes("gemini-3.6-flash") && process.env.T_GEMINI25_404) return new Response(JSON.stringify({ error: { message: "model not found" } }), { status: 404 }); return new Response(JSON.stringify(groqStatus === 200 ? { usageMetadata: { totalTokenCount: 2100 }, candidates: [{ content: { parts: [{ text: groqReply }] } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   if (url.includes("api.groq.com")) { groqCalls++; return new Response(JSON.stringify(groqStatus === 200 ? { model: "llama-3.3-70b-versatile", usage: { total_tokens: 3210 }, choices: [{ message: { content: groqReply } }] } : { error: { message: "rate limited" } }), { status: groqStatus }); }
   if (url.includes("trends24.in")) { if (failSources.has("trends24_in")) return new Response("x", { status: 500 }); return new Response('<a class="trend-link" href="#">#الهلال_النصر</a><a class="trend-link">العراق</a><a class="trend-link">#اعلن_ترند_0570273243</a><a class="trend-link">#الهلال_النصر</a>', { status: 200 }); }
@@ -36,7 +37,7 @@ globalThis.fetch = async (url, opts = {}) => {
   return new Response(rss(name, 6), { status: 200 });
 };
 const mod = await import(file);
-function call(query) { return new Promise((resolve) => { const res = { code: 200, h: {}, setHeader(k, v) { this.h[k] = v; }, status(c) { this.code = c; return this; }, json(j) { resolve({ code: this.code, j, h: this.h }); }, end() { resolve({ code: this.code, j: null }); } }; mod.default({ method: "GET", query, body: {}, headers: {} }, res); }); }
+function call(query) { return new Promise((resolve) => { const res = { code: 200, h: {}, setHeader(k, v) { this.h[k] = v; }, status(c) { this.code = c; return this; }, json(j) { resolve({ code: this.code, j, h: this.h }); }, end() { resolve({ code: this.code, j: null }); } }; mod.default({ method: query.__method || "GET", query, body: query.__body || {}, headers: {} }, res); }); }
 let pass = 0, fail = 0; const failures = [];
 const check = (name, cond) => { if (cond) pass++; else { fail++; failures.push(name); } };
 const goodReply = () => JSON.stringify({ headline: "Test headline of the day", items: [1,2,3,4,5,6,7,8,9,10,11].map(n => ({ n, tier: n===1?"critical":n<5?"high":"watch", section: n%2?"Saudi Arabia":"World", title:"T"+n, what:"W"+n, why:"Y"+n })), also: [12,13,14,15,16,17,18,19,20,3,999].map(n => ({ n, section: n%3?"Sport":"Society", line: "L"+n })), trending: [{ topic: "#الهلال_النصر", what: "derby tonight" }, { topic: "العراق", what: "drone attack" }], bottomLine: "Watch X." });
@@ -107,4 +108,22 @@ r = await call({ brief: "1", build: "1", force: "1" }); check("cap reached -> 42
 r = await call({ brief: "1", resetcap: "1", code: "nope" }); check("resetcap wrong code -> 401", r.code === 401);
 r = await call({ brief: "1", resetcap: "1", code: "sekret" }); check("resetcap ok", r.code === 200 && r.j.reset === true);
 r = await call({ brief: "1", build: "1", force: "1" }); check("build works again after reset", r.code === 200 && r.j.built === true);
+// 15. runner path: with GITHUB_TOKEN, build dispatches the workflow and returns 202; ingest completes it
+store.clear(); resetCap(); process.env.GITHUB_TOKEN = "ghp_test"; process.env.GROQ_API_KEY = "test-key"; groqReply = goodReply(); const rss15 = rssCalls, g15 = groqCalls;
+r = await call({ brief: "1", build: "1" }); check("build with token -> 202 queued, workflow dispatched, no direct X fetch, no model call", r.code === 202 && r.j.queued === true && ghDispatch === 1 && rssCalls === rss15 && groqCalls === g15);
+const nonceKey = [...store.keys()].find(k => k.startsWith("brief:nonce:")); check("nonce stored", !!nonceKey);
+r = await call({ brief: "1" }); check("read shows queued status", r.j.cached === false && r.j.status && r.j.status.state === "queued");
+r = await call({ brief: "1", ingest: "1", __method: "GET" }); check("ingest via GET -> 405", r.code === 405);
+r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: "wrong", tweets: [] } }); check("ingest wrong nonce -> 401", r.code === 401);
+const mk = (n, cat) => ({ title: `kq${n}a kq${n}b kq${n}c unique post ${n}`, url: "https://x.com/u/status/" + n, src: "@acc" + (n % 5), cat, weight: 8, publishedAt: Math.floor(Date.now() / 1000) - 3600, likes: n, rts: 1 });
+const tweets = [...Array(40)].map((_, i) => mk(i, i % 2 ? "KSA" : "WORLD")).concat([{ ...mk(99, "KSA"), publishedAt: Math.floor(Date.now() / 1000) - 40 * 3600 }]);
+r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: store.get(nonceKey), tweets, okSrc: ["@a (KSA, 20)"], failed: ["@b (KSA): HTTP 429"] } });
+check("ingest with nonce -> built, old post dropped, sources passed through", r.code === 200 && r.j.built === true && r.j.brief.headlinesSeen === 40 && r.j.brief.sources.failed[0] === "@b (KSA): HTTP 429" && groqCalls === g15 + 1);
+check("nonce consumed (single use)", !store.has(nonceKey));
+r = await call({ brief: "1" }); check("read after ingest -> cached brief", r.j.cached === true && r.j.brief.items.length === 10);
+r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: "x", tweets } }); check("replay -> 401", r.code === 401);
+ghStatus = 500; r = await call({ brief: "1", build: "1", force: "1" }); check("dispatch failure -> 502 with status error", r.code === 502 && (await (async()=>{const st=JSON.parse(store.get([...store.keys()].find(k=>k.startsWith("brief:status:"))));return st.state==="error";})())); ghStatus = 204;
+r = await call({ brief: "1", build: "1", force: "1" }); const nk2 = [...store.keys()].find(k => k.startsWith("brief:nonce:"));
+r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: store.get(nk2), tweets: tweets.slice(0, 3) } }); check("too few posts -> 503 and status error", r.code === 503);
+delete process.env.GITHUB_TOKEN;
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILURES:", failures); process.exit(1); }
