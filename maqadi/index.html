@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="2.4", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY, SLICE_BUDGET=8;
+var BUILD_ID="2.5", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.15,item:.5}, FRESH=21*DAY, SLICE_BUDGET=8;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -320,6 +320,10 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function toast(m,long,action){var t=$("toast");t.textContent=m;if(action){var b=document.createElement("button");b.textContent=action.label;b.onclick=function(){t.classList.remove("show");action.fn();};t.appendChild(b);}t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove("show");},action?4500:(long?3600:2000));}
 function normAr(s){return String(s||"").replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[()،,.\-_/]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
 function tokens(s){return normAr(s).split(" ").filter(function(t){return t.length>1&&!/^[0-9٠-٩]+$/.test(t)&&["الدسم","اي","نوع","للحلا","حبه","حبات","لتر","كيلو","كجم","جم","مل","علبه","كيس","باكيت"].indexOf(t)<0;});}
+// Brand and size words say nothing about WHAT the product is. "حلبة المراعي" must not
+// become "لبنة المراعي" because they share a brand.
+var NOISE_WORDS=["المراعي","نادك","الصافي","نجد","نستله","الطازج","التنمية","بيتي","الخير","لايت","طازج","فاخر","انتاج","برجر","صحن","صحين","بر","كبير","صغير","وسط","جرام","غرام","ربطه","ريشه","ملون","احمر","اصفر","اخضر","ابيض","اسود"];
+function coreTokens(s){return tokens(s).filter(function(t){return NOISE_WORDS.indexOf(t)<0;}).map(function(t){return t.length>4?t.replace(/^ال/,""):t;});}
 function qual(tk){return tk.indexOf("قليل")>=0?"low":(tk.indexOf("كامل")>=0?"full":(tk.indexOf("خالي")>=0?"skim":null));}
 
 function seed(){
@@ -518,18 +522,20 @@ function monthSpend(offset){
   return {sum:sum,n:n,byStore:byStore,label:d.toLocaleDateString("ar-SA-u-ca-gregory",{month:"long"})};
 }
 function matchCatalog(name){
-  var tk=tokens(name);if(!tk.length)return null;
-  var rq=qual(tk),best=null,bs=0,bt=0;
+  // Match on the words that name the product, never on brand/size/colour words alone.
+  var tk=coreTokens(name);if(!tk.length)return null;
+  var rq=qual(tokens(name)),best=null,bs=0,bt=0;
   Object.keys(S.items).forEach(function(id){
-    var it=S.items[id],ct=tokens(it.name);if(!ct.length)return;
-    var hit=0;ct.forEach(function(c){if(tk.some(function(t){return c===t||(c.length>2&&t.length>2&&(c.indexOf(t)===0||t.indexOf(c)===0));}))hit++;});
+    var it=S.items[id],ct=coreTokens(it.name);if(!ct.length)return;
+    var hit=0;ct.forEach(function(c){if(tk.some(function(t){return c===t||(c.length>3&&t.length>3&&(c.indexOf(t)===0||t.indexOf(c)===0));}))hit++;});
     if(!hit)return;
-    var s=hit/ct.length, cq=qual(ct);
+    var s=hit/ct.length, cq=qual(tokens(it.name));
     if(rq&&cq&&rq!==cq)s*=.4;
     var tie=hit/tk.length;
     if(s>bs||(s===bs&&tie>bt)){bs=s;bt=tie;best=it;}
   });
-  return bs>=.5?best:null;
+  // every product word of the catalog item must be present - a half match is a guess
+  return bs>=.99?best:null;
 }
 
 /* =================================================================
@@ -796,7 +802,7 @@ function rShots(){
   grid.appendChild(add);g.appendChild(grid);pad.appendChild(g);
   var cta=document.createElement("div");cta.className="cta";
   var b=document.createElement("button");b.className="btn";
-  b.textContent=sh.length?"\u0627\u0642\u0631\u0623 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 ("+ar(sh.length)+")":"\u0635\u0648\u0651\u0631 \u0623\u0648\u0644\u0627\u064b";
+  b.innerHTML=sh.length?"\u0627\u0642\u0631\u0623 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 ("+ar(sh.length)+') <small style="opacity:.8">\u2248 '+money(COST.receipt)+'</small>':"\u0635\u0648\u0651\u0631 \u0623\u0648\u0644\u0627\u064b";
   b.disabled=!sh.length;
   b.onclick=function(){readReceipt(sh.map(function(x){return x.file;}));};
   cta.appendChild(b);pad.appendChild(cta);
