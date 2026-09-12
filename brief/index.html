@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Brief</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Brief">
+<meta name="theme-color" content="#16140f">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#16140f;--card:#1f1c16;--raised:#262219;--border:#332f27;--border-hi:#46413a;--txt:#f2ede1;--txt2:#8c8472;--muted:#5a5446;--amber:#ffb627;--amber-dim:#c98f1c;--rust:#d4541f;--red:#ff3b30}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 30px)}
+.mono{font-family:'IBM Plex Mono',monospace}
+.top{position:sticky;top:0;z-index:5;background:rgba(22,20,15,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px}
+.top .brand{font-family:Oswald,sans-serif;font-weight:700;font-size:20px;letter-spacing:2px;text-transform:uppercase}
+.top .brand b{color:var(--amber)}
+.top button{background:none;border:1px solid var(--border-hi);color:var(--txt2);border-radius:8px;padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px}
+.empty{padding:48px 20px;text-align:center;color:var(--txt2);font-size:14px}
+.sub{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.5px}
+.spin{width:22px;height:22px;border:2px solid var(--border-hi);border-top-color:var(--amber);border-radius:50%;margin:0 auto 14px;animation:s .8s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+.hero,.head{padding:22px 18px 14px;border-bottom:1px solid var(--border)}
+.kicker{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2.5px;color:var(--amber);font-weight:600}
+.date{font-family:Oswald,sans-serif;font-size:26px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-top:6px}
+.meta{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.8px;color:var(--muted);margin-top:6px}
+.herotxt{margin:18px 0 16px;color:var(--txt2);font-size:14px}
+.build{width:100%;padding:16px;border:none;border-radius:10px;background:var(--amber);color:#000;font-family:Oswald,sans-serif;font-size:16px;font-weight:700;letter-spacing:1.5px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.cost{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;font-weight:600;opacity:.75}
+.link{padding:14px 18px;font-size:12px;color:var(--txt2);text-decoration:underline}
+.err{margin:12px 14px 0;padding:12px 14px;border:1px solid var(--rust);border-radius:8px;font-size:13px;background:rgba(212,84,31,.12)}
+.err b{color:var(--amber);margin-left:6px}
+.topline{padding:16px 18px;background:var(--card);border-bottom:1px solid var(--border)}
+.lbl{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:2px;color:var(--muted);font-weight:600}
+.topline p{margin:8px 0 0;font-size:17px;line-height:1.35;font-weight:600}
+.sec{padding:18px 14px 2px}.sec .lbl{padding:0 4px 8px;color:var(--amber-dim)}
+.item{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border-hi);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.item.critical{border-left-color:var(--red)}.item.high{border-left-color:var(--amber)}
+.irow{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.6px;color:var(--muted)}
+.rank{color:var(--txt);font-weight:700}
+.tier{font-weight:700;padding:1px 6px;border-radius:4px;background:var(--raised);color:var(--txt2)}
+.critical .tier{background:rgba(255,59,48,.18);color:var(--red)}.high .tier{background:rgba(255,182,39,.16);color:var(--amber)}
+.src{margin-left:auto}
+.title{margin-top:8px;font-size:15.5px;font-weight:700;line-height:1.3}
+.what{margin-top:6px;font-size:13.5px;line-height:1.45;opacity:.9}
+.why{margin-top:8px;font-size:13px;line-height:1.45;color:var(--txt2)}
+.why span{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--amber-dim);font-weight:600;margin-bottom:2px}
+.trow{display:flex;gap:10px;align-items:baseline;padding:7px 4px;border-bottom:1px solid var(--border)}
+.ttag{font-weight:700;font-size:13.5px;color:var(--amber);white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.twhat{font-size:12.5px;color:var(--txt2);line-height:1.35}
+.also{margin:16px 14px 0;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:6px 0 8px}
+.ahead{display:flex;flex-direction:column;gap:2px;padding:10px 14px 6px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--amber);font-weight:600}
+.ahead span{font-size:8.5px;letter-spacing:1px;color:var(--muted)}
+.asec{padding:12px 14px 4px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1.8px;color:var(--muted);font-weight:600}
+.aline{display:grid;grid-template-columns:8px 1fr auto;gap:8px;align-items:start;padding:7px 14px;text-decoration:none;color:inherit;border-top:1px solid var(--border)}
+.adot{width:5px;height:5px;border-radius:50%;background:var(--amber-dim);margin-top:7px}
+.atxt{font-size:13.5px;line-height:1.4}
+.asrc{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);white-space:nowrap;margin-top:4px;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.bottom{margin:12px 14px 0;padding:14px;border:1px solid var(--amber);border-radius:10px;background:rgba(255,182,39,.06)}
+.bottom p{margin:8px 0 0;font-size:14px;line-height:1.45}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 18px 0;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);letter-spacing:.5px}
+.foot button{border:1px solid var(--border-hi);background:none;color:var(--txt2);font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:1px;padding:6px 10px;border-radius:6px}
+/* accounts */
+.acc{padding:14px}
+.acc h2{font-family:Oswald,sans-serif;font-size:18px;letter-spacing:1.5px;text-transform:uppercase;margin:6px 4px 12px}
+.acc .row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.acc .h{font-weight:600;font-size:14px;flex:1}
+.acc .c{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--txt2);padding:2px 6px;border:1px solid var(--border-hi);border-radius:4px}
+.acc .x{background:none;border:none;color:var(--rust);font-size:18px;padding:0 4px}
+.acc .add{display:grid;grid-template-columns:1fr auto;gap:8px;margin:14px 0 6px}
+.acc input,.acc select{background:var(--raised);border:1px solid var(--border-hi);color:var(--txt);border-radius:8px;padding:12px;font-size:16px;font-family:inherit}
+.acc .go{background:var(--amber);color:#000;border:none;border-radius:8px;padding:12px 16px;font-family:Oswald,sans-serif;font-weight:700;letter-spacing:1px}
+.acc .note{font-size:12px;color:var(--txt2);margin:8px 4px}
+.hid{display:none}
+[dir=auto]{unicode-bidi:plaintext}
+</style>
+</head>
+<body>
+<div class="top"><div class="brand"><b>B</b>RIEF</div><button id="btnAcc" onclick="toggleAccounts()">ACCOUNTS</button></div>
+<div id="body"></div>
+<div id="acc" class="acc hid"></div>
+<script>
+var API = 'https://moes-app-two.vercel.app/api/feed?brief=1';
+var LS = 'brief_last', LSCODE = 'brief_code';
+var S = { loading: false, accOpen: false };
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function ago(ts){var h=Math.max(0,Math.round((Date.now()/1000-ts)/3600));return h<1?'now':h<24?h+'h':Math.round(h/24)+'d';}
+function stamp(ms){return new Date(ms).toLocaleString('en-GB',{timeZone:'Asia/Riyadh',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).toUpperCase()+' AST';}
+function dateLine(d){return new Date(d+'T03:00:00Z').toLocaleDateString('en-GB',{timeZone:'Asia/Riyadh',weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function last(){try{return JSON.parse(localStorage.getItem(LS)||'null');}catch(e){return null;}}
+function save(b){try{localStorage.setItem(LS,JSON.stringify(b));}catch(e){}}
+function $(id){return document.getElementById(id);}
+
+function load(){
+  if(S.loading)return; S.loading=true; var l=last();
+  if(l)render(l,{stale:true}); else $('body').innerHTML='<div class="empty">Checking for today\'s brief…</div>';
+  fetch(API,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    S.loading=false;
+    if(j&&j.ok&&j.cached&&j.brief){save(j.brief);render(j.brief,{});}
+    else if(j&&j.ok&&!j.cached)prompt(j.date,l);
+    else error((j&&j.error)||'Brief unavailable',l,false);
+  }).catch(function(){S.loading=false;error('Offline — showing last saved brief',l,false);});
+}
+function build(force){
+  if(S.loading)return; S.loading=true;
+  $('body').innerHTML='<div class="empty"><div class="spin"></div>Reading your X accounts, ranking for you…<div class="sub">USUALLY 20–60 SECONDS · SAR 0</div></div>';
+  fetch(API+'&build=1'+(force?'&force=1':''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    S.loading=false;
+    if(j&&j.ok&&j.brief){save(j.brief);render(j.brief,{});} else error((j&&j.error)||'Build failed',null,true);
+  }).catch(function(){S.loading=false;error('Network error while building',null,true);});
+}
+function prompt(date,l){
+  $('body').innerHTML='<div class="hero"><div class="kicker">DAILY BRIEF</div><div class="date">'+esc(dateLine(date))+'</div><div class="herotxt">No brief prepared for today yet. It builds itself at 05:30 — or now:</div><button class="build" onclick="build(false)">PREPARE TODAY\'S BRIEF<span class="cost">FREE · SAR 0</span></button></div>'+(l?'<div class="link" onclick="render(last(),{stale:true})">Show the last brief ('+esc(l.date)+')</div>':'');
+}
+function error(msg,l,retry){
+  var h='<div class="err">'+esc(msg)+(retry?'<b onclick="build(true)">Retry</b>':'')+'</div>';
+  if(l){render(l,{stale:true});$('body').insertAdjacentHTML('afterbegin',h);}else $('body').innerHTML=h;
+}
+var ORDER=['Saudi Arabia','Gulf & Oil','World','Markets','Tech & AI','Sport','Society','Motorsport'];
+function render(b,o){
+  if(!b)return; var secs={}; (b.items||[]).forEach(function(it){(secs[it.section]=secs[it.section]||[]).push(it);});
+  var h='<div class="head"><div class="kicker">DAILY BRIEF'+(o.stale?' · SAVED COPY':'')+'</div><div class="date">'+esc(dateLine(b.date))+'</div><div class="meta">PREPARED '+esc(stamp(b.generatedAt))+' · '+esc(b.headlinesSeen||0)+' POSTS · '+esc((b.sources&&b.sources.ok||[]).length)+' ACCOUNTS</div></div>';
+  h+='<div class="topline"><div class="lbl">TOP LINE</div><p>'+esc(b.headline)+'</p></div>';
+  ORDER.forEach(function(sec){var L=secs[sec];if(!L||!L.length)return;h+='<div class="sec"><div class="lbl">'+esc(sec.toUpperCase())+'</div>';
+    L.forEach(function(it){h+='<a class="item '+esc(it.tier)+'" href="'+esc(it.url)+'" target="_blank" rel="noopener"><div class="irow"><span class="rank">'+esc(it.rank)+'</span><span class="tier">'+esc(it.tier.toUpperCase())+'</span><span class="src">'+esc(it.source)+' · '+ago(it.publishedAt)+'</span></div><div class="title">'+esc(it.title)+'</div><div class="what">'+esc(it.what)+'</div><div class="why"><span>WHY IT MATTERS</span>'+esc(it.why)+'</div></a>';});
+    h+='</div>';});
+  if(b.trending&&b.trending.length){h+='<div class="sec"><div class="lbl">SAUDI X RIGHT NOW</div>';b.trending.forEach(function(t){h+='<div class="trow"><span class="ttag" dir="auto">'+esc(t.topic)+'</span><span class="twhat">'+esc(t.what)+'</span></div>';});h+='</div>';}
+  if(b.also&&b.also.length){var A={};b.also.forEach(function(a){(A[a.section]=A[a.section]||[]).push(a);});
+    h+='<div class="also"><div class="ahead">ALSO TODAY<span>'+b.also.length+' MORE — SO NOTHING IS NEW TO YOU TONIGHT</span></div>';
+    ORDER.forEach(function(sec){var L=A[sec];if(!L||!L.length)return;h+='<div class="asec">'+esc(sec.toUpperCase())+'</div>';L.forEach(function(a){h+='<a class="aline" href="'+esc(a.url)+'" target="_blank" rel="noopener"><span class="adot"></span><span class="atxt">'+esc(a.line)+'</span><span class="asrc">'+esc(a.source)+'</span></a>';});});
+    h+='</div>';}
+  if(b.bottomLine)h+='<div class="bottom"><div class="lbl">BOTTOM LINE · NEXT 24H</div><p>'+esc(b.bottomLine)+'</p></div>';
+  h+='<div class="foot">'+esc(b.engine||'')+(b.tokens?' · '+esc(b.tokens)+' TOKENS':'')+' · SAR 0<button onclick="build(true)">REBUILD · FREE</button></div>';
+  if(b.sources&&b.sources.failed&&b.sources.failed.length)h+='<div class="foot" style="margin-top:8px">NOT REACHED: '+esc(b.sources.failed.map(function(f){return f.split(' ')[0];}).join(' '))+'</div>';
+  $('body').innerHTML=h; window.scrollTo(0,0);
+}
+/* ---- accounts ---- */
+function toggleAccounts(){S.accOpen=!S.accOpen;$('acc').classList.toggle('hid',!S.accOpen);$('body').classList.toggle('hid',S.accOpen);$('btnAcc').textContent=S.accOpen?'BRIEF':'ACCOUNTS';if(S.accOpen)loadAccounts();}
+function loadAccounts(){$('acc').innerHTML='<div class="empty">Loading accounts…</div>';fetch(API+'&accounts=1',{cache:'no-store'}).then(function(r){return r.json();}).then(renderAccounts).catch(function(){$('acc').innerHTML='<div class="err">Could not load accounts</div>';});}
+function renderAccounts(j){
+  if(!j||!j.ok){$('acc').innerHTML='<div class="err">'+esc((j&&j.error)||'error')+'</div>';return;}
+  var h='<h2>X accounts the brief reads</h2>';
+  h+='<div class="add"><input id="newH" placeholder="@handle" autocapitalize="none" autocorrect="off"><button class="go" onclick="addAcc()">ADD</button></div>';
+  h+='<div class="add" style="grid-template-columns:1fr 1fr"><select id="newC"><option value="VOICE">Saudi voice</option><option value="KSA">Saudi news</option><option value="GULF">Gulf</option><option value="WORLD">World</option><option value="MARKETS">Markets</option><option value="SPORT">Sport</option><option value="TECH">Tech</option></select><input id="code" type="password" placeholder="edit code" value="'+esc(localStorage.getItem(LSCODE)||'')+'"></div>';
+  h+='<div class="note">Removing takes an account out of tomorrow\'s brief. Additions are read on the next build.</div>';
+  var cats={KSA:'SAUDI NEWS',VOICE:'SAUDI VOICE',GULF:'GULF',WORLD:'WORLD',MARKETS:'MARKETS',SPORT:'SPORT',TECH:'TECH'};
+  var order=['VOICE','KSA','GULF','WORLD','MARKETS','SPORT','TECH'];
+  order.forEach(function(c){j.accounts.filter(function(a){return a.cat===c;}).forEach(function(a){h+='<div class="row"><span class="h">@'+esc(a.handle)+'</span><span class="c">'+esc(cats[a.cat]||a.cat)+'</span><button class="x" onclick="rmAcc(\''+esc(a.handle)+'\')">×</button></div>';});});
+  $('acc').innerHTML=h;
+}
+function code(){var c=$('code')&&$('code').value.trim();if(c)try{localStorage.setItem(LSCODE,c);}catch(e){}return c||localStorage.getItem(LSCODE)||'';}
+function addAcc(){var hnd=$('newH').value.trim().replace(/^@/,'');if(!hnd)return;edit('&add='+encodeURIComponent(hnd)+'&cat='+encodeURIComponent($('newC').value));}
+function rmAcc(hnd){if(!confirm('Remove @'+hnd+' from the brief?'))return;edit('&remove='+encodeURIComponent(hnd));}
+function edit(q){fetch(API+'&accounts=1'+q+'&code='+encodeURIComponent(code()),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok)renderAccounts(j);else alert((j&&j.error)==='bad code'?'Wrong edit code.':(j&&j.error)||'Failed');}).catch(function(){alert('Network error');});}
+load();
+</script>
+</body>
+</html>
