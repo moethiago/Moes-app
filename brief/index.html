@@ -109,9 +109,21 @@ function build(force){
   if(S.loading)return; S.loading=true;
   $('body').innerHTML='<div class="empty"><div class="spin"></div>Reading your X accounts, ranking for you…<div class="sub">USUALLY 20–60 SECONDS · SAR 0</div></div>';
   fetch(API+'&build=1'+(force?'&force=1':''),{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
-    S.loading=false;
-    if(j&&j.ok&&j.brief){save(j.brief);render(j.brief,{});} else error((j&&j.error)||'Build failed',null,true);
+    if(j&&j.ok&&j.brief){S.loading=false;save(j.brief);render(j.brief,{});}
+    else if(j&&j.ok&&j.queued){poll(0);}
+    else{S.loading=false;error((j&&j.error)||'Build failed',null,true);}
   }).catch(function(){S.loading=false;error('Network error while building',null,true);});
+}
+var STEPS={queued:'Waking the collector…',ranking:'Ranking the posts for you…'};
+function poll(n){
+  if(n>40){S.loading=false;error('Still building — pull down in a minute',last(),true);return;}
+  setTimeout(function(){fetch(API,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.ok&&j.cached&&j.brief){S.loading=false;save(j.brief);render(j.brief,{});return;}
+    var st=j&&j.status; if(st&&st.state==='error'){S.loading=false;error(st.error||'Build failed',last(),true);return;}
+    var sub=$('body').querySelector('.sub'); var msg=(st&&STEPS[st.state])||'Collecting from X on the runner…';
+    $('body').innerHTML='<div class="empty"><div class="spin"></div>'+esc(msg)+'<div class="sub">'+(n*5)+'S · USUALLY 60–120 SECONDS · SAR 0</div></div>';
+    poll(n+1);
+  }).catch(function(){poll(n+1);});},5000);
 }
 function prompt(date,l){
   $('body').innerHTML='<div class="hero"><div class="kicker">DAILY BRIEF</div><div class="date">'+esc(dateLine(date))+'</div><div class="herotxt">No brief prepared for today yet. It builds itself at 05:30 — or now:</div><button class="build" onclick="build(false)">PREPARE TODAY\'S BRIEF<span class="cost">FREE · SAR 0</span></button></div>'+(l?'<div class="link" onclick="render(last(),{stale:true})">Show the last brief ('+esc(l.date)+')</div>':'');
