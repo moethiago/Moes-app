@@ -40,7 +40,8 @@ const rows=()=>page.evaluate(()=>[...document.querySelectorAll(".line")].map(d=>
 /* 1 — the screen promises one capture and nothing else */
 await boot(); let t=await body();
 check("idle: one-capture wording",/صورة واحدة/.test(t));
-check("idle: no paste, no parts, no multi-step",!/الصق|أجزاء|الجزء التالي/.test(t));
+check("idle: no pasting and no multi-step wizard",!/الصق|الجزء التالي/.test(t));
+check("idle: offers the photo library for long receipts",/الاستوديو/.test(t)&&await page.evaluate(()=>!!document.querySelector("#libIn[multiple]")));
 // v3.3: no screen may offer a QR scan as the way in
 const allScreens = [];
 for (const nm of ["\u062e\u0644\u0635", "\u0627\u0644\u0637\u0644\u0639\u0629", "\u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629", "\u0627\u0644\u0628\u064a\u062a"]) {
