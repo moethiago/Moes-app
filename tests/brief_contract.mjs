@@ -120,6 +120,8 @@ const tweets = [...Array(40)].map((_, i) => mk(i, i % 2 ? "KSA" : "WORLD")).conc
 r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: store.get(nonceKey), tweets, okSrc: ["@a (KSA, 20)"], failed: ["@b (KSA): HTTP 429"] } });
 check("ingest with nonce -> built, old post dropped, sources passed through", r.code === 200 && r.j.built === true && r.j.brief.headlinesSeen === 40 && r.j.brief.sources.failed[0] === "@b (KSA): HTTP 429" && groqCalls === g15 + 1);
 check("nonce consumed (single use)", !store.has(nonceKey));
+r = await call({ brief: "1", build: "1", force: "1" }); const gd = ghDispatch; r = await call({ brief: "1", build: "1", force: "1" }); check("second build while queued -> 202 dedup, no second dispatch", r.code === 202 && r.j.dedup === true && ghDispatch === gd);
+{ const nk = [...store.keys()].find(k => k.startsWith("brief:nonce:")); r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: store.get(nk), tweets } }); }
 r = await call({ brief: "1" }); check("read after ingest -> cached brief", r.j.cached === true && r.j.brief.items.length === 10);
 r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: "x", tweets } }); check("replay -> 401", r.code === 401);
 ghStatus = 500; r = await call({ brief: "1", build: "1", force: "1" }); check("dispatch failure -> 502 with status error", r.code === 502 && (await (async()=>{const st=JSON.parse(store.get([...store.keys()].find(k=>k.startsWith("brief:status:"))));return st.state==="error";})())); ghStatus = 204;
