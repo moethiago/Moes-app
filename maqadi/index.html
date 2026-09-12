@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="2.2", BUILD=BUILD_ID+" · ١١ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
+var BUILD_ID="2.3", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.05,item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -328,9 +328,9 @@ function seed(){
     var id=c.id+":"+x[0];
     items[id]={id:id,name:x[0],cat:c.id,em:x[2],cycle:x[1],last:null,buys:[],prices:{},learned:0};
   });});
-  return {items:items,list:{},cart:{},receipts:[],photoV:0,created:Date.now()};
+  return {items:items,list:{},cart:{},receipts:[],codes:{},photoV:0,created:Date.now()};
 }
-function norm(st){st=st||{};if(!st.items||!Object.keys(st.items).length)return migrate(seed());st.list=st.list||{};st.cart=st.cart||{};st.receipts=st.receipts||[];st.trips=st.trips||[];st.stores=st.stores||[];st.photoV=st.photoV||0;return migrate(st);}
+function norm(st){st=st||{};if(!st.items||!Object.keys(st.items).length)return migrate(seed());st.list=st.list||{};st.cart=st.cart||{};st.receipts=st.receipts||[];st.trips=st.trips||[];st.stores=st.stores||[];st.codes=st.codes||{};st.photoV=st.photoV||0;return migrate(st);}
 function migrate(st){
   if((st.catalogV||1)>=CATALOG_V)return st;
   if((st.catalogV||1)>=2){ Object.keys(st.items).forEach(function(id){var it=st.items[id];if(!it.brands)it.brands=seedBrands(it.name);}); st.catalogV=CATALOG_V; return st; }
@@ -405,6 +405,7 @@ function apply(st,op){
       break;
     case "suggest.dismiss": if(st.items[p.id]){var d=st.items[p.id];d.dismissed=(d.dismissed||[]).concat([op.ts]).slice(-6);} break;
     case "trip.add": st.trips=[p.trip].concat(st.trips||[]).slice(0,30); break;
+    case "codes.learn": st.codes=st.codes||{};Object.keys(p.codes||{}).forEach(function(c){if(p.codes[c])st.codes[c]=p.codes[c];}); break;
     case "receipt.add": st.receipts=[p.receipt].concat(st.receipts).slice(0,40); break;
     case "receipt.compare": st.receipts.forEach(function(r){if(r.id===p.rid){r.compare=p.results;r.comparedAt=op.ts;}}); break;
   }
@@ -763,6 +764,17 @@ function rReview(){
   var R=rcptUI.data;
   hd("راجع الفاتورة",'<b>'+ar(R.lines.length)+'</b> صنف · '+money(R.total));
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
+  // Say it out loud when the reading is incomplete, instead of showing a tidy screen
+  // that is quietly missing an item or double-counting one.
+  var unsure=R.lines.filter(function(l){return !l.sure&&!l.itemId;}).length;
+  if(R.mismatch||unsure){
+    var wb=document.createElement("div");wb.className="sec";
+    var msg=[];
+    if(unsure)msg.push("في <b>"+ar(unsure)+"</b> سطر ما قدرنا نقرأ اسمه من الورقة — اختر الصنف بنفسك وبنحفط رمزه علشان ما يتكرر");
+    if(R.mismatch)msg.push("مجموع الأسطر "+money(R.sum)+" والمكتوب على الفاتورة "+money(R.printed)+" — فرق "+money(Math.abs(R.mismatch))+", يمكن سطر ناقص أو مكرر");
+    wb.innerHTML='<div class="card" style="border:1px solid var(--late);padding:12px;font-size:13.5px;line-height:1.7">'+msg.join("<br>")+'</div>';
+    pad.appendChild(wb);
+  }
   var st=document.createElement("div");st.className="sec";st.innerHTML="<h2>المتجر</h2>";
   var stores=document.createElement("div");stores.className="stores";
   allStores().forEach(function(s){var b=document.createElement("button");b.textContent=storeName(s);b.className=R.store===s?"on":"";b.onclick=function(){R.store=s;render();};stores.appendChild(b);});
@@ -773,7 +785,23 @@ function rReview(){
   R.lines.forEach(function(l,i){
     var d=document.createElement("div");d.className="line";
     var it=l.itemId?S.items[l.itemId]:null;
-    d.innerHTML='<div class="nm">'+esc(l.name)+'<small>'+(it?'✓ '+esc(it.name):'<span style="color:var(--soon)">صنف جديد — بيتضاف للتطبيق</span>')+' · <span class="link">غيّر</span></small></div><div class="pr">'+money(l.total)+'<small>'+ar(l.qty)+' × '+money(l.unit!=null?l.unit:l.total/(l.qty||1))+'</small></div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
+    var nm,sub;
+    if(!l.sure&&!l.itemId){
+      // could not read the name and nothing else identifies it - he has to look
+      nm=l.name?esc(l.name):'<span style="color:var(--late)">اسم غير واضح في الفاتورة</span>';
+      sub='<span style="color:var(--late)">ما قدرنا نقرأه — اختر الصنف</span>';
+      d.style.background="rgba(220,80,60,.06)";
+    } else if(it){
+      // resolved. If the name was unreadable, the code did it - say so plainly.
+      nm=esc(l.name||it.name);
+      sub='✓ '+esc(it.name)
+        +(l.how==="code"?' · <span style="color:var(--go)">متطابق برمز الصنف</span>':'')
+        +(!l.name?' · <span style="color:var(--dimmer)">الاسم في الورقة غير واضح</span>':'');
+    } else {
+      nm=esc(l.name);
+      sub='<span style="color:var(--soon)">صنف جديد — بيتضاف للتطبيق</span>';
+    }
+    d.innerHTML='<div class="nm">'+nm+'<small>'+sub+' · <span class="link">غيّر</span></small></div><div class="pr">'+money(l.total)+'<small>'+ar(l.qty)+' × '+money(l.unit!=null?l.unit:l.total/(l.qty||1))+'</small></div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
     d.querySelector(".link").onclick=function(){sheetLink(l,function(){render();});};
     d.querySelector(".rm").onclick=function(){R.lines.splice(i,1);render();};
     card.appendChild(d);
@@ -781,7 +809,8 @@ function rReview(){
   ls.appendChild(card);pad.appendChild(ls);
   $("delAll").onclick=function(){rcptUI={mode:"idle"};render();};
   var cta=document.createElement("div");cta.className="cta";
-  var b=document.createElement("button");b.className="btn";b.textContent="اعتمد الفاتورة";b.disabled=!R.lines.length;
+  var b=document.createElement("button");b.className="btn";
+  b.textContent=unsure?"اختر الـ"+ar(unsure)+" أولاً":"اعتمد الفاتورة";b.disabled=!R.lines.length||unsure>0;
   b.onclick=function(){commitReceipt(R);};
   cta.appendChild(b);pad.appendChild(cta);
   var m=document.createElement("div");m.className="muted";m.style.cssText="margin-top:10px;font-size:12.5px";m.textContent="الاعتماد يسجّل الأصناف كمشتراة اليوم، يحفظ أسعارها عند هذا المتجر، ويشيلها من القائمة. ببلاش.";pad.appendChild(m);
@@ -791,7 +820,7 @@ function commitReceipt(R){
   R.lines.forEach(function(l){
     if(!l.itemId){
       var id=(l.category||"other")+":"+l.name+":"+uid().slice(-3);
-      var item={id:id,name:l.name,cat:CATS.some(function(c){return c.id===l.category;})?l.category:"other",em:cat(l.category).em,cycle:30,last:null,buys:[],prices:{},learned:0,fromReceipt:true};
+      var item={id:id,name:l.name||"صنف من فاتورة",cat:CATS.some(function(c){return c.id===l.category;})?l.category:"other",em:cat(l.category).em,cycle:30,last:null,buys:[],prices:{},learned:0,fromReceipt:true};
       op("item.add",{item:item});l.itemId=id;newIds.push(id);
     }
   });
@@ -800,7 +829,11 @@ function commitReceipt(R){
   var inTrip={};if(recent)recent.items.forEach(function(x){inTrip[x.id]=1;});
   R.lines.forEach(function(l){if(!inTrip[l.itemId])ids.push(l.itemId);prices[l.itemId]=l.unit!=null?l.unit:(l.total/(l.qty||1));
     var it=S.items[l.itemId];if(it&&(it.brands||[]).length){var hit=it.brands.find(function(b){return normAr(l.name).indexOf(normAr(b))>=0;});if(hit&&it.usual!==hit)op("item.update",{id:it.id,patch:{usual:hit}});}});
-  var rc={id:uid(),ts:R.date?Math.max(Date.now()-90*DAY,new Date(R.date).getTime()||Date.now()):Date.now(),store:R.store||"Other",total:R.total,lines:R.lines.map(function(l){return {name:l.name,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.total};}),compare:null};
+  // Remember what each printed item code means. Next receipt from this shop matches on
+  // the code and never depends on reading the Arabic again.
+  var learn={};R.lines.forEach(function(l){if(l.code&&l.itemId)learn[l.code]=l.itemId;});
+  if(Object.keys(learn).length)op("codes.learn",{codes:learn});
+  var rc={id:uid(),ts:R.date?Math.max(Date.now()-90*DAY,new Date(R.date).getTime()||Date.now()):Date.now(),store:R.store||"Other",total:R.total,lines:R.lines.map(function(l){return {name:l.name,code:l.code||null,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.total};}),compare:null};
   if(recent){
     op("prices.paid",{store:rc.store,prices:prices,ts:recent.ts});
     if(ids.length)op("bought",{ids:ids,store:rc.store,prices:prices,ts:recent.ts});
@@ -1053,10 +1086,11 @@ function sheetBrand(it,onList){
   var more=document.createElement("button");more.className="more";more.textContent="＋ ماركة ثانية";more.onclick=function(){var n=prompt("اسم الماركة");if(n&&n.trim()){n=n.trim();op("brand.add",{id:it.id,name:n});pick(n);}};box.appendChild(more);
 }
 function sheetLink(line,done){
-  var sh=sheet('<h3>وش هذا الصنف؟</h3><div class="muted" style="margin:-8px 0 10px">'+esc(line.name)+'</div><div class="fld"><input id="lq" placeholder="دوّر في أصنافكم…"></div><div class="pick" id="lp"></div>');
+  var sh=sheet('<h3>وش هذا الصنف؟</h3><div class="muted" style="margin:-8px 0 10px">'+(line.name?esc(line.name):(line.raw?esc(String(line.raw).slice(0,60)):""))+(line.total?' · '+money(line.total):"")+'</div><div class="fld"><input id="lq" placeholder="دوّر في أصنافكم…"></div><div class="pick" id="lp"></div>');
   function fill(){var q=normAr($("lq").value);var box=$("lp");box.innerHTML="";
-    var n=document.createElement("button");n.className="new";n.innerHTML='<span class="em">＋</span>صنف جديد باسم «'+esc(line.name)+'»';n.onclick=function(){line.itemId=null;closeSheet();done();};box.appendChild(n);
-    Object.keys(S.items).map(function(id){return S.items[id];}).filter(function(it){return !q||normAr(it.name).indexOf(q)>=0;}).sort(function(a,b){return a.name.localeCompare(b.name,"ar");}).slice(0,60).forEach(function(it){var b=document.createElement("button");b.innerHTML='<span class="em">'+(it.em||"")+'</span>'+esc(it.name);b.onclick=function(){line.itemId=it.id;closeSheet();done();};box.appendChild(b);});}
+    var n=document.createElement("button");n.className="new";n.innerHTML='<span class="em">＋</span>'+(line.name?'صنف جديد باسم «'+esc(line.name)+'»':'صنف جديد — اكتب الاسم');
+    n.onclick=function(){if(!line.name){var nn=prompt("اسم الصنف كما في الفاتورة");if(!nn||!nn.trim())return;line.name=nn.trim();}line.itemId=null;line.sure=true;closeSheet();done();};box.appendChild(n);
+    Object.keys(S.items).map(function(id){return S.items[id];}).filter(function(it){return !q||normAr(it.name).indexOf(q)>=0;}).sort(function(a,b){return a.name.localeCompare(b.name,"ar");}).slice(0,60).forEach(function(it){var b=document.createElement("button");b.innerHTML='<span class="em">'+(it.em||"")+'</span>'+esc(it.name);b.onclick=function(){line.itemId=it.id;line.sure=true;if(!line.name)line.name=it.name;closeSheet();done();};box.appendChild(b);});}
   $("lq").addEventListener("input",fill);fill();
 }
 function sheetStorePick(done){
@@ -1082,24 +1116,77 @@ function shrink(file,max,q,cb){
   };
   img.src=url;
 }
+/* A receipt is a long narrow strip, and the vision model resizes any image it is given
+   down to a fixed budget on the long edge. Sending the whole strip as one picture spent
+   that entire budget on length: the Arabic item names came through a few pixels tall,
+   too small to read, while the Latin price digits survived. That is why v2.2 returned
+   correct prices attached to invented names. Fix: cut the strip into overlapping
+   slices and send them as separate images, so each slice gets the full budget for a
+   few centimetres of print. Overlap means no line is lost at a cut; the backend
+   de-duplicates by item code. */
+function sliceReceipt(file,cb){
+  var img=new Image(),url=URL.createObjectURL(file);
+  img.onerror=function(){URL.revokeObjectURL(url);cb(null,null);};
+  img.onload=function(){
+    var w=img.width,h=img.height;URL.revokeObjectURL(url);
+    if(!w||!h){cb(null,null);return;}
+    var W=Math.min(w,1100);
+    function cut(sy,sh){
+      var cv=document.createElement("canvas");cv.width=W;cv.height=Math.max(1,Math.round(sh*W/w));
+      var g=cv.getContext("2d");g.imageSmoothingEnabled=true;g.imageSmoothingQuality="high";
+      g.drawImage(img,0,sy,w,sh,0,0,cv.width,cv.height);
+      return cv.toDataURL("image/jpeg",.9).split(",")[1];
+    }
+    var pv=document.createElement("canvas"),ps=Math.min(1,700/Math.max(w,h));
+    pv.width=Math.round(w*ps);pv.height=Math.round(h*ps);
+    pv.getContext("2d").drawImage(img,0,0,pv.width,pv.height);
+    var preview=pv.toDataURL("image/jpeg",.7);
+    if(h/w<1.6){cb([cut(0,h)],preview);return;}            // a squarish photo, not a strip
+    var OV=.15;                                            // 15% overlap between slices
+    var n=Math.ceil((h/(1.4*w)-OV)/(1-OV));                // keep each slice near 1.4:1
+    n=Math.max(2,Math.min(5,n||2));
+    var sh=h/(n-(n-1)*OV),step=sh*(1-OV),out=[];
+    for(var i=0;i<n;i++){
+      var top=Math.round(i*step),hh=Math.round(Math.min(sh,h-top));
+      if(hh>20)out.push(cut(top,hh));
+    }
+    cb(out,preview);
+  };
+  img.src=url;
+}
 async function readReceipt(file){
-  shrink(file,1600,.82,async function(url){
-    rcptUI={mode:"reading",preview:url};view="rcpt";render();
+  sliceReceipt(file,async function(slices,preview){
+    if(!slices||!slices.length){toast("ما قدرنا نفتح الصورة",true);return;}
+    rcptUI={mode:"reading",preview:preview};view="rcpt";render();
     try{
       var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
-      var r=await call({action:"receipt",image:url.split(",")[1],mime:"image/jpeg",catalog:names},58000);
+      var r=await call({action:"receipt",images:slices,mime:"image/jpeg",catalog:names},58000);
       if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — جرّب صورة أوضح");
+      var codes=S.codes||{};
       var lines=r.lines.map(function(l){
-        var it=null;
-        if(l.match){var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});if(id)it=S.items[id];}
-        if(!it)it=matchCatalog(l.name_ar);
-        return {name:l.name_ar,raw:l.raw,qty:l.qty||1,unit:l.unit_price,total:l.line_total,itemId:it?it.id:null,category:it?it.cat:(l.category||"other")};
+        var it=null,how="";
+        // 1) the printed item code is exact, and digits survive a bad photo. It wins.
+        if(l.code&&codes[l.code]&&S.items[codes[l.code]]){it=S.items[codes[l.code]];how="code";}
+        // 2) the model's own catalog pick - only from a name it could actually read
+        if(!it&&l.sure!==false&&l.confidence!=="low"&&l.match){
+          var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});
+          if(id){it=S.items[id];how="match";}
+        }
+        // 3) fuzzy match, never on a name the model was unsure of (that is what produced
+        //    "لحم دجاج" -> "لحم حاشي" with a confident green tick in v2.2)
+        if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
+        return {name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,
+                raw:l.raw,qty:l.qty||1,unit:l.unit_price,total:l.line_total,
+                itemId:it?it.id:null,category:it?it.cat:(l.category||"other")};
       });
-      rcptUI={mode:"review",data:{store:allStores().indexOf(r.store)>=0?r.store:"Other",date:r.date,total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),lines:lines}};
+      rcptUI={mode:"review",preview:preview,data:{store:allStores().indexOf(r.store)>=0?r.store:"Other",date:r.date,
+        total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),
+        printed:r.total||0,sum:r.sum||0,mismatch:r.mismatch||0,slices:slices.length,lines:lines}};
       render();
     }catch(e){rcptUI={mode:"idle"};render();toast(String(e.message||e),true);}
   });
 }
+
 $("camIn").onchange=function(){var f=$("camIn").files[0];$("camIn").value="";if(f)readReceipt(f);};
 $("libIn").onchange=function(){var f=$("libIn").files[0];$("libIn").value="";if(f)readReceipt(f);};
 
