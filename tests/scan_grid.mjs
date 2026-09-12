@@ -89,7 +89,7 @@ check("claude: got the same prompt",/Do NOT use OCR text as the primary method/.
 check("cascade: failures recorded",Array.isArray(r.j.tried)&&r.j.tried.length===2,JSON.stringify(r.j.tried));
 /* parallel, not sequential: one request per slice, fired together */
 CLAUDE_CALLS=0; r=await call({action:"scan",pin:"2026",catalog:CAT,images:["a","b","c"],mime:"image/jpeg"});
-check("claude: one call per slice",CLAUDE_CALLS===3,"calls "+CLAUDE_CALLS);
+check("claude: all photos read in ONE call (no 4x latency)",CLAUDE_CALLS===1,"calls "+CLAUDE_CALLS);
 check("claude: slices merged into one result",r.code===200&&r.j.lines.length===1,"lines "+(r.j.lines||[]).length);
 
 /* 4b — the simpler {itemName, quantity, price} shape is accepted too */
