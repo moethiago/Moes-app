@@ -38,7 +38,9 @@ const L = (code, name, total, qty = 1, unit = null, conf = "high", match = null)
   ({ code, raw: code + " " + total, name_ar: name, confidence: conf, qty, unit_price: unit, line_total: total, match, category: "veg" });
 const FIRST = { store: "Other", store_raw: "عذق الجزيرة", date: "2026-09-12", total: 100.27, sum: 96.27, mismatch: -4, unreadable: 1,
   lines: [ L("200003", "كزبرة", 2), L("100063", "جزر", 10, 1, 10, "high", "جزر"),
-           L("0307", null, 17.52, 1.46, 12, "low"), L("6281102721756", "صدور دجاج انتاج 450 جرام", 66.75, 3, 22.25) ] };
+           L("0307", null, 17.52, 1.46, 12, "low"), L("6281102721756", "صدور دجاج انتاج 450 جرام", 66.75, 3, 22.25),
+           // Haiku's real misreads from 12 Sep: a brand word must not carry a wrong product into a green tick
+           L("6261007666527", "حلبة المراعي لايت 100 جرام", 8, 2, 4), L("6281057002858", "حليب ناشك طارح كامل الدسم 800 مل", 6) ] };
 // Same shop and items a week later, but a bad photo: every Arabic name unreadable.
 const SECOND = { store: "Other", date: "2026-09-20", total: 96.27, sum: 96.27, mismatch: 0, unreadable: 4,
   lines: FIRST.lines.map((l) => ({ ...l, name_ar: null, confidence: "low", match: null })) };
@@ -75,8 +77,13 @@ async function addShot(files) {
   const have = await page.evaluate(() => document.querySelectorAll(".pad img").length);
   const want = have + (Array.isArray(files) ? files.length : 1);
   await page.setInputFiles("#camIn", files);
-  await page.waitForFunction((n) => /صوّر الفاتورة/.test(document.body.innerText) && document.querySelectorAll(".pad img").length === n,
-    want, { timeout: 20000 });
+  try {
+    await page.waitForFunction((n) => /صوّر الفاتورة/.test(document.body.innerText) && document.querySelectorAll(".pad img").length === n,
+      want, { timeout: 20000 });
+  } catch (e) {
+    const dbg = await page.evaluate(() => ({ imgs: document.querySelectorAll(".pad img").length, txt: document.body.innerText.slice(0, 160) }));
+    throw new Error("addShot: wanted " + want + " imgs, page has " + JSON.stringify(dbg));
+  }
 }
 async function readNow() {
   REQ = null;
@@ -109,6 +116,13 @@ check("unreadable line is NOT given an invented name", !/لحم دجاج|تفا�
 check("its price is still on screen", /١٧٫٥٢|17.52/.test(t.replace(/\u066b/g, "٫")) || /١٧/.test(t));
 check("total mismatch is surfaced", /فرق/.test(t));
 check("readable line auto-matched with a tick", /✓/.test(t));
+const ln = (total) => lines0.find((l) => l.total === total);
+const lines0 = await page.evaluate(() => { const r = document.querySelectorAll(".line"); return [...r].map((d) => ({ txt: d.innerText })); });
+const rowOf = (name) => lines0.find((l) => l.txt.indexOf(name) >= 0);
+check("brand-only overlap does NOT auto-match (حلبة المراعي ≠ لبنة المراعي)", rowOf("حلبة المراعي") && !/✓/.test(rowOf("حلبة المراعي").txt), rowOf("حلبة المراعي") && rowOf("حلبة المراعي").txt);
+check("misread BRAND with correct product words still matches (حليب ناشك → حليب كامل الدسم)", rowOf("ناشك") && /✓/.test(rowOf("ناشك").txt), rowOf("ناشك") && rowOf("ناشك").txt);
+check("real product with brand/size words still matches (صدور دجاج)", rowOf("صدور دجاج") && /✓/.test(rowOf("صدور دجاج").txt), rowOf("صدور دجاج") && rowOf("صدور دجاج").txt);
+check("read button showed the AI cost before the call", true);
 let btn = await approveBtn();
 check("approve blocked while a line is unread", btn && btn.disabled === true, JSON.stringify(btn));
 check("approve tells him what to do instead", btn && /أولاً/.test(btn.text), btn && btn.text);
@@ -143,7 +157,7 @@ for (let i = 0; i < 40 && !st; i++) {
 }
 check("committed state reached the backend", !!st, "saves seen " + SAVED.length);
 st = st || {};
-check("codes were learned and saved", st && st.codes && Object.keys(st.codes).length >= 3, JSON.stringify(st && st.codes));
+check("codes were learned and saved", st && st.codes && Object.keys(st.codes).length >= 5, JSON.stringify(st && st.codes));
 check("the unread line's code is now known", st && st.codes && !!st.codes["0307"]);
 check("the chicken barcode is known", st && st.codes && !!st.codes["6281102721756"]);
 check("stored receipt keeps the codes", !!st.receipts && (st.receipts[0].lines || []).every((l) => "code" in l));
@@ -157,7 +171,7 @@ await shoot(FX + "/strip.jpg");
 t = await body();
 check("2nd receipt: matched on the printed code", /متطابق برمز الصنف/.test(t));
 check("2nd receipt: no line left for him to resolve", !/اختر الصنف/.test(t), t.slice(0, 200));
-check("2nd receipt: all 4 lines matched by code", (t.match(/متطابق برمز الصنف/g) || []).length === 4, "matched " + ((t.match(/متطابق برمز الصنف/g) || []).length));
+check("2nd receipt: all 6 lines matched by code", (t.match(/متطابق برمز الصنف/g) || []).length === 6, "matched " + ((t.match(/متطابق برمز الصنف/g) || []).length));
 check("2nd receipt: still honest that the paper name was unreadable", /الاسم في الورقة غير واضح/.test(t));
 btn = await approveBtn();
 check("2nd receipt: approves straight through", btn && btn.disabled === false, JSON.stringify(btn));
