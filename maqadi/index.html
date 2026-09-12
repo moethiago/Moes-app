@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="4.2", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.3", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -412,6 +412,28 @@ function apply(st,op){
     case "codes.learn": st.codes=st.codes||{};st.names=st.names||{};Object.keys(p.codes||{}).forEach(function(c){if(p.codes[c])st.codes[c]=p.codes[c];});Object.keys(p.names||{}).forEach(function(c){if(p.names[c])st.names[c]=p.names[c];}); break;
     case "receipt.add": st.receipts=[p.receipt].concat(st.receipts).slice(0,40); break;
     case "receipt.compare": st.receipts.forEach(function(r){if(r.id===p.rid){r.compare=p.results;r.comparedAt=op.ts;}}); break;
+    // A receipt filed under the wrong shop poisons that shop's price history, so the
+    // prices move with it instead of being left behind under a shop he never visited.
+    case "trip.store": {
+      // Move the trip, its receipt, and the prices that trip recorded. Prices are found
+      // by shop + when they were recorded, so this works whether or not the trip is
+      // linked to a receipt id.
+      var from=p.from||null;
+      (st.trips||[]).forEach(function(t){if(t.id===p.tripId){from=from||t.store;t.store=p.store;}});
+      (st.receipts||[]).forEach(function(r){
+        if((p.receiptId&&r.id===p.receiptId)||(from&&r.store===from&&p.receiptTs&&Math.abs((r.ts||0)-p.receiptTs)<DAY))r.store=p.store;
+      });
+      if(from&&from!==p.store){
+        Object.keys(st.items).forEach(function(id){
+          var it=st.items[id];if(!it||!it.prices||!it.prices[from])return;
+          var pts=it.prices[from].ts||0;
+          if(!p.receiptTs||Math.abs(pts-p.receiptTs)<DAY){
+            it.prices[p.store]=it.prices[from];delete it.prices[from];
+          }
+        });
+      }
+      break;
+    }
   }
   return st;
 }
@@ -870,7 +892,13 @@ function rHome(){
       var acts=document.createElement("div");acts.style.cssText="flex-basis:100%;display:flex;gap:16px;padding-top:4px";
       var rb=document.createElement("button");rb.className="link";rb.textContent="كرر هذي المقاضي";rb.onclick=function(e){e.stopPropagation();repeatTrip(t);};
       var db=document.createElement("button");db.className="link";db.style.color="var(--late)";db.textContent="حذف";db.onclick=function(e){e.stopPropagation();if(confirm("تحذف هذي المقاضي؟ بنرجّع تواريخ الشراء والأسعار اللي سجلتها."+(t.receiptId?" وبنحذف فاتورتها.":"")))op("trip.remove",{id:t.id});};
-      acts.appendChild(rb);acts.appendChild(db);h.appendChild(acts);}
+      var sb=document.createElement("button");sb.className="link";sb.textContent="\u063a\u064a\u0651\u0631 \u0627\u0644\u0645\u062a\u062c\u0631";
+      sb.onclick=function(e){e.stopPropagation();sheetStorePick(function(n){
+        if(!n||n===t.store)return;
+        op("trip.store",{tripId:t.id,receiptId:t.receiptId||null,from:t.store||null,store:n,receiptTs:t.ts||Date.now()});
+        toast("\u0635\u0627\u0631 \u0639\u0646\u062f "+storeName(n));render();
+      },t.store);};
+      acts.appendChild(rb);acts.appendChild(sb);acts.appendChild(db);h.appendChild(acts);}
     h.onclick=function(){tripOpen=open?null:t.id;render();};
     ct.appendChild(h);
   });
@@ -1046,9 +1074,11 @@ function sheetReaderKey(){
     catch(e){$("kgo").textContent="حفظ";toast(String(e.message||e),true);}
   };
 }
-function sheetStorePick(done){
+function sheetStorePick(done,current){
   sheet('<h3>من وين اشتريتوا؟</h3><div class="stores" id="sp"></div>');
-  allStores().forEach(function(s){var b=document.createElement("button");b.textContent=storeName(s);b.onclick=function(){closeSheet();done(s);};$("sp").appendChild(b);});
+  allStores().forEach(function(s){var b=document.createElement("button");b.textContent=storeName(s);
+    if(current&&s===current)b.className="on";
+    b.onclick=function(){closeSheet();done(s);};$("sp").appendChild(b);});
   var nb=document.createElement("button");nb.textContent="＋ متجر جديد";nb.style.color="var(--go)";nb.onclick=function(){closeSheet();addStore(function(n){done(n);});};$("sp").appendChild(nb);
 }
 function sheetPrices(name,c){
