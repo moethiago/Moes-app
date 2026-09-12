@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="3.1", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="3.2", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -735,19 +735,19 @@ function rSoonCard(pad){
 function rRcpt(){
   var v=$("view");
   if(rcptUI.mode==="reading"){
-    hd("الفاتورة","يقرأ رمز الفاتورة…");
-    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px"><span class="spin"></span> <span class="muted">يقرأ الرمز على الجوال…</span></div></div></div>';
+    hd("الفاتورة","يقرأ الفاتورة…");
+    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px"><span class="spin"></span> <span class="muted">يقرأ الأصناف والأسعار من الصورة…</span></div></div></div>';
     return;
   }
   if(rcptUI.mode==="review")return rReview();
   if(rcptUI.mode==="result")return rResult(rcptUI.rid);
 
-  hd("الفاتورة","امسح الرمز اللي في آخر الفاتورة",[{icon:"📷",go:true,label:"امسح",fn:function(){$("camIn").click();}}]);
+  hd("الفاتورة","صورة واحدة وخلاص",[{icon:"📷",go:true,label:"صوّر",fn:function(){$("camIn").click();}}]);
   v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
   if(rcptUI.error){var eb=document.createElement("div");eb.className="sec";eb.innerHTML='<div class="card" style="border:1px solid var(--late);padding:12px;font-size:13.5px;line-height:1.7"><b style="color:var(--late)">ما قدرنا</b><br>'+esc(rcptUI.error)+'</div>';pad.appendChild(eb);}
   var dz=document.createElement("div");dz.className="sec";
   var rt=recentTrip();
-  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>امسح رمز QR الفاتورة</b><p style="line-height:1.85">كل فاتورة سعودية آخرها رمز QR فيه المتجر والتاريخ والإجمالي — كبيانات، مو حبر. صوّر آخر الفاتورة والرمز كامل داخل الصورة.<br>'+(rt?'<span style="color:var(--go)">بتنربط بطلعتك ('+ar(rt.items.length)+' صنف أشّرت عليها).</span>':'<span style="color:var(--dim)">أشّر على اللي اشتريته من «خلص» أول، عشان تنربط الفاتورة بالطلعة.</span>')+'</p><button class="btn" id="dzgo" style="margin-top:6px">📷 امسح الرمز</button><button class="alt" id="dzlib" style="margin-top:10px">أو اختر صورة الفاتورة من الاستوديو</button><button class="link" id="dzman" style="display:block;margin:12px auto 0">ما فيه رمز؟ اكتب الإجمالي بنفسك</button></div>';
+  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>صوّر الفاتورة</b><p style="line-height:1.85">صورة واحدة للفاتورة كاملة — التطبيق يقرأ الأصناف والأسعار والإجمالي.<br><span style="color:var(--dim)">افردها على سطح وخلّ الضوء من الجنب، وحاول يبان رمز QR في الصورة (يعطينا الإجمالي بالضبط).</span></p><button class="btn" id="dzgo" style="margin-top:6px">صوّر الفاتورة</button><button class="alt" id="dzlib" style="margin-top:10px">أو اختر صورة من الاستوديو</button><button class="link" id="dzman" style="display:block;margin:12px auto 0">أو اكتب الإجمالي بنفسي</button></div>';
   pad.appendChild(dz);
   $("dzgo").onclick=function(){$("camIn").click();};$("dzcam").onclick=function(){$("camIn").click();};$("dzlib").onclick=function(){$("libIn").click();};$("dzman").onclick=function(){manualReceipt();};
   if(S.receipts.length){
@@ -1074,21 +1074,108 @@ function guessStore(t){
   return "Other";
 }
 function recentTrip(){return (S.trips||[]).find(function(t){return !t.receiptId&&Date.now()-t.ts<36*3600000;})||null;}
+/* One photo of a long till roll has to be cut into overlapping slices before it is
+   readable: the vision budget is spent on the long edge otherwise. Contrast is
+   normalised per slice so grey thermal ink becomes black on white. */
+function enhance(cv){
+  var g=cv.getContext("2d"),W=cv.width,H=cv.height,im=g.getImageData(0,0,W,H),d=im.data,N=W*H;
+  var gray=new Float32Array(N);
+  for(var i=0,j=0;i<N;i++,j+=4)gray[i]=d[j]*.299+d[j+1]*.587+d[j+2]*.114;
+  var S1=W+1,I=new Float64Array(S1*(H+1));
+  for(var y=1;y<=H;y++){var row=0,b=(y-1)*W,o=y*S1,q=(y-1)*S1;for(var x=1;x<=W;x++){row+=gray[b+x-1];I[o+x]=I[q+x]+row;}}
+  var r=Math.max(10,Math.round(W/36));
+  for(var y=0;y<H;y++){
+    var y0=y-r<0?0:y-r,y1=y+r+1>H?H:y+r+1,oy=y*W;
+    for(var x=0;x<W;x++){
+      var x0=x-r<0?0:x-r,x1=x+r+1>W?W:x+r+1;
+      var sum=I[y1*S1+x1]-I[y0*S1+x1]-I[y1*S1+x0]+I[y0*S1+x0];
+      var m=sum/((y1-y0)*(x1-x0));
+      var v=(gray[oy+x]-m)*2.8+222;v=v<0?0:v>255?255:v;
+      var k=(oy+x)*4;d[k]=d[k+1]=d[k+2]=v;
+    }
+  }
+  g.putImageData(im,0,0);
+}
+function sliceReceipt(file,maxN,cb){
+  var img=new Image(),url=URL.createObjectURL(file);
+  img.onerror=function(){URL.revokeObjectURL(url);cb(null,null);};
+  img.onload=function(){
+    var w=img.width,h=img.height;URL.revokeObjectURL(url);
+    if(!w||!h){cb(null,null);return;}
+    var W=Math.min(w,1100);
+    function cut(sy,sh){
+      var cv=document.createElement("canvas");cv.width=W;cv.height=Math.max(1,Math.round(sh*W/w));
+      var g=cv.getContext("2d");g.imageSmoothingEnabled=true;g.imageSmoothingQuality="high";
+      g.drawImage(img,0,sy,w,sh,0,0,cv.width,cv.height);
+      try{enhance(cv);}catch(e){}
+      return cv.toDataURL("image/jpeg",.9).split(",")[1];
+    }
+    var pv=document.createElement("canvas"),ps=Math.min(1,700/Math.max(w,h));
+    pv.width=Math.round(w*ps);pv.height=Math.round(h*ps);
+    pv.getContext("2d").drawImage(img,0,0,pv.width,pv.height);
+    var preview=pv.toDataURL("image/jpeg",.7);
+    if(h/w<1.6){cb([cut(0,h)],preview);return;}
+    var OV=.15,n=Math.ceil((h/(1.4*w)-OV)/(1-OV));
+    n=Math.max(2,Math.min(maxN||4,n||2));
+    var sh=h/(n-(n-1)*OV),step=sh*(1-OV),out=[];
+    for(var i=0;i<n;i++){var top=Math.round(i*step),hh=Math.round(Math.min(sh,h-top));if(hh>20)out.push(cut(top,hh));}
+    cb(out,preview);
+  };
+  img.src=url;
+}
+function sliceAll(files,cb){
+  var per=Math.max(1,Math.floor(4/Math.max(1,files.length))),out=[],pv=null,i=0;
+  (function next(){
+    if(i>=files.length){cb(out,pv);return;}
+    sliceReceipt(files[i],per,function(sl,p){
+      if(sl&&sl.length)out=out.concat(sl);
+      if(!pv&&p)pv=p;
+      i++;next();
+    });
+  })();
+}
 async function scanReceipt(file){
-  rcptUI={mode:"reading"};view="rcpt";render();
-  try{
-    var raw=await decodeQR(file);
-    if(!raw)throw new Error("ما لقينا رمز QR في الصورة — صوّر آخر الفاتورة أقرب، والرمز كامل داخل الصورة");
-    var z=parseZatca(raw);
-    if(!z)throw new Error("الرمز انقرأ بس مو رمز فاتورة سعودية — اكتب الإجمالي بنفسك");
-    openReceiptReview({seller:z.seller||"",vatNo:z.vatNo||"",ts:z.ts||null,total:z.total,vat:z.vat||null,fromQR:true});
-  }catch(e){rcptUI={mode:"idle",error:String(e.message||e)};render();}
+  rcptUI={mode:"reading",step:"items"};view="rcpt";render();
+  // The QR is free and exact when it happens to be in frame - use it for the total and
+  // the shop, but never require it. The reader does the items either way.
+  var z=null;
+  try{var raw=await decodeQR(file);if(raw)z=parseZatca(raw);}catch(e){}
+  sliceAll([file],async function(slices,preview){
+    if(!slices||!slices.length){rcptUI={mode:"idle",error:"ما قدرنا نفتح الصورة"};render();return;}
+    rcptUI={mode:"reading",step:"items",preview:preview};render();
+    try{
+      var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
+      var r=await call({action:"scan",images:slices,mime:"image/jpeg",catalog:names,known:Object.keys(S.codes||{})},59000);
+      if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — صوّرها مفرودة وأقرب");
+      // the QR beats the reader on the money fields, because it is data not print
+      if(z){if(z.total>0)r.total=z.total;if(z.vat!=null)r.vat=z.vat;if(z.seller)r.seller=z.seller;if(z.ts)r.date=String(z.ts).slice(0,10);r.fromQR=true;}
+      openScanReview(r,preview);
+    }catch(e){
+      // reading failed: fall back to the QR alone rather than losing the trip
+      if(z&&z.total>0){openReceiptReview({seller:z.seller||"",vatNo:z.vatNo||"",ts:z.ts||null,total:z.total,vat:z.vat||null,fromQR:true});toast("قرأنا الرمز بس ما قدرنا نقرأ الأصناف — أضفها بنفسك",true);return;}
+      rcptUI={mode:"idle",error:String(e.message||e)};render();
+    }
+  });
 }
-function manualReceipt(){
-  var t=prompt("إجمالي الفاتورة (ر.س)");if(t==null)return;t=Number(latinDigits(t).replace(/[^\d.]/g,""));if(!(t>0)){toast("اكتب رقم",true);return;}
-  openReceiptReview({seller:"",vatNo:"",ts:null,total:t,vat:null,fromQR:false});
+function openScanReview(r,preview){
+  var codes=S.codes||{},namesMap=S.names||{};
+  var lines=r.lines.map(function(l){
+    var it=null,how="";
+    if(l.code&&codes[l.code]&&S.items[codes[l.code]]){it=S.items[codes[l.code]];how="code";}
+    if(!it&&l.name_ar&&namesMap[normAr(l.name_ar)]&&S.items[namesMap[normAr(l.name_ar)]]){it=S.items[namesMap[normAr(l.name_ar)]];how="name";}
+    if(!it&&l.confidence!=="low"&&l.match){var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});if(id){it=S.items[id];how="match";}}
+    if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
+    return {itemId:it?it.id:null,name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,
+            qty:l.qty||1,unit:l.unit_price,total:l.line_total};
+  });
+  var when=r.date?new Date(r.date):new Date();if(isNaN(when.getTime()))when=new Date();
+  var trip=recentTrip();
+  rcptUI={mode:"review",data:{store:storeFromSeller(r.seller||r.store_raw),seller:r.seller||r.store_raw||"",vatNo:"",
+    ts:when.getTime(),total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),vat:r.vat||null,
+    fromQR:!!r.fromQR,engine:r.engine||"",scanned:true,mismatch:r.mismatch||0,sum:r.sum||0,printed:r.total||0,
+    tripId:trip?trip.id:null,lines:lines}};
+  view="rcpt";render();
 }
-function latinDigits(s){var m={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9","٫":"."};return String(s||"").replace(/[٠-٩٫]/g,function(c){return m[c]||c;});}
 function openReceiptReview(z){
   var trip=recentTrip();
   var when=z.ts?new Date(z.ts):new Date();if(isNaN(when.getTime()))when=new Date();
@@ -1102,7 +1189,7 @@ function rReview(){
   hd("راجع الفاتورة",'<b>'+money(R.total)+'</b>'+(R.vat?' · شامل ضريبة '+money(R.vat):'')+' · '+new Date(R.ts).toLocaleDateString("ar-SA-u-ca-gregory",{weekday:"long",day:"numeric",month:"long"}),[{icon:"→",label:"رجوع",fn:function(){rcptUI={mode:"idle"};render();}}]);
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
   var src=document.createElement("div");src.className="sec";
-  src.innerHTML='<div class="card" style="padding:12px;font-size:13px;line-height:1.7;color:var(--dim)">'+(R.fromQR?'<b style="color:var(--go)">من رمز الفاتورة ✓</b> '+(R.seller?esc(R.seller):'')+(R.vatNo?' · الرقم الضريبي '+esc(R.vatNo):''):'<b>إجمالي مكتوب بنفسك</b>')+'</div>';pad.appendChild(src);
+  src.innerHTML='<div class="card" style="padding:12px;font-size:13px;line-height:1.7;color:var(--dim)">'+(R.scanned?('<b style="color:var(--go)">قرأنا '+ar(R.lines.length)+' صنف من الصورة</b>'+(R.fromQR?' · الإجمالي من رمز الفاتورة ✓':'')+(R.mismatch?'<br><span style="color:var(--late)">مجموع الأسطر '+money(R.sum)+' والإجمالي '+money(R.printed)+' — فرق '+money(Math.abs(R.mismatch))+'</span>':'')):"")+(R.fromQR&&!R.scanned?'<b style="color:var(--go)">من رمز الفاتورة ✓</b> '+(R.seller?esc(R.seller):'')+(R.vatNo?' · الرقم الضريبي '+esc(R.vatNo):''):'<b>إجمالي مكتوب بنفسك</b>')+'</div>';pad.appendChild(src);
   var st=document.createElement("div");st.className="sec";st.innerHTML="<h2>المتجر</h2>";
   var stores=document.createElement("div");stores.className="stores";
   allStores().forEach(function(s){var b=document.createElement("button");b.textContent=storeName(s);b.className=R.store===s?"on":"";b.onclick=function(){R.store=s;render();};stores.appendChild(b);});
@@ -1116,7 +1203,8 @@ function rReview(){
   R.lines.forEach(function(l,i){
     var d=document.createElement("div");d.className="line";
     var it=S.items[l.itemId];var known=it?lastPriceAt(it,R.store):null;
-    d.innerHTML='<div class="nm">'+esc(l.name)+(l.qty>1?' ×'+ar(l.qty):'')+'<small>'+(l.unit!=null?'سعر الحبة '+money(l.unit)+' · <span class="link">غيّر</span>':(known?'آخر سعر هنا '+money(known)+' · <span class="link">سجّل سعر</span>':'<span class="link">سجّل سعر</span> <span style="color:var(--dimmer)">(اختياري)</span>'))+'</small></div><div class="pr">'+(l.unit!=null?money(l.unit*l.qty):'')+'</div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
+    var tag=l.how==="code"?' · <span style="color:var(--go)">برمز الصنف</span>':l.how==="name"?' · <span style="color:var(--go)">اسم محفوظ</span>':(l.itemId?'':' · <span style="color:var(--soon)">صنف جديد</span>');
+    d.innerHTML='<div class="nm">'+(l.name?esc(l.name):(it?esc(it.name):"?"))+(l.qty>1?' ×'+ar(l.qty):'')+'<small>'+(it?'✓ '+esc(it.name):'')+tag+(l.sure?'':' · <span style="color:var(--late)">غير واضح</span>')+' · <span class="link">'+(l.unit!=null?'غيّر السعر':'سجّل سعر')+'</span></small></div><div class="pr">'+(l.total?money(l.total):'—')+'<small>'+(l.unit!=null?ar(l.qty)+' × '+money(l.unit):(known?'آخر سعر '+money(known):''))+'</small></div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
     d.querySelector(".link").onclick=function(){var p=prompt("سعر "+l.name+" (للحبة)",l.unit!=null?l.unit:(known||""));if(p==null)return;p=Number(latinDigits(p).replace(/[^\d.]/g,""));if(!(p>0)){l.unit=null;}else l.unit=p;l.total=l.unit?l.unit*l.qty:0;render();};
     d.querySelector(".rm").onclick=function(){R.lines.splice(i,1);render();};
     card.appendChild(d);
@@ -1150,6 +1238,9 @@ function sheetPickItems(R,done){
 function lastPriceAt(it,store){var p=it&&it.prices&&it.prices[store];return p&&p.price>0?p.price:null;}
 function commitReceipt(R){
   var prices={};R.lines.forEach(function(l){if(l.unit!=null&&l.itemId)prices[l.itemId]=l.unit;});
+  // remember what each printed code and name means, so the next receipt needs no reading
+  var lc={},ln={};R.lines.forEach(function(l){if(l.itemId){if(l.code)lc[l.code]=l.itemId;if(l.name)ln[normAr(l.name)]=l.itemId;}});
+  if(Object.keys(lc).length||Object.keys(ln).length)op("codes.learn",{codes:lc,names:ln});
   var rc={id:uid(),ts:R.ts,store:R.store||"Other",total:R.total,vat:R.vat||null,seller:R.seller||null,vatNo:R.vatNo||null,fromQR:!!R.fromQR,
     lines:R.lines.map(function(l){return {name:l.name,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.unit!=null?l.unit*l.qty:0};}),compare:null};
   if(Object.keys(prices).length)op("prices.paid",{store:rc.store,prices:prices,ts:rc.ts});
