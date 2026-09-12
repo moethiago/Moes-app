@@ -682,6 +682,12 @@ async function handleBrief(req, res) {
   const date = briefRiyadhDate(); const key = 'brief:' + date;
   const build = String(req.query.build || '') === '1', force = String(req.query.force || '') === '1';
   try {
+    if (req.query.probe) { // read-only diagnostic: can this server reach X for one handle?
+      const h = String(req.query.probe).replace(/^@/, '').slice(0, 15); const t0 = Date.now();
+      try { const r = await fetch(BRIEF_X_SYNDICATION + encodeURIComponent(h), { headers: { 'User-Agent': BRIEF_X_UA, 'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8' } }); const txt = await r.text();
+        return res.status(200).json({ ok: true, handle: h, status: r.status, ms: Date.now() - t0, tweets: (txt.match(/"full_text"/g) || []).length, retryAfter: r.headers.get('retry-after') || null, cf: r.headers.get('server') || null });
+      } catch (e) { return res.status(200).json({ ok: false, handle: h, error: e.message }); }
+    }
     if (String(req.query.resetcap || '') === '1') {
       const editCode = process.env.BRIEF_EDIT_CODE || process.env.DEPLOY_SECRET;
       if (!editCode || String(req.query.code || '') !== editCode) return res.status(401).json({ ok: false, error: 'bad code' });
