@@ -128,4 +128,8 @@ ghStatus = 500; r = await call({ brief: "1", build: "1", force: "1" }); check("d
 r = await call({ brief: "1", build: "1", force: "1" }); const nk2 = [...store.keys()].find(k => k.startsWith("brief:nonce:"));
 r = await call({ brief: "1", ingest: "1", __method: "POST", __body: { nonce: store.get(nk2), tweets: tweets.slice(0, 3) } }); check("too few posts -> 503 and status error", r.code === 503);
 delete process.env.GITHUB_TOKEN;
+// 16. rss=1 builds directly from feeds even when a GitHub token exists
+store.clear(); resetCap(); process.env.GITHUB_TOKEN = "ghp_test"; const gd16 = ghDispatch, rss16 = rssCalls; groqReply = goodReply();
+r = await call({ brief: "1", build: "1", rss: "1" }); check("rss=1 -> built from feeds, no dispatch", r.code === 200 && r.j.built === true && ghDispatch === gd16 && rssCalls > rss16 && r.j.brief.sources.ok.some(x => /BBC/.test(x)));
+delete process.env.GITHUB_TOKEN;
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILURES:", failures); process.exit(1); }
