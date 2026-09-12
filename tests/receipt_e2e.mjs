@@ -40,7 +40,10 @@ const FIRST = { store: "Other", store_raw: "عذق الجزيرة", date: "2026-
   lines: [ L("200003", "كزبرة", 2), L("100063", "جزر", 10, 1, 10, "high", "جزر"),
            L("0307", null, 17.52, 1.46, 12, "low"), L("6281102721756", "صدور دجاج انتاج 450 جرام", 66.75, 3, 22.25),
            // Haiku's real misreads from 12 Sep: a brand word must not carry a wrong product into a green tick
-           L("6261007666527", "حلبة المراعي لايت 100 جرام", 8, 2, 4), L("6281057002858", "حليب ناشك طارح كامل الدسم 800 مل", 6) ] };
+           L("6261007666527", "حلبة المراعي لايت 100 جرام", 8, 2, 4), L("6281057002858", "حليب ناشك طارح كامل الدسم 800 مل", 6),
+           // reasoning pass outcomes as the backend would return them
+           { code: "6281007023488", raw: "6281007023488 6.00", name_ar: "لبن المراعي كامل الدسم 360 مل", read_as: "لبل المراعي كامل الدسم 360 مل", confidence: "high", qty: 2, unit_price: 3, line_total: 6, match: null, category: "dairy", reasoned: true },
+           { code: "200099", raw: "200099 2.00", name_ar: "زيرة", hint: "كزبرة", hint_match: "بقدونس", confidence: "low", qty: 1, unit_price: 2, line_total: 2, match: null, category: "veg", reasoned: true } ] };
 // Same shop and items a week later, but a bad photo: every Arabic name unreadable.
 const SECOND = { store: "Other", date: "2026-09-20", total: 96.27, sum: 96.27, mismatch: 0, unreadable: 4,
   lines: FIRST.lines.map((l) => ({ ...l, name_ar: null, confidence: "low", match: null })) };
@@ -122,10 +125,20 @@ const rowOf = (name) => lines0.find((l) => l.txt.indexOf(name) >= 0);
 check("brand-only overlap does NOT auto-match (حلبة المراعي ≠ لبنة المراعي)", rowOf("حلبة المراعي") && !/✓/.test(rowOf("حلبة المراعي").txt), rowOf("حلبة المراعي") && rowOf("حلبة المراعي").txt);
 check("misread BRAND with correct product words still matches (حليب ناشك → حليب كامل الدسم)", rowOf("ناشك") && /✓/.test(rowOf("ناشك").txt), rowOf("ناشك") && rowOf("ناشك").txt);
 check("real product with brand/size words still matches (صدور دجاج)", rowOf("صدور دجاج") && /✓/.test(rowOf("صدور دجاج").txt), rowOf("صدور دجاج") && rowOf("صدور دجاج").txt);
+check("reasoned match is labelled as reasoned, not as a tick from OCR", rowOf("لبن المراعي كامل") && /مستنتج من السعر/.test(rowOf("لبن المراعي كامل").txt), rowOf("لبن المراعي كامل") && rowOf("لبن المراعي كامل").txt);
+check("low-confidence line shows the reasoner's one-tap hint", rowOf("زيرة") && /يمكن/.test(rowOf("زيرة").txt) && /بقدونس/.test(rowOf("زيرة").txt), rowOf("زيرة") && rowOf("زيرة").txt);
+check("hint is offered, not assumed (still red, still blocks approve)", rowOf("زيرة") && !/✓/.test(rowOf("زيرة").txt));
+check("known codes were sent so the backend can skip them", Array.isArray(REQ.known));
+// tap the hint
+await page.evaluate(() => { const l = [...document.querySelectorAll(".line")].find((d) => /زيرة/.test(d.innerText)); l.querySelector(".hint").click(); });
+await page.waitForTimeout(150);
+const after = await page.evaluate(() => [...document.querySelectorAll(".line")].map((d) => d.innerText).find((x) => /بقدونس/.test(x) && !/يمكن/.test(x)));
+check("tapping the hint resolves the line with a tick", after && /✓/.test(after), after);
 check("read button showed the AI cost before the call", true);
 let btn = await approveBtn();
 check("approve blocked while a line is unread", btn && btn.disabled === true, JSON.stringify(btn));
 check("approve tells him what to do instead", btn && /أولاً/.test(btn.text), btn && btn.text);
+check("after the hint tap, exactly one unresolved line remains", btn && /١/.test(btn.text), btn && btn.text);
 
 /* ---------- 3. resolve the unread line through the UI ---------- */
 const changed = await page.evaluate(() => {
@@ -157,7 +170,7 @@ for (let i = 0; i < 40 && !st; i++) {
 }
 check("committed state reached the backend", !!st, "saves seen " + SAVED.length);
 st = st || {};
-check("codes were learned and saved", st && st.codes && Object.keys(st.codes).length >= 5, JSON.stringify(st && st.codes));
+check("codes were learned and saved", st && st.codes && Object.keys(st.codes).length >= 7, JSON.stringify(st && st.codes));
 check("the unread line's code is now known", st && st.codes && !!st.codes["0307"]);
 check("the chicken barcode is known", st && st.codes && !!st.codes["6281102721756"]);
 check("stored receipt keeps the codes", !!st.receipts && (st.receipts[0].lines || []).every((l) => "code" in l));
@@ -171,7 +184,7 @@ await shoot(FX + "/strip.jpg");
 t = await body();
 check("2nd receipt: matched on the printed code", /متطابق برمز الصنف/.test(t));
 check("2nd receipt: no line left for him to resolve", !/اختر الصنف/.test(t), t.slice(0, 200));
-check("2nd receipt: all 6 lines matched by code", (t.match(/متطابق برمز الصنف/g) || []).length === 6, "matched " + ((t.match(/متطابق برمز الصنف/g) || []).length));
+check("2nd receipt: all 8 lines matched by code", (t.match(/متطابق برمز الصنف/g) || []).length === 8, "matched " + ((t.match(/متطابق برمز الصنف/g) || []).length));
 check("2nd receipt: still honest that the paper name was unreadable", /الاسم في الورقة غير واضح/.test(t));
 btn = await approveBtn();
 check("2nd receipt: approves straight through", btn && btn.disabled === false, JSON.stringify(btn));
@@ -215,6 +228,26 @@ await page.waitForFunction(() => document.querySelectorAll(".pad img").length ==
 check("library multi-select adds every photo", (await shotCount()) === 3);
 await readNow();
 check("library multi-select reads as one receipt", REQ.images.length >= 3, "images " + REQ.images.length);
+
+/* ---------- 4c. contrast enhancement: grey thermal print leaves the phone as black on white ---------- */
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
+REPLY = FIRST;
+await shoot(FX + "/thermal.jpg");
+const stats = await page.evaluate(async (b64) => {
+  const img = new Image(); await new Promise((r) => { img.onload = r; img.src = "data:image/jpeg;base64," + b64; });
+  const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+  const g = cv.getContext("2d"); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, cv.width, cv.height).data; const hist = new Array(256).fill(0);
+  for (let i = 0; i < d.length; i += 4) hist[d[i]]++;
+  const n = d.length / 4; let acc = 0, median = 0; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= n / 2) { median = v; break; } }
+  let dark = 0; for (let v = 0; v < 90; v++) dark += hist[v];
+  let mid = 0; for (let v = 120; v < 200; v++) mid += hist[v];
+  return { median, darkFrac: dark / n, midFrac: mid / n };
+}, REQ.images[0]);
+check("paper becomes white (median > 205) even under a shadow gradient", stats.median > 205, JSON.stringify(stats));
+check("ink becomes black (a real share of pixels < 90)", stats.darkFrac > 0.02, JSON.stringify(stats));
+check("the grey mush in between is gone", stats.midFrac < 0.15, JSON.stringify(stats));
 
 /* ---------- 5. photo shapes that are not long strips ---------- */
 await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
