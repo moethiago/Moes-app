@@ -52,10 +52,11 @@ const browser = await chromium.launch({ executablePath: process.env.PW_CHROME ||
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 page.on("pageerror", (e) => { fail++; failures.push("PAGE ERROR: " + e.message.slice(0, 200)); });
 
-let REPLY = FIRST, REQ = null, SAVED = [];
+let REPLY = FIRST, REQ = null, RECON = null, SAVED = [], FAIL1 = false, FAIL2 = false;
 await page.route("**/api/health-check**", (route) => {
   const b = JSON.parse(route.request().postData() || "{}");
-  if (b.action === "receipt") { REQ = b; return route.fulfill({ json: REPLY }); }
+  if (b.action === "receipt") { REQ = b; if (FAIL1) return route.fulfill({ status: 500, json: { error: "http 504" } }); return route.fulfill({ json: REPLY }); }
+  if (b.action === "reconcile") { RECON = b; if (FAIL2) return route.fulfill({ status: 500, json: { error: "boom" } }); return route.fulfill({ json: { lines: b.lines.map((l) => { const c = { ...l }; delete c.known; return c; }), unreadable: b.lines.filter((l) => l.confidence === "low").length } }); }
   // Behave like the real backend: hand back whatever was last saved, so a reload keeps
   // the learned item codes exactly as Upstash would.
   if (b.action === "state") return route.fulfill({ json: { v: SAVED.length, state: SAVED.length ? SAVED[SAVED.length - 1] : null, role: "full" } });
@@ -228,6 +229,33 @@ await page.waitForFunction(() => document.querySelectorAll(".pad img").length ==
 check("library multi-select adds every photo", (await shotCount()) === 3);
 await readNow();
 check("library multi-select reads as one receipt", REQ.images.length >= 3, "images " + REQ.images.length);
+
+/* ---------- 4d. failures never eat his photos ---------- */
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
+FAIL1 = true;
+await addShot(FX + "/part1.jpg"); await addShot(FX + "/part2.jpg");
+await page.evaluate(() => { [...document.querySelectorAll("button")].find((x) => /اقرأ الفاتورة/.test(x.textContent)).click(); });
+await page.waitForFunction(() => /ما قدرنا نقرأها/.test(document.body.innerText), { timeout: 20000 });
+check("step-1 failure: lands back on the shots screen with an error", /صوّر الفاتورة/.test(await body()));
+check("step-1 failure: both photos still there", (await shotCount()) === 2);
+check("step-1 failure: tells him to retry", /صورك محفوظة/.test(await body()));
+FAIL1 = false;
+await readNow();
+check("retry from the same shots works", /راجع الفاتورة/.test(await body()));
+check("retry re-sent both photos", REQ.images.length >= 2);
+check("step 2 was requested for unknown codes", RECON && Array.isArray(RECON.lines) && RECON.lines.length === REPLY.lines.length);
+check("step 2 request marks which codes are known", RECON.lines.every((l) => "known" in l));
+
+FAIL2 = true;
+REPLY = { ...FIRST, lines: [L("999001", "شيء جديد", 3)] };   // a code the household has never confirmed
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
+await shoot(FX + "/part1.jpg");
+check("step-2 failure: review screen still shows (vision result kept)", /راجع الفاتورة/.test(await body()));
+check("step-2 failure: says so instead of pretending", /الخطوة الثانية/.test(await body()));
+check("step-2 failure: the line is still there with its price", /شيء جديد/.test(await body()));
+FAIL2 = false; REPLY = FIRST;
 
 /* ---------- 4c. contrast enhancement: grey thermal print leaves the phone as black on white ---------- */
 await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
