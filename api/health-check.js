@@ -544,29 +544,18 @@ ${names.join("\n")}`;
 }
 
 async function claudeScan(imgs, mime, extra) {
-  const one = async (b64, i) => {
-    const content = [{ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } }];
-    content.push({ type: "text", text: imgs.length > 1
-      ? `This is slice ${i + 1} of ${imgs.length} of ONE receipt, top to bottom. Return the JSON for the items visible in THIS slice only.`
-      : "Return the JSON for this receipt." });
-    return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system: SCAN_PROMPT + (extra || ""), messages: [{ role: "user", content }] })));
-  };
-  // slices go out together: total latency is the slowest slice, not the sum of them
-  // keep the first real error: swallowing it turns every failure into "no response"
-  let firstErr = null;
-  const per = (await Promise.all(imgs.map((b, i) => one(b, i).catch((e) => { if (!firstErr) firstErr = e; return null; })))).filter(Boolean);
-  if (!per.length) throw new Error("claude: " + (firstErr ? String(firstErr.message || firstErr).slice(0, 200) : "no response"));
-  const merged = { items: [], receipt_total_sar: 0 };
-  per.forEach((r) => {
-    if (Array.isArray(r.items)) merged.items = merged.items.concat(r.items);
-    const t = Number(r.receipt_total_sar) || 0;
-    if (t > merged.receipt_total_sar) merged.receipt_total_sar = t;
-    if (Number(r.piece_count) > (Number(merged.piece_count) || 0)) merged.piece_count = Number(r.piece_count);
-    if (r.layout_note && !merged.layout_note) merged.layout_note = r.layout_note;
+  const content = [];
+  imgs.forEach((b64, i) => {
+    if (imgs.length > 1) content.push({ type: "text", text: `Photo ${i + 1} of ${imgs.length} of the same receipt, in order from top to bottom. They may overlap; output every item ONCE.` });
+    content.push({ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } });
   });
-  const out = fromScanSchema(merged, "claude");
-  if (!out.lines.length) throw new Error("claude: no items");
-  return out;
+  content.push({ type: "text", text: imgs.length > 1
+    ? "Read all the photos as ONE receipt and return the JSON."
+    : "Return the JSON for this receipt." });
+  const out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 8000, system: SCAN_PROMPT + (extra || ""), messages: [{ role: "user", content }] })));
+  const mapped = fromScanSchema(out || {}, "claude");
+  if (!mapped.lines.length) throw new Error("claude: no items read");
+  return mapped;
 }
 
 /* ---------------- price comparison ---------------- */
