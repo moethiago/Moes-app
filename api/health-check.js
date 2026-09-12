@@ -209,6 +209,80 @@ function fromAzure(j, names) {
     mismatch: total > 0 && Math.abs(sum - total) > Math.max(1, total * 0.02) ? Math.round((sum - total) * 100) / 100 : 0 };
 }
 
+const SCAN_PROMPT = `You are extracting grocery purchases from a Saudi Arabic supermarket receipt.
+
+Read the receipt visually. Do NOT use OCR text as the primary method.
+
+For EVERY purchased item, identify:
+- product name exactly as printed
+- quantity
+- weight if applicable
+- line total in SAR
+
+The receipt is a table. Each item may have:
+- a product/code line
+- the product name underneath it
+- quantity and price in separate columns
+
+Keep these physically associated.
+
+DO NOT invent or guess a product name.
+If the product name is unclear, return "UNCLEAR".
+
+Ignore:
+- VAT
+- subtotal
+- total
+- payment information
+- invoice number
+- barcode
+- store information
+
+Return ONLY valid JSON:
+
+{
+  "items": [
+    {
+      "name": "...",
+      "quantity": 1,
+      "weight_kg": null,
+      "price_sar": 0.00,
+      "confidence": 0.0
+    }
+  ],
+  "receipt_total_sar": 0.00
+}`;
+/* Map the schema above onto the shape the app's review screen consumes. "UNCLEAR" and
+   any confidence below 0.6 become a low-confidence row: shown with its price, never
+   given a product match, and flagged for him to pick. */
+function fromScanSchema(out, engine) {
+  const seen = new Set(), lines = [];
+  for (const it of (Array.isArray(out && out.items) ? out.items : [])) {
+    const total = Number(it && it.price_sar) || 0;
+    const wt = it && it.weight_kg != null ? Number(it.weight_kg) : null;
+    let qty = Number(it && it.quantity) > 0 ? Number(it.quantity) : 1;
+    if (wt > 0) qty = wt;
+    const conf = typeof (it && it.confidence) === "number" ? it.confidence : 1;
+    let nm = it && it.name != null ? String(it.name).trim().slice(0, 80) : "";
+    const unclear = !nm || /^unclear$/i.test(nm) || conf < 0.6;
+    if (unclear && !total) continue;
+    nm = /^unclear$/i.test(nm) ? null : (nm || null);
+    const key = normAr(nm || "") + ":" + total.toFixed(2) + ":" + qty;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    lines.push({ code: null, raw: (nm || "UNCLEAR") + " " + total,
+      name_ar: unclear ? null : nm, confidence: unclear ? "low" : "high",
+      qty, unit_price: qty > 0 && total > 0 ? Math.round(total / qty * 100) / 100 : null,
+      line_total: total, match: null, category: "other", weight_kg: wt });
+  }
+  const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
+  const tot = Number(out && out.receipt_total_sar) || 0;
+  return { engine, store: "Other", store_raw: "", seller: "", date: null, total: tot || null, vat: null,
+    lines, sum: Math.round(sum * 100) / 100,
+    unreadable: lines.filter((l) => l.confidence === "low").length,
+    mismatch: tot > 0 && Math.abs(sum - tot) > Math.max(1, tot * 0.02) ? Math.round((sum - tot) * 100) / 100 : 0 };
+}
+
 /* ---------------- GPT engine ----------------
    Same job as the Azure engine, different vendor: one photo (or slices) in, line items
    out. Kept behind its own env var so the engine is swappable without touching the app.
@@ -216,32 +290,23 @@ function fromAzure(j, names) {
    function limit. */
 const OA_KEY = process.env.OPENAI_API_KEY;
 const OA_MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
-async function gptReceipt(imgs, mime, names) {
+async function gptReceipt(imgs, mime) {
   const content = [{ type: "text", text: imgs.length > 1
-    ? `These ${imgs.length} images are OVERLAPPING vertical slices of ONE Saudi supermarket receipt, top to bottom. Output every item ONCE.`
-    : "This is one photo of a Saudi supermarket receipt." }];
+    ? `These ${imgs.length} images are OVERLAPPING vertical slices of ONE receipt, top to bottom. Output every item ONCE.`
+    : "This is one photo of one receipt." }];
   imgs.forEach((b64) => content.push({ type: "image_url", image_url: { url: "data:" + (mime || "image/jpeg") + ";base64," + b64, detail: "high" } }));
-  content.push({ type: "text", text: `Return ONLY JSON: {"store_raw":"<shop name as printed>","date":"YYYY-MM-DD"|null,"total":<grand total>|null,"vat":<vat amount>|null,"lines":[{"code":"<item code digits>"|null,"name_ar":"<product name EXACTLY as printed>"|null,"confidence":"high"|"low","qty":<number>,"unit_price":<number|null>,"line_total":<number>}]}
-
-Rules that matter on this paper:
-- Copy the Arabic name character for character. NEVER swap a printed word for a more familiar product (قشطة must not become حلبة, كزبرة must not become زيرة).
-- If a name is blurred, curled or glared and you are not certain, set name_ar to null and confidence to "low". Null is a CORRECT answer. A guessed name is a serious error.
-- Each item's code, its amount/qty figures and its name are often on 2-3 SEPARATE printed lines. Group them into one object. Never pair a name with a neighbouring item's numbers.
-- Copy the item code (4-14 digits) whenever visible; digits survive bad print.
-- Ignore VAT, subtotal, piece count, payment and loyalty lines.` });
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: "Bearer " + OA_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ model: OA_MODEL, max_tokens: 4000, response_format: { type: "json_object" },
-      messages: [{ role: "user", content }] }),
+      messages: [{ role: "system", content: SCAN_PROMPT }, { role: "user", content }] }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error("openai: " + (j.error && j.error.message ? j.error.message : r.status));
   const txt = j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "";
   const out = parseJSON(txt);
-  if (!out || !Array.isArray(out.lines)) throw new Error("openai: no lines");
-  out.engine = "gpt";
-  return out;
+  if (!out || !Array.isArray(out.items)) throw new Error("openai: no items");
+  return fromScanSchema(out, "gpt");
 }
 function normalizeScan(out, names, knownSet) {
   const seen = new Set(), lines = [];
@@ -319,124 +384,25 @@ ${names.join("\n")}`;
   return lines;
 }
 
-async function readReceipt({ image, images, mime, catalog, known, parallel }) {
-  const names = (catalog || []).slice(0, 400);
-  const knownSet = new Set((Array.isArray(known) ? known : []).map((c) => digits(c)).filter(Boolean));
-  const imgs = (Array.isArray(images) && images.length ? images : [image]).filter(Boolean).slice(0, 6);
-  if (!imgs.length) throw new Error("no image");
-  const multi = imgs.length > 1;
-
-  const system = `You TRANSCRIBE Saudi supermarket receipts (Danube, Panda, Tamimi, Carrefour, LuLu, Othaim, Nana, Al Raya, Manuel, Spar, Etho Al Jazirah / عذق الجزيرة, and others). Receipts may be Arabic, English, or both. Return ONLY JSON, no prose, no markdown.
-
-${multi
-  ? `You are given ${imgs.length} images. They are OVERLAPPING vertical slices of ONE single receipt, ordered top to bottom. Items near a slice boundary appear in two slices — output each item ONCE. Use the item code plus the line total to recognise a repeat. Do not merge two different items that happen to share a price.`
-  : `You are given one image of one receipt.`}
-
-TRANSCRIBE — DO NOT TIDY, TRANSLATE OR IMPROVE:
-- Copy the product name EXACTLY as printed, character for character, including abbreviations, brand spellings and odd spacing.
-- NEVER replace a printed word with a more familiar product name. Real failures to avoid: "قشطة المراعي لايت" must not become "بسطرمة البراعي"; "لبن المراعي كامل الدسم" must not become "لحم بقري فاخر"; "تفاح احمر" must not become "لحم دجاج"; "جزر" must not become "هل".
-- If a name is blurred, curled, glared, faded, or cut off at a slice edge — or if you are simply not certain — set "name_ar" to null and "confidence" to "low". Null is a CORRECT answer here; the app asks the shopper to pick that one line. A guessed name is a serious error: it files the wrong product and the wrong price and the shopper cannot tell.
-- Guessing is never better than null. Do not smooth a partial reading into a whole word.
-
-ITEM CODES — fill this in for every line you can:
-Most Saudi receipts print an item code per line (4 to 14 digits — a PLU like 200003 or a barcode like 6281102721756). Copy it into "code" exactly as printed. On a poor photo this is the most trustworthy field on the line, so look for it before anything else. If no code is printed or it is unreadable, code = null.
-
-GROUPING — the failure that ruins whole receipts:
-One item's code, its qty/amount figures, and its name are frequently printed on two or three SEPARATE physical lines (code on one line, amount and quantity on the next, name on another). Group all of them into ONE object for that item. Do NOT pair a name with the neighbouring item's numbers — an off-by-one here corrupts every line below it. If you cannot tell which name belongs to a set of numbers, emit the numbers with "name_ar": null and "confidence": "low" rather than pairing by position and hoping.
-
-Schema:
-{
- "store": "Danube" | "Panda" | "Tamimi" | "Carrefour" | "LuLu" | "Othaim" | "Nana" | "Al Raya" | "Manuel" | "Spar" | "Other",
- "store_raw": "<store name as printed>",
- "date": "YYYY-MM-DD" | null,
- "total": <number, SAR, grand total paid> | null,
- "lines": [
-   { "code": "<item code digits as printed>" | null,
-     "name_ar": "<product name exactly as printed>" | null,
-     "confidence": "high" | "low",
-     "qty": <number, default 1>,
-     "unit_price": <number|null>,
-     "line_total": <number>,
-     "match": "<exact string from the HOUSEHOLD CATALOG below, or null>",
-     "category": "veg|bread|dairy|meat|fish|can|oat|spice|coffee|home|other" }
- ]
-}
-
-Rules: ignore subtotals, VAT lines, discount summaries, loyalty points, piece counts and payment lines. Keep quantities and totals in SAR. Match to the catalog ONLY when the name you actually read is clearly that same product (receipt 'ALMARAI FRESH MILK FF 2L' matches catalog 'حليب (كامل الدسم)'). If "name_ar" is null, or "confidence" is "low", or you are unsure: "match": null. Never match on the basis of a guessed name.
-
-HOUSEHOLD CATALOG:
-${names.join("\n")}`;
-
-  const content = [];
-  imgs.forEach((b64, i) => {
-    if (multi) content.push({ type: "text", text: `Slice ${i + 1} of ${imgs.length} (top to bottom):` });
-    content.push({ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } });
+async function claudeScan(imgs, mime) {
+  const one = async (b64, i) => {
+    const content = [{ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } }];
+    content.push({ type: "text", text: imgs.length > 1
+      ? `This is slice ${i + 1} of ${imgs.length} of ONE receipt, top to bottom. Return the JSON for the items visible in THIS slice only.`
+      : "Return the JSON for this receipt." });
+    return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system: SCAN_PROMPT, messages: [{ role: "user", content }] })));
+  };
+  // slices go out together: total latency is the slowest slice, not the sum of them
+  const per = (await Promise.all(imgs.map((b, i) => one(b, i).catch(() => null)))).filter(Boolean);
+  if (!per.length) throw new Error("claude: no response");
+  const merged = { items: [], receipt_total_sar: 0 };
+  per.forEach((r) => {
+    if (Array.isArray(r.items)) merged.items = merged.items.concat(r.items);
+    const t = Number(r.receipt_total_sar) || 0;
+    if (t > merged.receipt_total_sar) merged.receipt_total_sar = t;
   });
-  content.push({ type: "text", text: multi
-    ? "Read this receipt across all slices and return the JSON. Each item once. Leave a name null rather than guessing it."
-    : "Read this receipt and return the JSON. Leave a name null rather than guessing it." });
-  const messages = [{ role: "user", content }];
-
-  let out = null;
-  if (parallel && imgs.length > 1) {
-    // one call per slice, fired together: total latency is the slowest slice, not the sum
-    const per = await Promise.all(imgs.map(async (b64, i) => {
-      const m = [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } },
-        { type: "text", text: `This is slice ${i + 1} of ${imgs.length} of one receipt, top to bottom. Return the JSON for the items visible in THIS slice only. Leave a name null rather than guessing it.` },
-      ] }];
-      try { return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 3000, system, messages: m }))); } catch (e) { return null; }
-    }));
-    const merged = { store: "Other", store_raw: "", date: null, total: null, lines: [] };
-    per.filter(Boolean).forEach((r) => {
-      if (r.store && r.store !== "Other" && merged.store === "Other") merged.store = r.store;
-      if (r.store_raw && !merged.store_raw) merged.store_raw = r.store_raw;
-      if (r.date && !merged.date) merged.date = r.date;
-      if (r.total != null && Number(r.total) > (Number(merged.total) || 0)) merged.total = Number(r.total);
-      if (Array.isArray(r.lines)) merged.lines = merged.lines.concat(r.lines);
-    });
-    if (merged.lines.length) out = merged;
-  }
-  if (!out) { try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages }))); } catch (e) { out = null; } }
-  if (!out || !Array.isArray(out.lines) || !out.lines.length) {
-    out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 4000, system, messages })));
-  }
-  await bump("receipts", 1);
-
-  // Clean each line, then drop slice-overlap duplicates (same code, or same name+total).
-  const seen = new Set();
-  const lines = [];
-  for (const l of (out.lines || [])) {
-    const code = digits(l.code).slice(0, 14);
-    const total = Number(l.line_total) || 0;
-    const nm = l.name_ar == null ? null : String(l.name_ar).trim().slice(0, 80) || null;
-    const low = String(l.confidence || "").toLowerCase() === "low" || !nm;
-    const key = code ? "c:" + code + ":" + total.toFixed(2) : "n:" + normAr(nm || l.raw || "") + ":" + total.toFixed(2);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    lines.push({
-      code: code || null,
-      raw: String(l.raw || "").slice(0, 160),
-      name_ar: nm,
-      confidence: low ? "low" : "high",
-      qty: Number(l.qty) > 0 ? Number(l.qty) : 1,
-      unit_price: l.unit_price != null && Number(l.unit_price) > 0 ? Number(l.unit_price) : null,
-      line_total: total,
-      // A match derived from an unreadable name is worse than no match at all.
-      match: !low && l.match && names.includes(l.match) ? l.match : null,
-      category: l.category || "other",
-      known: !!code && knownSet.has(code),
-    });
-  }
-  out.lines = lines;
-
-  // Reconcile: if the lines don't add up to the printed total, say so instead of
-  // presenting a tidy screen that is quietly missing or double-counting an item.
-  const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
-  const tot = Number(out.total) || 0;
-  out.sum = Math.round(sum * 100) / 100;
-  out.unreadable = lines.filter((l) => l.confidence === "low").length;
-  out.mismatch = tot > 0 && Math.abs(sum - tot) > Math.max(1, tot * 0.02) ? Math.round((sum - tot) * 100) / 100 : 0;
+  const out = fromScanSchema(merged, "claude");
+  if (!out.lines.length) throw new Error("claude: no items");
   return out;
 }
 
@@ -608,16 +574,15 @@ async function maqadiHandler(req, res) {
       // try the chosen engine, then the others, so one vendor being down is not an outage
       for (const eng of [want].concat(engines.filter((e) => e !== want))) {
         try {
-          if (eng === "gpt") {
-            const out = normalizeScan(await gptReceipt(imgs, body.mime, names), names, knownSet);
-            if (out.lines.length) { await bump("receipts", 1); out.tried = tried; return res.status(200).json(out); }
-          } else if (eng === "azure") {
-            const out = fromAzure(await azureReceipt(imgs[0], body.mime), names);
-            if (out.lines.length) { await bump("receipts", 1); out.tried = tried; return res.status(200).json(out); }
-          } else {
-            const out = await readReceipt({ images: imgs, mime: body.mime, catalog: body.catalog, parallel: true });
-            out.engine = "claude";
-            if (out.lines && out.lines.length) { out.tried = tried; return res.status(200).json(out); }
+          let out = null;
+          if (eng === "gpt") out = await gptReceipt(imgs, body.mime);
+          else if (eng === "azure") out = fromAzure(await azureReceipt(imgs[0], body.mime), names);
+          else out = await claudeScan(imgs, body.mime);
+          if (out && out.lines.length) {
+            // codes are not in the requested schema; mark what the household already knows by name
+            out.lines.forEach((l) => { l.known = !!(l.code && knownSet.has(l.code)); });
+            await bump("receipts", 1); out.tried = tried;
+            return res.status(200).json(out);
           }
           tried.push(eng + ": no lines");
         } catch (e) { tried.push(eng + ": " + String(e.message || e).slice(0, 120)); }
