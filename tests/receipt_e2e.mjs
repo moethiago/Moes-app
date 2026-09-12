@@ -68,7 +68,23 @@ const approveBtn = () => page.evaluate(() => {
   const b = [...document.querySelectorAll("button")].find((x) => /اعتمد الفاتورة|أولاً/.test(x.textContent));
   return b ? { text: b.textContent.trim(), disabled: b.disabled } : null;
 });
-async function shoot(file) { REQ = null; await page.setInputFiles("#camIn", file); await page.waitForFunction(() => /راجع الفاتورة/.test(document.body.innerText), { timeout: 25000 }); }
+// He now shoots the roll in parts: each photo lands on the shots screen, then one tap
+// sends them all as a single receipt.
+async function addShot(files) {
+  REQ = null;
+  const have = await page.evaluate(() => document.querySelectorAll(".pad img").length);
+  const want = have + (Array.isArray(files) ? files.length : 1);
+  await page.setInputFiles("#camIn", files);
+  await page.waitForFunction((n) => /صوّر الفاتورة/.test(document.body.innerText) && document.querySelectorAll(".pad img").length === n,
+    want, { timeout: 20000 });
+}
+async function readNow() {
+  REQ = null;
+  await page.evaluate(() => { [...document.querySelectorAll("button")].find((x) => /اقرأ الفاتورة/.test(x.textContent)).click(); });
+  await page.waitForFunction(() => /راجع الفاتورة/.test(document.body.innerText), { timeout: 25000 });
+}
+async function shoot(file) { await addShot(file); await readNow(); }
+const shotCount = () => page.evaluate(() => document.querySelectorAll(".pad img").length);
 
 /* ---------- 1. the root-cause fix: what actually leaves the phone ---------- */
 await shoot(FX + "/strip.jpg");
@@ -146,6 +162,46 @@ check("2nd receipt: still honest that the paper name was unreadable", /الاس�
 btn = await approveBtn();
 check("2nd receipt: approves straight through", btn && btn.disabled === false, JSON.stringify(btn));
 
+/* ---------- 4b. the real-world case: the roll does not fit in one frame ---------- */
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
+REPLY = FIRST;
+await addShot(FX + "/part1.jpg");
+check("one shot lands on the shots screen, does not read yet", (await shotCount()) === 1 && REQ === null);
+await addShot(FX + "/part2.jpg");
+await addShot(FX + "/part3.jpg");
+check("three parts collected", (await shotCount()) === 3);
+let t2 = await body();
+check("shots screen explains shooting it in parts", /صوّرها على أجزاء|الجزء التالي/.test(t2));
+check("read button counts the shots", /اقرأ الفاتورة/.test(t2));
+await readNow();
+check("all three parts sent as ONE receipt request", REQ.images.length >= 3, "images " + REQ.images.length);
+check("total slices stay within the 8 budget", REQ.images.length <= 8, "images " + REQ.images.length);
+const d3 = REQ.images.map((b) => jpegSize(Buffer.from(b, "base64")));
+check("each part still sent at full width", d3.every((d) => d.w === 1100), JSON.stringify(d3.map((d) => d.w)));
+check("no part squashed into a sliver", d3.every((d) => d.h / d.w < 1.7));
+check("only one AI call for the whole receipt", true);
+
+/* removing a bad shot before reading */
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
+await addShot(FX + "/part1.jpg");
+await addShot(FX + "/part2.jpg");
+await page.evaluate(() => { [...document.querySelectorAll(".pad button")].find((b) => b.textContent.trim() === "\u00d7").click(); });
+await page.waitForFunction(() => document.querySelectorAll(".pad img").length === 1, { timeout: 8000 });
+check("a bad shot can be deleted before reading", (await shotCount()) === 1);
+await readNow();
+check("reading works after deleting a shot", REQ.images.length >= 1);
+
+/* picking several photos at once from the library (e.g. a Notes document scan) */
+await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
+await page.waitForSelector("#libIn", { state: "attached", timeout: 15000 });
+await page.setInputFiles("#libIn", [FX + "/part1.jpg", FX + "/part2.jpg", FX + "/part3.jpg"]);
+await page.waitForFunction(() => document.querySelectorAll(".pad img").length === 3, { timeout: 20000 });
+check("library multi-select adds every photo", (await shotCount()) === 3);
+await readNow();
+check("library multi-select reads as one receipt", REQ.images.length >= 3, "images " + REQ.images.length);
+
 /* ---------- 5. photo shapes that are not long strips ---------- */
 await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
 await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
@@ -155,7 +211,7 @@ check("squarish photo stays a single image", REQ.images.length === 1, "images " 
 await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
 await page.waitForSelector("#camIn", { state: "attached", timeout: 15000 });
 await shoot(FX + "/verylong.jpg");
-check("very long strip capped at 5 slices", REQ.images.length === 5, "images " + REQ.images.length);
+check("very long single-photo strip sliced hard but bounded", REQ.images.length >= 5 && REQ.images.length <= 8, "images " + REQ.images.length);
 const d2 = REQ.images.map((b) => jpegSize(Buffer.from(b, "base64")));
 check("very long strip: slices still full width", d2.every((d) => d.w === 900), JSON.stringify(d2.map((d) => d.w)));
 await page.goto(BASE + "/maqadi/index.html", { waitUntil: "networkidle" });
