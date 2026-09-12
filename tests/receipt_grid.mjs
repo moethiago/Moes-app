@@ -141,7 +141,44 @@ check("single image: no overlap wording in prompt", !/OVERLAPPING vertical slice
 NEXT = [{ lines: [] }, R(REAL)]; SENT = [];
 r = await call({ action: "receipt", pin: "2026", catalog: CATALOG, images: ["a", "b"], mime: "image/jpeg" });
 check("empty first reply: falls back to second model", r.code === 200 && r.j.lines.length === 22);
-check("fallback used a different model", SENT.length === 2);
+check("fallback used a different model (+1 reconcile call)", SENT.length === 3);
+
+/* 12b — reconcile: reason from price + brand on lines the household has not confirmed */
+const fire2 = async (vision, reason, body = {}) => { NEXT = [vision, reason]; SENT = []; return call({ action: "receipt", pin: "2026", catalog: CATALOG, images: ["a", "b"], mime: "image/jpeg", ...body }); };
+r = await fire2(R([L("6261007666527", "حلبة المراعي لايت 100 جرام", 8, 2, 4), L("200003", "زيرة", 2)], 10),
+               [{ i: 0, name: "قشطة المراعي لايت 100 جرام", match: "قشطة", confidence: "high" }, { i: 1, name: "كزبرة", match: null, confidence: "low" }]);
+check("reconcile: a second, text-only call is made", SENT.length === 2 && !SENT[1].messages[0].content.some || typeof SENT[1].messages[0].content === "string");
+check("reconcile: prompt teaches letter swaps and price reasoning", /ق↔ح/.test(SENT[1].system) && /unit price/.test(SENT[1].system));
+check("reconcile: high fixes the misread name", r.j.lines[0].name_ar === "قشطة المراعي لايت 100 جرام");
+check("reconcile: high sets the catalog match", r.j.lines[0].match === "قشطة" && r.j.lines[0].confidence === "high");
+check("reconcile: what OCR read is kept for the record", r.j.lines[0].read_as === "حلبة المراعي لايت 100 جرام");
+check("reconcile: low stays low with a hint, no match", r.j.lines[1].confidence === "low" && r.j.lines[1].hint === "كزبرة" && r.j.lines[1].match === null);
+check("reconcile: low keeps the OCR name for display", r.j.lines[1].name_ar === "زيرة");
+check("reconcile: lines flagged as reasoned", r.j.lines.every((l) => l.reasoned === true));
+check("reconcile: unreadable count reflects the outcome", r.j.unreadable === 1);
+
+// known codes are skipped entirely - no second call, no changes
+r = await fire2(R([L("6261007666527", "حلبة المراعي لايت 100 جرام", 8, 2, 4)], 8),
+               [{ i: 0, name: "SHOULD NOT APPLY", match: "قشطة", confidence: "high" }], { known: ["6261007666527"] });
+check("known code: no reconcile call at all", SENT.length === 1, "calls " + SENT.length);
+check("known code: line untouched", r.j.lines[0].name_ar === "حلبة المراعي لايت 100 جرام" && !r.j.lines[0].reasoned);
+check("known flag not leaked to client", !("known" in r.j.lines[0]));
+
+// reconcile never touches a known line even if it answers for it
+r = await fire2(R([L("6261007666527", "حلبة", 8), L("200003", "زيرة", 2)], 10),
+               [{ i: 0, name: "X", match: "قشطة", confidence: "high" }, { i: 1, name: "كزبرة", match: null, confidence: "high" }], { known: ["6261007666527"] });
+check("mixed: known line ignored by reconcile", r.j.lines[0].name_ar === "حلبة" && !r.j.lines[0].reasoned);
+check("mixed: unknown line fixed", r.j.lines[1].name_ar === "كزبرة" && r.j.lines[1].confidence === "high");
+
+// garbage from the reasoner must not corrupt anything
+r = await fire2(R([L("200003", "زيرة", 2)], 2), "not json at all");
+check("reconcile garbage: lines unchanged", r.j.lines[0].name_ar === "زيرة" && r.j.lines.length === 1);
+r = await fire2(R([L("200003", "زيرة", 2)], 2), [{ i: 0, name: "كزبرة", match: "not in catalog", confidence: "high" }]);
+check("reconcile: fake catalog match refused, name still fixed", r.j.lines[0].match === null && r.j.lines[0].name_ar === "كزبرة");
+r = await fire2(R([L("200003", "زيرة", 2)], 2), [{ i: 7, name: "كزبرة", confidence: "high" }]);
+check("reconcile: out-of-range index ignored", r.j.lines[0].name_ar === "زيرة");
+r = await fire2(R([L("200003", "زيرة", 2)], 2), [{ i: 0, name: "", confidence: "high" }]);
+check("reconcile: empty name cannot be 'high'", r.j.lines[0].confidence === "low" && r.j.lines[0].name_ar === "زيرة");
 
 /* 13 — junk in the code field is normalised to digits */
 r = await fire(R([L("  62810-07023488 ", "لبن", 6.00)], 6.00));
