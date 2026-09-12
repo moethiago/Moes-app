@@ -65,7 +65,7 @@ const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").sl
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
 const LITE_BLOCKED = ["receipt", "compare", "photoset"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
-const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-haiku-4-5-20251001"; // receipts: cheap model first, MODEL as fallback
+const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
 // USD per million tokens [input, output]; web search is $10 per 1,000 searches. Real usage is read off every API response.
 const PRICE = { "claude-haiku-4-5-20251001": [1, 5], "claude-sonnet-5": [3, 15], "claude-opus-5": [15, 75] };
