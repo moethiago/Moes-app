@@ -210,7 +210,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <div id="net" class="net hidden">بدون اتصال — التعديلات محفوظة وبترفع لما يرجع النت</div>
 <div class="toast" id="toast"></div>
 <input type="file" id="camIn" accept="image/*" capture="environment" class="hidden">
-<input type="file" id="libIn" accept="image/*" class="hidden">
+<input type="file" id="libIn" accept="image/*" multiple class="hidden">
 <input type="file" id="tileIn" accept="image/*" class="hidden">
 
 <script>
@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="4.0", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.2", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -736,7 +736,9 @@ function rRcpt(){
   var v=$("view");
   if(rcptUI.mode==="reading"){
     hd("الفاتورة","يقرأ الفاتورة…");
-    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px"><span class="spin"></span> <span class="muted">يقرأ الأصناف والأسعار من الصورة…</span></div></div></div>';
+    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px">'
+      +(rcptUI.preview?'<img src="'+rcptUI.preview+'" style="max-height:200px;border-radius:12px;max-width:100%"><br><br>':'')
+      +'<span class="spin"></span> <span class="muted">'+(rcptUI.parts>1?"\u064a\u0642\u0631\u0623 "+ar(rcptUI.parts)+" \u0635\u0648\u0631 \u0643\u0641\u0627\u062a\u0648\u0631\u0629 \u0648\u0627\u062d\u062f\u0629\u2026":"\u064a\u0642\u0631\u0623 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629\u2026")+'</span></div></div></div>';
     return;
   }
   if(rcptUI.mode==="review")return rReview();
@@ -747,7 +749,13 @@ function rRcpt(){
   if(rcptUI.error){var eb=document.createElement("div");eb.className="sec";eb.innerHTML='<div class="card" style="border:1px solid var(--late);padding:12px;font-size:13.5px;line-height:1.7"><b style="color:var(--late)">ما قدرنا</b><br>'+esc(rcptUI.error)+'</div>';pad.appendChild(eb);}
   var dz=document.createElement("div");dz.className="sec";
   var rt=recentTrip();
-  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>صوّر الفاتورة</b><p style="line-height:1.85">صورة واحدة للفاتورة كاملة — التطبيق يقرأ الأصناف والأسعار والإجمالي.<br><span style="color:var(--dim)">افردها على سطح وخلّ الضوء من الجنب، وخلّ الفاتورة كاملة داخل الصورة.</span></p><button class="btn" id="dzgo" style="margin-top:6px">صوّر الفاتورة</button><button class="alt" id="dzlib" style="margin-top:10px">أو اختر صورة من الاستوديو</button><button class="link" id="dzman" style="display:block;margin:12px auto 0">أو اكتب الإجمالي بنفسي</button></div>';
+  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">\ud83d\udcf7</div><b>\u0635\u0648\u0651\u0631 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629</b>'
+    +'<p style="line-height:1.85">\u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u064a\u0642\u0631\u0623 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0648\u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0648\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a.<br>'
+    +'<b style="color:var(--ink)">\u0641\u0627\u062a\u0648\u0631\u0629 \u0637\u0648\u064a\u0644\u0629\u061f</b> \u0635\u0648\u0651\u0631\u0647\u0627 \u0639\u0644\u0649 \u0623\u062c\u0632\u0627\u0621 (\u0644\u063a\u0627\u064a\u0629 \u0664 \u0635\u0648\u0631)\u060c \u062b\u0645 \u0627\u062e\u062a\u0631\u0647\u0627 \u0643\u0644\u0651\u0647\u0627 \u0645\u0631\u0629 \u0648\u0627\u062d\u062f\u0629 \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648.<br>'
+    +'<span style="color:var(--dim)">\u0627\u0641\u0631\u062f\u0647\u0627 \u0639\u0644\u0649 \u0633\u0637\u062d \u0648\u062e\u0644\u0651 \u0627\u0644\u0636\u0648\u0621 \u0645\u0646 \u0627\u0644\u062c\u0646\u0628.</span></p>'
+    +'<button class="btn" id="dzgo" style="margin-top:6px">\ud83d\udcf7 \u0635\u0648\u0651\u0631 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629</button>'
+    +'<button class="btn soft" id="dzlib" style="margin-top:10px;width:100%">\ud83d\uddbc\ufe0f \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648 \u2014 \u0635\u0648\u0631\u0629 \u0623\u0648 \u0623\u0643\u062b\u0631</button>'
+    +'<button class="link" id="dzman" style="display:block;margin:12px auto 0">\u0623\u0648 \u0627\u0643\u062a\u0628 \u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0628\u0646\u0641\u0633\u064a</button></div>';
   pad.appendChild(dz);
   var q=queuedScan();
   if(q){var qb=document.createElement("div");qb.className="sec";
@@ -1147,6 +1155,38 @@ function sliceReceipt(file,maxN,cb){
   };
   img.src=url;
 }
+function prepImages(files,cb){
+  var out=[],pv=null,i=0;
+  (function next(){
+    if(i>=files.length){cb(out,pv);return;}
+    prepOne(files[i],function(b64,preview){
+      if(b64)out.push(b64);
+      if(!pv&&preview)pv=preview;
+      i++;next();
+    });
+  })();
+}
+/* One photo goes as ONE image at the size the reader actually works at, contrast
+   normalised. Cropping a photo into slices cost 44s of a 60s budget and silently lost
+   whole slices, which is what made the totals fail. A long receipt is several photos. */
+function prepOne(file,cb){
+  var img=new Image(),url=URL.createObjectURL(file);
+  img.onerror=function(){URL.revokeObjectURL(url);cb(null,null);};
+  img.onload=function(){
+    var w=img.width,h=img.height;URL.revokeObjectURL(url);
+    if(!w||!h){cb(null,null);return;}
+    var sc=Math.min(1,1560/Math.max(w,h));
+    var cv=document.createElement("canvas");cv.width=Math.round(w*sc);cv.height=Math.round(h*sc);
+    var g=cv.getContext("2d");g.imageSmoothingEnabled=true;g.imageSmoothingQuality="high";
+    g.drawImage(img,0,0,cv.width,cv.height);
+    try{enhance(cv);}catch(e){}
+    var pvc=document.createElement("canvas"),ps=Math.min(1,700/Math.max(w,h));
+    pvc.width=Math.round(w*ps);pvc.height=Math.round(h*ps);
+    pvc.getContext("2d").drawImage(img,0,0,pvc.width,pvc.height);
+    cb(cv.toDataURL("image/jpeg",.92).split(",")[1],pvc.toDataURL("image/jpeg",.7));
+  };
+  img.src=url;
+}
 function sliceAll(files,cb){
   var per=Math.max(1,Math.floor(4/Math.max(1,files.length))),out=[],pv=null,i=0;
   (function next(){
@@ -1181,15 +1221,22 @@ async function flushScanQ(){
   try{await sendScan(q.slices,q.preview,true);}catch(e){rcptUI={mode:"idle",error:String(e.message||e)};render();}
 }
 window.addEventListener("online",function(){flushScanQ();});
-async function scanReceipt(file){
-  rcptUI={mode:"reading",step:"items"};view="rcpt";render();
+async function scanReceipt(files){
+  if(!files)return;
+  if(!Array.isArray(files))files=[files];
+  files=files.slice(0,4);                       // four photos covers any till roll
+  rcptUI={mode:"reading",step:"items",parts:files.length};view="rcpt";render();
   // The QR is free and exact when it happens to be in frame - use it for the total and
   // the shop, but never require it. The reader does the items either way.
+  // the QR is usually on the last photo of a long receipt, so look from the end
   var z=null;
-  try{var raw=await decodeQR(file);if(raw)z=parseZatca(raw);}catch(e){}
-  sliceAll([file],async function(slices,preview){
+  for(var qi=files.length-1;qi>=0&&!z;qi--){
+    try{var raw=await decodeQR(files[qi]);if(raw)z=parseZatca(raw);}catch(e){}
+  }
+  rcptUI.files=files;
+  prepImages(files,async function(slices,preview){
     if(!slices||!slices.length){rcptUI={mode:"idle",error:"ما قدرنا نفتح الصورة"};render();return;}
-    rcptUI={mode:"reading",step:"items",preview:preview};render();
+    rcptUI={mode:"reading",step:"items",preview:preview,parts:files.length};render();
     if(!navigator.onLine){
       queueScan(slices,preview);
       rcptUI={mode:"idle",error:"ما فيه شبكة — حفظنا الصورة وبنقرأها أول ما ترجع الشبكة."};render();return;
@@ -1234,7 +1281,12 @@ function buildCandidates(){
   Object.keys(S.items).forEach(function(id){add(id,false,1);});
   return out.slice(0,200);
 }
+/* A photo that cut off the rest of the roll: add another photo and both are read
+   together as one receipt. Nothing already read is thrown away. */
+var pendingAdd=false;
+function addReceiptPhoto(){pendingAdd=true;$("libIn").click();}
 function openScanReview(r,preview){
+  var keptFiles=rcptUI.files||[];
   var codes=S.codes||{},namesMap=S.names||{},sv=r.solved||{lines:[]};
   var lines=r.lines.map(function(l,i){
     var sl=sv.lines[i]||{},it=sl.itemId?S.items[sl.itemId]:null,how=sl.how||"";
@@ -1252,8 +1304,9 @@ function openScanReview(r,preview){
   rcptUI={mode:"review",data:{store:storeFromSeller(r.seller||r.store_raw),seller:r.seller||r.store_raw||"",vatNo:"",
     ts:when.getTime(),total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),vat:r.vat||null,
     fromQR:!!r.fromQR,engine:r.engine||"",scanned:true,mismatch:r.mismatch||0,sum:sv.sum||r.sum||0,printed:r.total||0,
-    verified:!!sv.verified,totalOK:sv.totalOK,piecesOK:sv.piecesOK,pieces:sv.pieces||null,retake:!!sv.retake,
+    verified:!!sv.verified,totalOK:sv.totalOK,piecesOK:sv.piecesOK,pieces:sv.pieces||null,retake:!!sv.retake,missing:sv.missing||0,
     tripId:trip?trip.id:null,lines:lines}};
+  rcptUI.files=keptFiles;
   view="rcpt";render();
 }
 function openReceiptReview(z){
@@ -1273,14 +1326,20 @@ function rReview(){
     var vd=document.createElement("div");vd.className="sec";
     var ok=R.verified,ask=R.lines.filter(function(l){return l.doubt;}).length;
     vd.innerHTML='<div class="card" style="padding:18px;text-align:center">'
-      +'<div style="font-size:26px;font-weight:800;letter-spacing:-.5px">'+ar(R.lines.length)+' صنف · '+money(R.total)+'</div>'
-      +'<div style="margin-top:8px;font-size:14px;font-weight:700;color:'+(ok?'var(--go)':(ask?'var(--soon)':'var(--late)'))+'">'
-        +(ok?'مطابق ✓ — المجموع يطلع صح':(ask?'باقي '+ar(ask)+' سؤال بس':'المجموع ما طلع — راجع الأصناف'))+'</div>'
-      +(R.totalOK===false?'<div style="margin-top:6px;font-size:12.5px;color:var(--late)">مجموع الأسطر '+money(R.sum)+' والمكتوب '+money(R.printed)+'</div>':'')
-      +'<button class="link" id="vdet" style="margin-top:12px;font-size:12.5px">'+(rcptUI.open?'اخفِ الأصناف':'شوف الأصناف ('+ar(R.lines.length)+')')+'</button>'
+      +'<div style="font-size:26px;font-weight:800;letter-spacing:-.5px">'+ar(R.lines.length)+' \u0635\u0646\u0641 \u00b7 '+money(R.total)+'</div>'
+      +'<div style="margin-top:8px;font-size:14px;font-weight:700;color:'+(ok?'var(--go)':(R.missing||ask?'var(--soon)':'var(--late)'))+'">'
+        +(ok?'\u0645\u0637\u0627\u0628\u0642 \u2713 \u2014 \u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u064a\u0637\u0644\u0639 \u0635\u062d'
+           :(R.missing?'\u0646\u0627\u0642\u0635\u0629 \u2014 \u0628\u0627\u0642\u064a '+money(R.missing)+' \u0645\u0646 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629'
+           :(ask?'\u0628\u0627\u0642\u064a '+ar(ask)+' \u0633\u0624\u0627\u0644 \u0628\u0633'
+              :'\u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u0645\u0627 \u0637\u0644\u0639 \u2014 \u0631\u0627\u062c\u0639 \u0627\u0644\u0623\u0635\u0646\u0627\u0641')))
+      +'</div>'
+      +(R.missing?'<div style="margin-top:10px;font-size:13px;line-height:1.75">\u0642\u0631\u0623\u0646\u0627 '+ar(R.lines.length)+' \u0635\u0646\u0641 \u0628\u0645\u062c\u0645\u0648\u0639 '+money(R.sum)+'\u060c \u0648\u0627\u0644\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 '+money(R.printed)+'. \u0628\u0627\u0642\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0643\u0627\u0646 \u062e\u0627\u0631\u062c \u0627\u0644\u0635\u0648\u0631\u0629.<br><button class="btn" id="vmore" style="margin-top:10px;width:100%">\uff0b \u0632\u0648\u0651\u062f \u0635\u0648\u0631\u0629 \u0644\u0644\u062c\u0632\u0621 \u0627\u0644\u0628\u0627\u0642\u064a</button></div>':'')
+      +(R.totalOK===false&&!R.missing?'<div style="margin-top:6px;font-size:12.5px;color:var(--late)">\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0623\u0633\u0637\u0631 '+money(R.sum)+' \u0648\u0627\u0644\u0645\u0643\u062a\u0648\u0628 '+money(R.printed)+'</div>':'')
+      +'<button class="link" id="vdet" style="margin-top:12px;font-size:12.5px">'+(rcptUI.open?'\u0627\u062e\u0641\u0650 \u0627\u0644\u0623\u0635\u0646\u0627\u0641':'\u0634\u0648\u0641 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 ('+ar(R.lines.length)+')')+'</button>'
       +'</div>';
     pad.appendChild(vd);
     $("vdet").onclick=function(){rcptUI.open=!rcptUI.open;render();};
+    if($("vmore"))$("vmore").onclick=function(){addReceiptPhoto();};
   }
   // the few questions, if any: one tap each, never an empty field
   if(R.scanned){
@@ -1374,8 +1433,11 @@ function commitReceipt(R){
   toast("حفظنا الفاتورة "+money(rc.total)+(Object.keys(prices).length?" و"+ar(Object.keys(prices).length)+" سعر":""));
   rcptUI={mode:"result",rid:rc.id};render();
 }
-$("camIn").onchange=function(){var f=$("camIn").files[0];$("camIn").value="";if(f)scanReceipt(f);};
-$("libIn").onchange=function(){var f=$("libIn").files[0];$("libIn").value="";if(f)scanReceipt(f);};
+$("camIn").onchange=function(){var a=[].slice.call($("camIn").files);$("camIn").value="";if(a.length)scanReceipt(a);};
+$("libIn").onchange=function(){var a=[].slice.call($("libIn").files);$("libIn").value="";
+  if(!a.length)return;
+  if(pendingAdd){pendingAdd=false;a=(rcptUI.files||[]).concat(a);}
+  scanReceipt(a);};
 
 function shrink(file,max,q,cb){
   var img=new Image();var url=URL.createObjectURL(file);
