@@ -250,11 +250,25 @@ Return ONLY valid JSON:
       "confidence": 0.0
     }
   ],
-  "receipt_total_sar": 0.00
-}`;
+  "receipt_total_sar": 0.00,
+  "piece_count": 0,
+  "layout_note": "..."
+}
+
+For each item also include "code" (the printed item code or barcode digits, or null) and "candidate" (see below, or null).
+"piece_count" is the total number of pieces printed on the receipt if it states one, else 0.
+"layout_note" is one short English sentence describing how THIS shop lays out an item row, so the same receipt format can be parsed faster next time.`;
 /* Map the schema above onto the shape the app's review screen consumes. "UNCLEAR" and
    any confidence below 0.6 become a low-confidence row: shown with its price, never
    given a product match, and flagged for him to pick. */
+function candidateBlock(cands) {
+  if (!cands || !cands.length) return "";
+  return `\n\nThis shopper's likely items are listed below with the unit price he has paid at this shop before. For each receipt line, if it is clearly one of these, put that item's exact name in "candidate". If it is a real product that is NOT in the list, leave "candidate" null and give the printed name. Never force a line onto a listed item just because the price is close.\n\nLIKELY ITEMS:\n`
+    + cands.slice(0, 200).map((c) => "- " + c.name + (c.price > 0 ? ` (~${c.price} SAR)` : "") + (c.inCart ? " [in his cart]" : "")).join("\n");
+}
+function layoutBlock(note) {
+  return note ? `\n\nThis shop's receipts are laid out like this (learned from a previous receipt here): ${note}` : "";
+}
 function fromScanSchema(out, engine) {
   const seen = new Set(), lines = [];
   // accept either the requested schema or a bare array of {itemName, quantity, price}
@@ -273,7 +287,8 @@ function fromScanSchema(out, engine) {
     const key = normAr(nm || "") + ":" + total.toFixed(2) + ":" + qty;
     if (seen.has(key)) continue;
     seen.add(key);
-    lines.push({ code: null, raw: (nm || "UNCLEAR") + " " + total,
+    lines.push({ code: digits(it && it.code).slice(0, 14) || null, candidate: it && it.candidate ? String(it.candidate).trim().slice(0, 80) : null,
+      raw: (nm || "UNCLEAR") + " " + total,
       name_ar: unclear ? null : nm, confidence: unclear ? "low" : "high",
       qty, unit_price: qty > 0 && total > 0 ? Math.round(total / qty * 100) / 100 : null,
       line_total: total, match: null, category: "other", weight_kg: wt });
@@ -281,9 +296,139 @@ function fromScanSchema(out, engine) {
   const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
   const tot = Number(out && !Array.isArray(out) ? (out.receipt_total_sar != null ? out.receipt_total_sar : out.total) : 0) || 0;
   return { engine, store: "Other", store_raw: "", seller: "", date: null, total: tot || null, vat: null,
+    pieces: Number(out && !Array.isArray(out) ? out.piece_count : 0) || null, layout: (out && !Array.isArray(out) && out.layout_note) ? String(out.layout_note).slice(0, 300) : null,
     lines, sum: Math.round(sum * 100) / 100,
     unreadable: lines.filter((l) => l.confidence === "low").length,
     mismatch: tot > 0 && Math.abs(sum - tot) > Math.max(1, tot * 0.02) ? Math.round((sum - tot) * 100) / 100 : 0 };
+}
+
+/* ---------------- the solver ----------------
+   Reading a receipt is not "transcribe Arabic"; it is "decide which of these known
+   items each line is". Names on thermal print are unreliable, numbers are not, so the
+   numbers carry identity and the names only narrow the choice. The solver resolves the
+   whole receipt at once against a candidate set, uses the printed total and piece count
+   as checksums, and is allowed to ask at most a few questions. If it cannot get down to
+   that, it throws the reading away rather than turning the shopper into a data-entry
+   clerk. */
+const MAX_DOUBTS = 3;
+function arTokens(s) {
+  return normAr(s || "").split(" ").filter((t) => t.length > 1 &&
+    ["الدسم","جرام","غرام","جم","مل","لتر","كيلو","كجم","علبه","كيس","باكيت","حبه","حبات","لايت","طازج","فاخر","انتاج","كبير","صغير","وسط"].indexOf(t) < 0);
+}
+/* OCR on thermal Arabic fails at the LETTER, not the word: كزبرة -> زيرة, نادك -> ناشك,
+   قشطة -> حلبة. Token prefixes miss all of those, so compare characters. */
+function lev(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m || !n) return m || n;
+  let prev = new Array(n + 1), cur = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    const t = prev; prev = cur; cur = t;
+  }
+  return prev[n];
+}
+function tokSim(a, b) {
+  if (a === b) return 1;
+  const d = lev(a, b), L = Math.max(a.length, b.length);
+  return L ? Math.max(0, 1 - d / L) : 0;
+}
+function nameScore(a, b) {
+  const x = arTokens(a), y = arTokens(b);
+  if (!x.length || !y.length) return 0;
+  // every word of the catalog name must find a partner in the printed line
+  let sum = 0;
+  for (const t of y) {
+    let best = 0;
+    for (const u of x) { const s = tokSim(u, t); if (s > best) best = s; }
+    sum += best >= 0.6 ? best : 0;
+  }
+  return sum / y.length;
+}
+function priceScore(unit, expected) {
+  if (!(unit > 0) || !(expected > 0)) return 0;
+  const d = Math.abs(unit - expected) / expected;
+  return d <= 0.12 ? 1 : d <= 0.3 ? 0.55 : d <= 0.6 ? 0.15 : 0;
+}
+function solveReceipt({ lines, candidates, total, pieces }) {
+  const cands = (candidates || []).slice(0, 300).map((c, i) => ({
+    i, id: c.id, name: String(c.name || ""), price: Number(c.price) || 0,
+    cap: Math.max(1, Number(c.qty) || 1), inCart: !!c.inCart, used: 0,
+  }));
+  // score every line against every candidate once
+  const rows = lines.map((l) => {
+    const unit = l.unit_price > 0 ? l.unit_price : (l.qty > 0 && l.line_total > 0 ? l.line_total / l.qty : 0);
+    const readable = !!(l.name_ar && arTokens(l.name_ar).length);
+    const scored = cands.map((c) => {
+      let s = 0;
+      const ns = nameScore(l.name_ar, c.name);
+      s += ns * 0.50;                                   // what the print suggests
+      s += priceScore(unit, c.price) * 0.35;            // what he has paid here before
+      if (c.inCart) s += 0.15;                          // he said he was buying it
+      if (l.candidate && normAr(l.candidate) === normAr(c.name)) s += 0.45; // the reader's own pick
+      // a candidate the print gives no support for is a weak rival, not a real one:
+      // otherwise any item with a similar price crowds out the correct match
+      // ...but only when there IS print to go on. With no readable name, the price he
+      // has paid here is the only evidence there is, and it stands at full weight.
+      if (readable && ns < 0.2) s *= 0.6;
+      return { c, s, ns };
+    }).sort((a, b) => b.s - a.s);
+    return { l, unit, scored, readable };
+  });
+  // assign the confident rows first, so a strong line claims its item before a weak one
+  const order = rows.map((r, i) => i).sort((a, b) => (rows[b].scored[0] ? rows[b].scored[0].s : 0) - (rows[a].scored[0] ? rows[a].scored[0].s : 0));
+  const out = new Array(rows.length);
+  for (const i of order) {
+    const r = rows[i];
+    const free = r.scored.filter((x) => x.c.used < x.c.cap);
+    const best = free[0], second = free[1];
+    const gap = best && second ? best.s - second.s : best ? best.s : 0;
+    // a readable name that resembles nothing he buys is a new product, not a question:
+    // price alone must never rename something he did not intend to buy
+    if (r.readable && best && best.ns < 0.3) {
+      // The print resembles nothing he buys. Price alone must never rename an item, but
+      // if exactly one thing he was buying costs this, that is worth ONE question.
+      const exact = free.filter((x) => x.c.inCart && priceScore(r.unit, x.c.price) >= 0.9);
+      if (exact.length === 1) {
+        out[i] = { itemId: null, name: null, printed: r.l.name_ar, how: "",
+          score: Math.round(exact[0].s * 100) / 100, doubt: { options: [{ id: exact[0].c.id, name: exact[0].c.name }] } };
+      } else {
+        out[i] = { itemId: null, name: r.l.name_ar, printed: r.l.name_ar, how: "new", score: 0, doubt: null };
+      }
+      continue;
+    }
+    if (best && best.s >= 0.45 && gap >= 0.15) {
+      best.c.used++;
+      out[i] = { itemId: best.c.id, name: best.c.name, printed: r.l.name_ar, how: best.ns >= 0.5 ? "name" : "price",
+        score: Math.round(best.s * 100) / 100, doubt: null };
+    } else if (best && best.s >= 0.3) {
+      out[i] = { itemId: null, name: null, printed: r.l.name_ar, how: "",
+        score: Math.round(best.s * 100) / 100,
+        doubt: { options: free.slice(0, 2).map((x) => ({ id: x.c.id, name: x.c.name })) } };
+    } else {
+      // nothing plausible: it is something new, which is fine and not a question
+      out[i] = { itemId: null, name: r.l.name_ar, printed: r.l.name_ar, how: "new", score: 0, doubt: r.l.name_ar ? null : { options: [] } };
+    }
+  }
+  const sum = lines.reduce((a, l) => a + (Number(l.line_total) || 0), 0);
+  const tot = Number(total) || 0;
+  const diff = tot > 0 ? Math.round((sum - tot) * 100) / 100 : 0;
+  const totalOK = tot > 0 ? Math.abs(diff) <= Math.max(0.5, tot * 0.02) : null;
+  const qtySum = lines.reduce((a, l) => a + (Number(l.qty) > 0 ? Number(l.qty) : 1), 0);
+  const piecesOK = pieces > 0 ? Math.abs(qtySum - pieces) <= Math.max(1, pieces * 0.1) : null;
+  const doubts = out.filter((o) => o.doubt).length;
+  return {
+    lines: out, sum: Math.round(sum * 100) / 100, total: tot || null, diff,
+    totalOK, piecesOK, pieces: pieces || null, doubts,
+    // verified means the arithmetic closes AND nothing is left ambiguous
+    verified: totalOK === true && doubts === 0,
+    // more than a few questions is the solver failing, not the shopper's job
+    retake: doubts > MAX_DOUBTS || (totalOK === false && doubts > 0),
+  };
 }
 
 /* ---------------- reader key, stored server-side ----------------
@@ -304,7 +449,7 @@ function maskKey(k) { return k ? String(k).slice(0, 3) + "…" + String(k).slice
    function limit. */
 const OA_KEY = process.env.OPENAI_API_KEY;
 const OA_MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
-async function gptReceipt(imgs, mime, key) {
+async function gptReceipt(imgs, mime, key, extra) {
   const content = [{ type: "text", text: imgs.length > 1
     ? `These ${imgs.length} images are OVERLAPPING vertical slices of ONE receipt, top to bottom. Output every item ONCE.`
     : "This is one photo of one receipt." }];
@@ -313,7 +458,7 @@ async function gptReceipt(imgs, mime, key) {
     method: "POST",
     headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
     body: JSON.stringify({ model: OA_MODEL, max_tokens: 4000, response_format: { type: "json_object" },
-      messages: [{ role: "system", content: SCAN_PROMPT }, { role: "user", content }] }),
+      messages: [{ role: "system", content: SCAN_PROMPT + (extra || "") }, { role: "user", content }] }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error("openai: " + (j.error && j.error.message ? j.error.message : r.status));
@@ -398,13 +543,13 @@ ${names.join("\n")}`;
   return lines;
 }
 
-async function claudeScan(imgs, mime) {
+async function claudeScan(imgs, mime, extra) {
   const one = async (b64, i) => {
     const content = [{ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } }];
     content.push({ type: "text", text: imgs.length > 1
       ? `This is slice ${i + 1} of ${imgs.length} of ONE receipt, top to bottom. Return the JSON for the items visible in THIS slice only.`
       : "Return the JSON for this receipt." });
-    return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system: SCAN_PROMPT, messages: [{ role: "user", content }] })));
+    return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system: SCAN_PROMPT + (extra || ""), messages: [{ role: "user", content }] })));
   };
   // slices go out together: total latency is the slowest slice, not the sum of them
   const per = (await Promise.all(imgs.map((b, i) => one(b, i).catch(() => null)))).filter(Boolean);
@@ -414,6 +559,8 @@ async function claudeScan(imgs, mime) {
     if (Array.isArray(r.items)) merged.items = merged.items.concat(r.items);
     const t = Number(r.receipt_total_sar) || 0;
     if (t > merged.receipt_total_sar) merged.receipt_total_sar = t;
+    if (Number(r.piece_count) > (Number(merged.piece_count) || 0)) merged.piece_count = Number(r.piece_count);
+    if (r.layout_note && !merged.layout_note) merged.layout_note = r.layout_note;
   });
   const out = fromScanSchema(merged, "claude");
   if (!out.lines.length) throw new Error("claude: no items");
@@ -590,6 +737,8 @@ async function maqadiHandler(req, res) {
       const names = (body.catalog || []).slice(0, 400);
       const knownSet = new Set((Array.isArray(body.known) ? body.known : []).map((c) => digits(c)).filter(Boolean));
       const oaKey = await readerKey();
+      let layoutNote = null;
+      if (body.store) { try { const v = await kv(["GET", "maqadi:layout:" + String(body.store).slice(0, 40)]); if (v) layoutNote = String(v).slice(0, 300); } catch {} }
       const engines = [];
       if (oaKey) engines.push("gpt");
       if (AZ_KEY && AZ_ENDPOINT) engines.push("azure");
@@ -600,13 +749,21 @@ async function maqadiHandler(req, res) {
       // try the chosen engine, then the others, so one vendor being down is not an outage
       for (const eng of [want].concat(engines.filter((e) => e !== want))) {
         try {
+          const extra = candidateBlock(body.candidates) + layoutBlock(layoutNote);
           let out = null;
-          if (eng === "gpt") out = await gptReceipt(imgs, body.mime, oaKey);
+          if (eng === "gpt") out = await gptReceipt(imgs, body.mime, oaKey, extra);
           else if (eng === "azure") out = fromAzure(await azureReceipt(imgs[0], body.mime), names);
-          else out = await claudeScan(imgs, body.mime);
+          else out = await claudeScan(imgs, body.mime, extra);
           if (out && out.lines.length) {
-            // codes are not in the requested schema; mark what the household already knows by name
             out.lines.forEach((l) => { l.known = !!(l.code && knownSet.has(l.code)); });
+            // resolve the whole receipt at once against what he was actually buying
+            const solved = solveReceipt({ lines: out.lines, candidates: body.candidates || [],
+              total: out.total, pieces: out.pieces });
+            out.solved = solved;
+            // remember this shop's layout so the next receipt is a form, not a puzzle
+            if (out.layout && solved.totalOK !== false && body.store) {
+              try { await kv(["SET", "maqadi:layout:" + String(body.store).slice(0, 40), out.layout]); } catch {}
+            }
             await bump("receipts", 1); out.tried = tried;
             return res.status(200).json(out);
           }
