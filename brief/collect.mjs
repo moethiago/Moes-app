@@ -41,6 +41,12 @@ const results = await Promise.allSettled(accounts.map(async a => {
 const okSrc = [], failed = []; let tweets = [];
 results.forEach((r, i) => { const a = accounts[i]; if (r.status === 'fulfilled' && r.value.length) { okSrc.push('@' + a.handle + ' (' + a.cat + ', ' + r.value.length + ')'); tweets = tweets.concat(r.value); } else failed.push('@' + a.handle + ' (' + a.cat + '): ' + (r.status === 'rejected' ? r.reason.message : 'no recent tweets')); });
 console.log('posts:', tweets.length, '| ok:', okSrc.length, '| failed:', failed);
+if (tweets.length < 8) {
+  console.log('X blocked from this runner — falling back to the news feeds on the backend');
+  const fb = await fetch(API + '&build=1&force=1&rss=1'); const fj = await fb.json().catch(() => ({}));
+  console.log('fallback:', fb.status, fj.ok ? ('built from feeds · items ' + fj.brief.items.length + ' · also ' + fj.brief.also.length) : JSON.stringify(fj).slice(0, 300));
+  process.exit(fj.ok ? 0 : 1);
+}
 const res = await fetch(API + '&ingest=1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nonce: NONCE, tweets, okSrc, failed }) });
 const j = await res.json().catch(() => ({}));
 console.log('backend:', res.status, j.ok ? ('built · items ' + j.brief.items.length + ' · also ' + j.brief.also.length + ' · trending ' + j.brief.trending.length + ' · ' + j.brief.engine + ' · SAR ' + j.brief.costSAR) : JSON.stringify(j).slice(0, 400));
