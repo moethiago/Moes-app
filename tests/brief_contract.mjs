@@ -17,6 +17,7 @@ globalThis.fetch = async (url, opts = {}) => {
     else if (op === "SET") { store.set(k, v); result = "OK"; }
     else if (op === "INCR") { const c = Number(store.get(k) || 0) + 1; store.set(k, String(c)); result = c; }
     else if (op === "EXPIRE") result = 1;
+    else if (op === "DEL") { result = store.delete(k) ? 1 : 0; }
     else if (op === "ZRANGE") result = [];
     return new Response(JSON.stringify({ result }), { status: 200 });
   }
@@ -100,4 +101,10 @@ r = await call({ brief: "1", accounts: "1", remove: "SPL", code: "sekret" }); ch
 r = await call({ brief: "1", accounts: "1", add: "bad handle!!", code: "sekret" }); check("invalid handle ignored", r.j.accounts.length === 18);
 const before13 = rssCalls; r = await call({ brief: "1", build: "1" }); check("build uses edited list (18 fetches incl. voice, no SPL)", r.code === 200 && rssCalls - before13 === 18 && r.j.brief.sources.ok.some(x => /@some_voice/.test(x)) && !r.j.brief.sources.ok.some(x => /@SPL /.test(x)));
 delete process.env.DEPLOY_SECRET; r = await call({ brief: "1", accounts: "1" }); check("no code configured -> read-only", r.j.editable === false);
+// 14. cap reset needs code and clears the counter
+process.env.DEPLOY_SECRET = "sekret"; resetCap(); for (let i = 0; i < 6; i++) await call({ brief: "1", build: "1", force: "1" });
+r = await call({ brief: "1", build: "1", force: "1" }); check("cap reached -> 429", r.code === 429);
+r = await call({ brief: "1", resetcap: "1", code: "nope" }); check("resetcap wrong code -> 401", r.code === 401);
+r = await call({ brief: "1", resetcap: "1", code: "sekret" }); check("resetcap ok", r.code === 200 && r.j.reset === true);
+r = await call({ brief: "1", build: "1", force: "1" }); check("build works again after reset", r.code === 200 && r.j.built === true);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILURES:", failures); process.exit(1); }
