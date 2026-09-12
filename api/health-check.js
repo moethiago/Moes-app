@@ -63,7 +63,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
-const LITE_BLOCKED = ["receipt", "reconcile", "compare", "photoset"];
+const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
@@ -148,6 +148,127 @@ function normAr(s) {
     .replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+/* ---------------- scan: one photo in, line items out ----------------
+   Azure's prebuilt-receipt model is purpose-built for this: it does layout, row
+   reconstruction and field extraction in one call, supports Arabic, and the F0 tier is
+   500 receipts/month free. When AZURE_DI_KEY is absent we fall back to Claude vision on
+   slices, run in PARALLEL so the whole thing stays inside the 60 s function limit
+   (running them in sequence is what produced "Fetch is aborted"). */
+const AZ_KEY = process.env.AZURE_DI_KEY;
+const AZ_ENDPOINT = (process.env.AZURE_DI_ENDPOINT || "").replace(/\/+$/, "");
+function azNum(f) {
+  if (!f) return null;
+  const v = f.valueCurrency && f.valueCurrency.amount != null ? f.valueCurrency.amount
+    : f.valueNumber != null ? f.valueNumber : f.content != null ? Number(String(f.content).replace(/[^\d.]/g, "")) : null;
+  return v != null && !isNaN(v) ? Number(v) : null;
+}
+async function azureReceipt(image, mime) {
+  const url = AZ_ENDPOINT + "/documentintelligence/documentModels/prebuilt-receipt:analyze?api-version=2024-11-30";
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Ocp-Apim-Subscription-Key": AZ_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ base64Source: image }),
+  });
+  if (r.status !== 202) {
+    const j = await r.json().catch(() => ({}));
+    throw new Error("azure: " + (j.error && j.error.message ? j.error.message : r.status));
+  }
+  const loc = r.headers.get("operation-location") || r.headers.get("Operation-Location");
+  if (!loc) throw new Error("azure: no operation location");
+  for (let i = 0; i < 25; i++) {
+    await new Promise((s) => setTimeout(s, 1200));
+    const p = await fetch(loc, { headers: { "Ocp-Apim-Subscription-Key": AZ_KEY } });
+    const j = await p.json().catch(() => ({}));
+    if (j.status === "succeeded") return j;
+    if (j.status === "failed") throw new Error("azure: analysis failed");
+  }
+  throw new Error("azure: timed out");
+}
+function fromAzure(j, names) {
+  const doc = ((j.analyzeResult || {}).documents || [])[0] || {};
+  const f = doc.fields || {};
+  const items = ((f.Items || {}).valueArray || []).map((it) => {
+    const o = (it && it.valueObject) || {};
+    const qty = azNum(o.Quantity);
+    const unit = azNum(o.Price);
+    let total = azNum(o.TotalPrice);
+    const name = o.Description && o.Description.content ? String(o.Description.content).replace(/\s+/g, " ").trim() : null;
+    if (total == null && unit != null && qty != null) total = Math.round(unit * qty * 100) / 100;
+    const conf = Math.min(...[it && it.confidence, o.Description && o.Description.confidence].filter((x) => typeof x === "number").concat([1]));
+    return { code: null, raw: name || "", name_ar: name, confidence: name && conf >= 0.5 ? "high" : "low",
+      qty: qty > 0 ? qty : 1, unit_price: unit, line_total: total || 0, match: null, category: "other" };
+  }).filter((l) => l.name_ar || l.line_total);
+  const total = azNum(f.Total);
+  const sum = items.reduce((a, l) => a + (l.line_total || 0), 0);
+  const seller = f.MerchantName && f.MerchantName.content ? String(f.MerchantName.content).trim() : "";
+  let date = null;
+  if (f.TransactionDate && f.TransactionDate.valueDate) date = String(f.TransactionDate.valueDate).slice(0, 10);
+  return { engine: "azure", store: "Other", store_raw: seller, seller, date, total,
+    vat: azNum(f.TotalTax), lines: items, sum: Math.round(sum * 100) / 100,
+    unreadable: items.filter((l) => l.confidence === "low").length,
+    mismatch: total > 0 && Math.abs(sum - total) > Math.max(1, total * 0.02) ? Math.round((sum - total) * 100) / 100 : 0 };
+}
+
+/* ---------------- GPT engine ----------------
+   Same job as the Azure engine, different vendor: one photo (or slices) in, line items
+   out. Kept behind its own env var so the engine is swappable without touching the app.
+   Slices are sent in ONE request as several images, so latency stays inside the 60 s
+   function limit. */
+const OA_KEY = process.env.OPENAI_API_KEY;
+const OA_MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
+async function gptReceipt(imgs, mime, names) {
+  const content = [{ type: "text", text: imgs.length > 1
+    ? `These ${imgs.length} images are OVERLAPPING vertical slices of ONE Saudi supermarket receipt, top to bottom. Output every item ONCE.`
+    : "This is one photo of a Saudi supermarket receipt." }];
+  imgs.forEach((b64) => content.push({ type: "image_url", image_url: { url: "data:" + (mime || "image/jpeg") + ";base64," + b64, detail: "high" } }));
+  content.push({ type: "text", text: `Return ONLY JSON: {"store_raw":"<shop name as printed>","date":"YYYY-MM-DD"|null,"total":<grand total>|null,"vat":<vat amount>|null,"lines":[{"code":"<item code digits>"|null,"name_ar":"<product name EXACTLY as printed>"|null,"confidence":"high"|"low","qty":<number>,"unit_price":<number|null>,"line_total":<number>}]}
+
+Rules that matter on this paper:
+- Copy the Arabic name character for character. NEVER swap a printed word for a more familiar product (قشطة must not become حلبة, كزبرة must not become زيرة).
+- If a name is blurred, curled or glared and you are not certain, set name_ar to null and confidence to "low". Null is a CORRECT answer. A guessed name is a serious error.
+- Each item's code, its amount/qty figures and its name are often on 2-3 SEPARATE printed lines. Group them into one object. Never pair a name with a neighbouring item's numbers.
+- Copy the item code (4-14 digits) whenever visible; digits survive bad print.
+- Ignore VAT, subtotal, piece count, payment and loyalty lines.` });
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + OA_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: OA_MODEL, max_tokens: 4000, response_format: { type: "json_object" },
+      messages: [{ role: "user", content }] }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("openai: " + (j.error && j.error.message ? j.error.message : r.status));
+  const txt = j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "";
+  const out = parseJSON(txt);
+  if (!out || !Array.isArray(out.lines)) throw new Error("openai: no lines");
+  out.engine = "gpt";
+  return out;
+}
+function normalizeScan(out, names, knownSet) {
+  const seen = new Set(), lines = [];
+  for (const l of (out.lines || [])) {
+    const code = digits(l.code).slice(0, 14);
+    const total = Number(l.line_total) || 0;
+    const nm = l.name_ar == null ? null : String(l.name_ar).trim().slice(0, 80) || null;
+    const low = String(l.confidence || "").toLowerCase() === "low" || !nm;
+    const key = code ? "c:" + code + ":" + total.toFixed(2) : "n:" + normAr(nm || "") + ":" + total.toFixed(2);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    let qty = Number(l.qty) > 0 ? Number(l.qty) : 1;
+    let unit = l.unit_price != null && Number(l.unit_price) > 0 ? Number(l.unit_price) : null;
+    if (unit == null && qty > 0 && total > 0) unit = Math.round(total / qty * 100) / 100;
+    lines.push({ code: code || null, raw: String(l.raw || nm || "").slice(0, 160), name_ar: nm,
+      confidence: low ? "low" : "high", qty, unit_price: unit, line_total: total,
+      match: !low && l.match && names.includes(l.match) ? l.match : null, category: l.category || "other",
+      known: !!code && knownSet.has(code) });
+  }
+  const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
+  const tot = Number(out.total) || 0;
+  return { engine: out.engine || "gpt", store: out.store || "Other", store_raw: out.store_raw || "", seller: out.store_raw || "",
+    date: out.date || null, total: tot || null, vat: out.vat != null ? Number(out.vat) : null, lines,
+    sum: Math.round(sum * 100) / 100, unreadable: lines.filter((l) => l.confidence === "low").length,
+    mismatch: tot > 0 && Math.abs(sum - tot) > Math.max(1, tot * 0.02) ? Math.round((sum - tot) * 100) / 100 : 0 };
+}
+
 /* ---------------- receipt ---------------- */
 // A receipt is a long strip. The vision API caps an image's long edge, so a whole strip
 // sent as one image leaves Arabic names a few pixels tall — the digits survive, the
@@ -198,7 +319,7 @@ ${names.join("\n")}`;
   return lines;
 }
 
-async function readReceipt({ image, images, mime, catalog, known }) {
+async function readReceipt({ image, images, mime, catalog, known, parallel }) {
   const names = (catalog || []).slice(0, 400);
   const knownSet = new Set((Array.isArray(known) ? known : []).map((c) => digits(c)).filter(Boolean));
   const imgs = (Array.isArray(images) && images.length ? images : [image]).filter(Boolean).slice(0, 6);
@@ -257,7 +378,26 @@ ${names.join("\n")}`;
   const messages = [{ role: "user", content }];
 
   let out = null;
-  try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages }))); } catch (e) { out = null; }
+  if (parallel && imgs.length > 1) {
+    // one call per slice, fired together: total latency is the slowest slice, not the sum
+    const per = await Promise.all(imgs.map(async (b64, i) => {
+      const m = [{ role: "user", content: [
+        { type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: b64 } },
+        { type: "text", text: `This is slice ${i + 1} of ${imgs.length} of one receipt, top to bottom. Return the JSON for the items visible in THIS slice only. Leave a name null rather than guessing it.` },
+      ] }];
+      try { return parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 3000, system, messages: m }))); } catch (e) { return null; }
+    }));
+    const merged = { store: "Other", store_raw: "", date: null, total: null, lines: [] };
+    per.filter(Boolean).forEach((r) => {
+      if (r.store && r.store !== "Other" && merged.store === "Other") merged.store = r.store;
+      if (r.store_raw && !merged.store_raw) merged.store_raw = r.store_raw;
+      if (r.date && !merged.date) merged.date = r.date;
+      if (r.total != null && Number(r.total) > (Number(merged.total) || 0)) merged.total = Number(r.total);
+      if (Array.isArray(r.lines)) merged.lines = merged.lines.concat(r.lines);
+    });
+    if (merged.lines.length) out = merged;
+  }
+  if (!out) { try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages }))); } catch (e) { out = null; } }
   if (!out || !Array.isArray(out.lines) || !out.lines.length) {
     out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 4000, system, messages })));
   }
@@ -452,6 +592,37 @@ async function maqadiHandler(req, res) {
       else delete photos[body.id];
       await kv(["SET", "maqadi:photos", JSON.stringify(photos)]);
       return res.status(200).json({ ok: true, count: Object.keys(photos).length });
+    }
+    if (action === "scan") {
+      const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
+      if (!imgs.length) return res.status(400).json({ error: "no image" });
+      const names = (body.catalog || []).slice(0, 400);
+      const knownSet = new Set((Array.isArray(body.known) ? body.known : []).map((c) => digits(c)).filter(Boolean));
+      const engines = [];
+      if (OA_KEY) engines.push("gpt");
+      if (AZ_KEY && AZ_ENDPOINT) engines.push("azure");
+      if (ANTHROPIC_KEY) engines.push("claude");
+      if (!engines.length) return res.status(500).json({ error: "no reader configured" });
+      const want = body.engine && engines.indexOf(body.engine) >= 0 ? body.engine : engines[0];
+      const tried = [];
+      // try the chosen engine, then the others, so one vendor being down is not an outage
+      for (const eng of [want].concat(engines.filter((e) => e !== want))) {
+        try {
+          if (eng === "gpt") {
+            const out = normalizeScan(await gptReceipt(imgs, body.mime, names), names, knownSet);
+            if (out.lines.length) { await bump("receipts", 1); out.tried = tried; return res.status(200).json(out); }
+          } else if (eng === "azure") {
+            const out = fromAzure(await azureReceipt(imgs[0], body.mime), names);
+            if (out.lines.length) { await bump("receipts", 1); out.tried = tried; return res.status(200).json(out); }
+          } else {
+            const out = await readReceipt({ images: imgs, mime: body.mime, catalog: body.catalog, parallel: true });
+            out.engine = "claude";
+            if (out.lines && out.lines.length) { out.tried = tried; return res.status(200).json(out); }
+          }
+          tried.push(eng + ": no lines");
+        } catch (e) { tried.push(eng + ": " + String(e.message || e).slice(0, 120)); }
+      }
+      return res.status(502).json({ error: "ما قدرنا نقرأ الفاتورة", tried });
     }
     if (action === "receipt") {
       if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
