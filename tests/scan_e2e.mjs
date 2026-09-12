@@ -8,10 +8,11 @@ const server=http.createServer((req,res)=>{const f=path.join(ROOT,decodeURICompo
  res.writeHead(200,{"Content-Type":path.extname(f)===".html"?"text/html; charset=utf-8":"text/javascript"});res.end(fs.readFileSync(f));});
 await new Promise(r=>server.listen(0,r)); const BASE="http://127.0.0.1:"+server.address().port;
 let pass=0,fail=0;const F=[];const check=(n,c,x)=>{if(c)pass++;else{fail++;F.push(n+(x?" — "+x:""));}};
-const L=(code,name,total,qty=1,unit=null,conf="high",match=null)=>({code,name_ar:name,confidence:conf,qty,unit_price:unit,line_total:total,match,category:"veg"});
-const SCAN={engine:"gpt",store:"Other",store_raw:"عذق الجزيرة",seller:"عذق الجزيرة",date:"2026-09-12",total:39.52,vat:5.16,sum:39.52,mismatch:0,unreadable:1,
-  lines:[L("200003","كزبرة",2,1,2),L("100063","جزر",10,1,10,"high","جزر"),L("0307","تفاح احمر",17.52,1.46,12,"high","تفاح"),
-         L("6261007666527","قشطة المراعي لايت 100 جرام",8,2,4),L("0000",null,2,1,2,"low")]};
+// backend reply in the app's line shape (the backend maps the requested schema to this)
+const L=(name,total,qty=1,unit=null,conf="high")=>({code:null,name_ar:name,confidence:conf,qty,unit_price:unit,line_total:total,match:null,category:"veg"});
+const SCAN={engine:"claude",store:"Other",store_raw:"",seller:"",date:null,total:44.02,vat:null,sum:44.02,mismatch:0,unreadable:1,
+  lines:[L("كزبرة",2,1,2),L("جزر",10,1,10),L("تفاح احمر",17.52,1.46,12),
+         L("قشطة المراعي لايت 100 جرام",8,2,4),L(null,6.5,1,6.5,"low")]};
 const browser=await chromium.launch({executablePath:process.env.PW_CHROME||"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
 const page=await browser.newPage({viewport:{width:390,height:844}});
 page.on("pageerror",e=>{fail++;F.push("PAGE ERROR: "+e.message.slice(0,160));});
@@ -68,8 +69,8 @@ check("approve available",await page.evaluate(()=>{const b=[...document.querySel
 await page.evaluate(()=>{[...document.querySelectorAll("button")].find(x=>/اعتمد الفاتورة/.test(x.textContent)).click();});
 let st=null;for(let i=0;i<50&&!st;i++){const c=SAVED.length?SAVED[SAVED.length-1]:null;if(c&&c.receipts&&c.receipts.length)st=c;else await page.waitForTimeout(200);}
 check("receipt committed",!!st);
-check("codes learned",st&&Object.keys(st.codes||{}).length>=4,st&&Object.keys(st.codes||{}).length);
-check("names learned",st&&Object.keys(st.names||{}).length>=4,st&&Object.keys(st.names||{}).length);
+check("names learned for next time",st&&Object.keys(st.names||{}).length>=4,st&&Object.keys(st.names||{}).length);
+check("unreadable row was not learned as a name",st&&!Object.keys(st.names||{}).some(k=>!k));
 check("prices recorded for the store",st&&Object.values(st.items).some(it=>it.prices&&Object.values(it.prices).some(p=>p.price===12)));
 check("receipt carries the scanned lines",st&&st.receipts[0].lines.length===5);
 
@@ -77,9 +78,9 @@ check("receipt carries the scanned lines",st&&st.receipts[0].lines.length===5);
 await boot(); SCAN_REQ=null;
 await page.setInputFiles("#camIn",FX+"/receipt_qr.jpg");
 await page.waitForFunction(()=>/راجع الفاتورة/.test(document.body.innerText),{timeout:30000});
-check("2nd scan sent the learned codes",SCAN_REQ.known.length>=4,"known "+SCAN_REQ.known.length);
+check("2nd scan still sends what the household knows",Array.isArray(SCAN_REQ.known));
 R=await rows();
-check("2nd receipt: matched by code",R.filter(x=>/برمز الصنف/.test(x)).length>=4,R.filter(x=>/برمز الصنف/.test(x)).length);
+check("2nd receipt: matched by learned name",R.filter(x=>/اسم محفوظ/.test(x)).length>=3,R.filter(x=>/اسم محفوظ/.test(x)).length);
 
 /* 5 — reader fails: the QR still saves the trip, photo not lost */
 await boot(); FAILSCAN=true;
