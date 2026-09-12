@@ -1,15 +1,31 @@
 name: daily brief
-# Builds Moaath's Daily Brief before he wakes (05:30 Riyadh). Free engine only (SAR 0), server-side cap 6/day.
+# Two roles. (1) 05:30 Riyadh: ask the backend to build (it dispatches this same workflow with a nonce).
+# (2) workflow_dispatch with a nonce: collect the X timelines here (X blocks Vercel's IPs) and POST them to the backend.
+# Free engine only (SAR 0); backend caps builds at 6/day.
 on:
   schedule:
     - cron: "30 2 * * *"   # 05:30 Riyadh
   workflow_dispatch:
+    inputs:
+      nonce: { description: "one-time nonce issued by the backend", required: false, default: "" }
+      force: { description: "rebuild even if today exists", required: false, default: "0" }
 jobs:
-  build:
+  request:
+    if: ${{ github.event_name == 'schedule' || inputs.nonce == '' }}
     runs-on: ubuntu-latest
     steps:
-      - name: build today's brief (SAR 0)
+      - name: ask backend to build today's brief
         run: |
-          out=$(curl -s -m 120 "https://moes-app-two.vercel.app/api/feed?brief=1&build=1")
-          echo "$out" | head -c 400; echo
-          echo "$out" | python3 -c "import sys,json;j=json.load(sys.stdin);assert j.get('ok'),j;b=j['brief'];print('items',len(b['items']),'also',len(b['also']),'trending',len(b['trending']),'engine',b['engine'],'cost',b['costSAR'])"
+          out=$(curl -s -m 60 "https://moes-app-two.vercel.app/api/feed?brief=1&build=1")
+          echo "$out" | head -c 300; echo
+          echo "$out" | python3 -c "import sys,json;j=json.load(sys.stdin);assert j.get('ok'),j"
+  collect:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.nonce != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: collect X timelines and hand them to the backend
+        env: { NONCE: "${{ inputs.nonce }}" }
+        run: node brief/collect.mjs
