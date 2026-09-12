@@ -741,13 +741,15 @@ async function handleBrief(req, res) {
       return res.status(200).json({ ok: true, accounts: accounts.map(a => ({ handle: a.handle, cat: a.cat, isDefault: BRIEF_X_DEFAULT.some(d => d.handle.toLowerCase() === a.handle.toLowerCase()) })), editable: !!(process.env.BRIEF_EDIT_CODE || process.env.DEPLOY_SECRET) });
     }
     const cached = await kvGet(key);
-    if (cached && !(build && force)) return res.status(200).json({ ok: true, cached: true, brief: cached });
+    if (cached && !(build && force)) { const st = await kvGet('brief:status:' + date); return res.status(200).json({ ok: true, cached: true, brief: cached, status: st || null }); }
     if (!build) { const st = await kvGet('brief:status:' + date); return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · SAR 0', status: st || null }); }
     const n = await call(['INCR', 'brief:builds:' + date]); await call(['EXPIRE', 'brief:builds:' + date, '172800']);
     if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
     // X blocks Vercel's IPs, so collection runs on a GitHub Actions runner (see .github/workflows/daily-brief.yml):
     // we dispatch it with a one-time nonce; it fetches the timelines and POSTs them back to ?brief=1&ingest=1.
     if (process.env.GITHUB_TOKEN) {
+      const st0 = await kvGet('brief:status:' + date);
+      if (st0 && (st0.state === 'queued' || st0.state === 'ranking') && Date.now() - Number(st0.at || 0) < 4 * 60 * 1000) return res.status(202).json({ ok: true, queued: true, date, eta: 60, dedup: true });
       const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
       await kvSet('brief:nonce:' + date, nonce, 20 * 60);
       await kvSet('brief:status:' + date, { state: 'queued', at: Date.now() }, 30 * 60);
