@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="3.0", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="3.1", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -1092,8 +1092,9 @@ function latinDigits(s){var m={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥"
 function openReceiptReview(z){
   var trip=recentTrip();
   var when=z.ts?new Date(z.ts):new Date();if(isNaN(when.getTime()))when=new Date();
-  var lines=(trip?trip.items:[]).map(function(x){var it=S.items[x.id];return {itemId:x.id,name:x.name||(it?it.name:""),qty:x.qty||1,unit:null,total:0};});
-  rcptUI={mode:"review",data:{store:storeFromSeller(z.seller),seller:z.seller,vatNo:z.vatNo,ts:when.getTime(),total:z.total,vat:z.vat,fromQR:z.fromQR,tripId:trip?trip.id:null,lines:lines}};
+  var src=trip?trip.items:Object.keys(S.cart||{}).filter(function(id){return S.list[id]&&S.items[id];}).map(function(id){return {id:id,name:S.items[id].name,qty:(S.list[id]||{}).qty||1};});
+  var lines=src.map(function(x){var it=S.items[x.id];return {itemId:x.id,name:x.name||(it?it.name:""),qty:x.qty||1,unit:null,total:0};});
+  rcptUI={mode:"review",data:{store:storeFromSeller(z.seller),seller:z.seller,vatNo:z.vatNo,ts:when.getTime(),total:z.total,vat:z.vat,fromQR:z.fromQR,tripId:trip?trip.id:null,fromCart:!trip&&lines.length>0,lines:lines}};
   view="rcpt";render();
 }
 function rReview(){
@@ -1109,9 +1110,9 @@ function rReview(){
   st.appendChild(stores);pad.appendChild(st);
   if(R.store==="Other"&&R.seller){var sug=document.createElement("button");sug.className="link";sug.style.cssText="display:block;margin:-4px 0 8px";sug.textContent="＋ أضف «"+R.seller+"» كمتجر";sug.onclick=function(){op("store.add",{name:R.seller});R.store=R.seller;render();};pad.appendChild(sug);}
   var ls=document.createElement("div");ls.className="sec";
-  ls.innerHTML="<h2>الأصناف <span class='muted' style='font-weight:400;font-size:12.5px'>"+(R.tripId?"من طلعتك اللي أشّرت عليها":"ما فيه طلعة مسجّلة")+"</span></h2>";
+  ls.innerHTML="<h2>الأصناف <span class='muted' style='font-weight:400;font-size:12.5px'>"+(R.tripId?"من طلعتك اللي أشّرت عليها":R.fromCart?"اللي أشّرت عليه في «خلص»":"اضغط «أضف» واختر اللي اشتريته")+"</span> <button id='addLines'>＋ أضف</button></h2>";
   var card=document.createElement("div");card.className="card";
-  if(!R.lines.length){card.innerHTML='<div class="muted" style="padding:14px;line-height:1.7">أشّر على اللي اشتريته من «خلص» ثم «تمت المقاضي»، وبعدها امسح الرمز — تنربط الفاتورة بالطلعة تلقائياً.<br>أو اعتمد الفاتورة الحين بالإجمالي فقط.</div>';}
+  if(!R.lines.length){card.innerHTML='<div class="muted" style="padding:14px;line-height:1.7">ما فيه أصناف بعد. اضغط <b>＋ أضف</b> فوق واختر اللي اشتريته من قائمتك — ثواني. <br><span style="opacity:.75">أشّر على اللي اشتريته من «خلص» ثم «تمت المقاضي»، وبعدها امسح الرمز — تنربط الفاتورة بالطلعة تلقائياً.<br></span>أو اعتمد الفاتورة الحين بالإجمالي فقط.</div>';}
   R.lines.forEach(function(l,i){
     var d=document.createElement("div");d.className="line";
     var it=S.items[l.itemId];var known=it?lastPriceAt(it,R.store):null;
@@ -1121,12 +1122,30 @@ function rReview(){
     card.appendChild(d);
   });
   ls.appendChild(card);pad.appendChild(ls);
+  $("addLines").onclick=function(){sheetPickItems(R,function(){render();});};
   var priced=R.lines.filter(function(l){return l.unit!=null;}),ps=priced.reduce(function(a,l){return a+l.unit*l.qty;},0);
   if(priced.length){var note=document.createElement("div");note.className="muted";note.style.cssText="margin-top:8px;font-size:12.5px";note.textContent="سجّلت "+ar(priced.length)+" سعر · مجموعها "+money(ps)+" من "+money(R.total);pad.appendChild(note);}
   var cta=document.createElement("div");cta.className="cta";
   var b=document.createElement("button");b.className="btn";b.textContent="اعتمد الفاتورة";b.onclick=function(){commitReceipt(R);};
   cta.appendChild(b);pad.appendChild(cta);
   var m=document.createElement("div");m.className="muted";m.style.cssText="margin-top:10px;font-size:12.5px";m.textContent="الاعتماد يحفظ الفاتورة بإجماليها ويربطها بالطلعة، ويسجّل أي سعر كتبته عند هذا المتجر. ببلاش.";pad.appendChild(m);
+}
+function sheetPickItems(R,done){
+  var have={};R.lines.forEach(function(l){if(l.itemId)have[l.itemId]=1;});
+  var picked={};
+  sheet('<h3>وش اشتريت؟</h3><div class="fld"><input id="pq" placeholder="دوّر…"></div><div class="pick" id="pl"></div><div class="cta" style="margin-top:10px"><button class="btn" id="pdone">أضف <span id="pn"></span></button></div>');
+  var lastTrip=(S.trips||[])[0],lastIds={};if(lastTrip)(lastTrip.items||[]).forEach(function(x){lastIds[x.id]=1;});
+  function rank(it){var s=0;if(lastIds[it.id])s+=100;if(it.prices&&it.prices[R.store])s+=50;if(S.list[it.id])s+=30;s+=Math.min(20,(it.buys||[]).length);return s;}
+  function fill(){
+    var q=normAr($("pq").value),box=$("pl");box.innerHTML="";
+    Object.keys(S.items).map(function(id){return S.items[id];})
+      .filter(function(it){return !have[it.id]&&(!q||normAr(it.name).indexOf(q)>=0);})
+      .sort(function(a,b){return rank(b)-rank(a)||a.name.localeCompare(b.name,"ar");}).slice(0,80)
+      .forEach(function(it){var b=document.createElement("button");b.innerHTML='<span class="em">'+(it.em||"")+'</span>'+esc(it.name)+(lastIds[it.id]?' <small style="color:var(--go)">آخر طلعة</small>':'');b.className=picked[it.id]?"usual":"";
+        b.onclick=function(){if(picked[it.id])delete picked[it.id];else picked[it.id]=1;b.className=picked[it.id]?"usual":"";$("pn").textContent=Object.keys(picked).length?"("+ar(Object.keys(picked).length)+")":"";};box.appendChild(b);});
+  }
+  $("pq").addEventListener("input",fill);fill();
+  $("pdone").onclick=function(){Object.keys(picked).forEach(function(id){var it=S.items[id];R.lines.push({itemId:id,name:it.name,qty:1,unit:null,total:0});});closeSheet();done();};
 }
 function lastPriceAt(it,store){var p=it&&it.prices&&it.prices[store];return p&&p.price>0?p.price:null;}
 function commitReceipt(R){
@@ -1136,7 +1155,11 @@ function commitReceipt(R){
   if(Object.keys(prices).length)op("prices.paid",{store:rc.store,prices:prices,ts:rc.ts});
   op("receipt.add",{receipt:rc});
   if(R.tripId)op("trip.attach",{tripId:R.tripId,receiptId:rc.id,total:rc.total,store:rc.store});
-  else op("trip.add",{trip:{id:uid(),ts:rc.ts,store:rc.store,receiptId:rc.id,total:rc.total,items:[]}});
+  else {
+    var ids=R.lines.map(function(l){return l.itemId;}).filter(Boolean);
+    if(ids.length)op("bought",{ids:ids,store:rc.store,prices:prices,ts:rc.ts});
+    op("trip.add",{trip:{id:uid(),ts:rc.ts,store:rc.store,receiptId:rc.id,total:rc.total,items:R.lines.map(function(l){return {id:l.itemId,name:l.name,qty:l.qty||1};})}});
+  }
   toast("حفظنا الفاتورة "+money(rc.total)+(Object.keys(prices).length?" و"+ar(Object.keys(prices).length)+" سعر":""));
   rcptUI={mode:"result",rid:rc.id};render();
 }
