@@ -677,11 +677,45 @@ function briefValidate(parsed, headlines) {
   const trending = (Array.isArray(parsed.trending) ? parsed.trending : []).filter(t => t && t.topic).slice(0, 12).map(t => ({ topic: String(t.topic).slice(0, 80), what: String(t.what || '').slice(0, 160) }));
   return { headline: String(parsed.headline || '').slice(0, 300), items, also, trending, bottomLine: String(parsed.bottomLine || '').slice(0, 500) };
 }
+async function briefFinish(res, date, key, headlines, okSrc, failed, trends) {
+  if (headlines.length < 8) { await kvSet('brief:status:' + date, { state: 'error', error: 'only ' + headlines.length + ' posts collected', failed, at: Date.now() }, 30 * 60); return res.status(503).json({ ok: false, error: 'only ' + headlines.length + ' posts collected', sources: { ok: okSrc, failed } }); }
+  await kvSet('brief:status:' + date, { state: 'ranking', at: Date.now() }, 30 * 60);
+  try {
+    const { parsed, usage, model } = await briefCallModel(headlines, trends);
+    const v = briefValidate(parsed, headlines);
+    const brief = { date, generatedAt: Date.now(), headline: v.headline, items: v.items, also: v.also, trending: v.trending, trendsSeen: trends.length, bottomLine: v.bottomLine, headlinesSeen: headlines.length, sources: { ok: okSrc, failed }, engine: model, tokens: usage, costSAR: 0 };
+    await kvSet(key, brief, 36 * 3600);
+    await kvSet('brief:status:' + date, { state: 'done', at: Date.now() }, 30 * 60);
+    return res.status(200).json({ ok: true, cached: false, built: true, brief });
+  } catch (e) { await kvSet('brief:status:' + date, { state: 'error', error: e.message, at: Date.now() }, 30 * 60); throw e; }
+}
+// Runner-side dedupe/ranking of raw tweets (same logic as briefCollect, minus the fetching)
+function briefRank(all) {
+  const clusters = clusterStories(all, 0.5);
+  const reps = clusters.map(c => { const rep = c.slice().sort((a, b) => b.weight - a.weight)[0]; rep.corroboration = new Set(c.map(x => x.src)).size; return rep; });
+  reps.sort((a, b) => (b.corroboration - a.corroboration) || (b.weight - a.weight) || ((b.likes + 3 * b.rts) - (a.likes + 3 * a.rts)) || (b.publishedAt - a.publishedAt));
+  const ksa = reps.filter(r => r.cat === 'KSA' || r.cat === 'VOICE').slice(0, 150);
+  const rest = reps.filter(r => r.cat !== 'KSA' && r.cat !== 'VOICE');
+  return ksa.concat(rest).slice(0, BRIEF_MAX_HEADLINES);
+}
 async function handleBrief(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const date = briefRiyadhDate(); const key = 'brief:' + date;
   const build = String(req.query.build || '') === '1', force = String(req.query.force || '') === '1';
   try {
+    if (String(req.query.ingest || '') === '1') {
+      if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST' });
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const nonce = await kvGet('brief:nonce:' + date);
+      if (!nonce || String(body.nonce || '') !== String(nonce)) return res.status(401).json({ ok: false, error: 'bad nonce' });
+      await call(['DEL', 'brief:nonce:' + date]);
+      const raw = Array.isArray(body.tweets) ? body.tweets : [];
+      const cutoff = Date.now() / 1000 - BRIEF_MAX_AGE_H * 3600;
+      const all = raw.filter(t => t && t.title && t.url && t.src && t.publishedAt > cutoff).slice(0, 2500).map(t => ({ title: String(t.title).slice(0, 400), url: String(t.url).slice(0, 200), src: String(t.src).slice(0, 20), cat: String(t.cat || 'KSA'), weight: Number(t.weight) || 5, publishedAt: Number(t.publishedAt), likes: Number(t.likes) || 0, rts: Number(t.rts) || 0 }));
+      const headlines = briefRank(all);
+      const trends = await briefFetchTrends();
+      return await briefFinish(res, date, key, headlines, Array.isArray(body.okSrc) ? body.okSrc : [], Array.isArray(body.failed) ? body.failed : [], trends);
+    }
     if (req.query.probe) { // read-only diagnostic: can this server reach X for one handle?
       const h = String(req.query.probe).replace(/^@/, '').slice(0, 15); const t0 = Date.now();
       try { const r = await fetch(BRIEF_X_SYNDICATION + encodeURIComponent(h), { headers: { 'User-Agent': BRIEF_X_UA, 'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8' } }); const txt = await r.text();
@@ -708,16 +742,24 @@ async function handleBrief(req, res) {
     }
     const cached = await kvGet(key);
     if (cached && !(build && force)) return res.status(200).json({ ok: true, cached: true, brief: cached });
-    if (!build) return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · SAR 0' });
+    if (!build) { const st = await kvGet('brief:status:' + date); return res.status(200).json({ ok: true, cached: false, date, cost: 'Free · SAR 0', status: st || null }); }
     const n = await call(['INCR', 'brief:builds:' + date]); await call(['EXPIRE', 'brief:builds:' + date, '172800']);
     if (Number(n) > BRIEF_DAILY_CAP) return res.status(429).json({ ok: false, error: 'daily build cap reached (' + BRIEF_DAILY_CAP + ')' });
+    // X blocks Vercel's IPs, so collection runs on a GitHub Actions runner (see .github/workflows/daily-brief.yml):
+    // we dispatch it with a one-time nonce; it fetches the timelines and POSTs them back to ?brief=1&ingest=1.
+    if (process.env.GITHUB_TOKEN) {
+      const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      await kvSet('brief:nonce:' + date, nonce, 20 * 60);
+      await kvSet('brief:status:' + date, { state: 'queued', at: Date.now() }, 30 * 60);
+      const gh = await fetch('https://api.github.com/repos/moethiago/Moes-app/actions/workflows/daily-brief.yml/dispatches', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'moes-app', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main', inputs: { nonce, force: force ? '1' : '0' } }) });
+      if (gh.status !== 204) { const t = await gh.text(); await kvSet('brief:status:' + date, { state: 'error', error: 'dispatch ' + gh.status + ': ' + t.slice(0, 200), at: Date.now() }, 30 * 60); return res.status(502).json({ ok: false, error: 'could not start the X collector (GitHub ' + gh.status + ')' }); }
+      return res.status(202).json({ ok: true, queued: true, date, eta: 90 });
+    }
+    // Fallback when no GitHub token: try collecting directly (works only where X does not block the egress IP)
     const { headlines, okSrc, failed, trends } = await briefCollect();
-    if (headlines.length < 8) return res.status(503).json({ ok: false, error: 'only ' + headlines.length + ' headlines collected', sources: { ok: okSrc, failed } });
-    const { parsed, usage, model } = await briefCallModel(headlines, trends);
-    const v = briefValidate(parsed, headlines);
-    const brief = { date, generatedAt: Date.now(), headline: v.headline, items: v.items, also: v.also, trending: v.trending, trendsSeen: trends.length, bottomLine: v.bottomLine, headlinesSeen: headlines.length, sources: { ok: okSrc, failed }, engine: model, tokens: usage, costSAR: 0 };
-    await kvSet(key, brief, 36 * 3600);
-    return res.status(200).json({ ok: true, cached: false, built: true, brief });
+    return await briefFinish(res, date, key, headlines, okSrc, failed, trends);
   } catch (e) {
     console.error('brief error:', e.message);
     return res.status(e.code || 500).json({ ok: false, error: e.message });
