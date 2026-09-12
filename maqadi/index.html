@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="2.7", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.25,item:.5}, FRESH=21*DAY, SLICE_BUDGET=6;
+var BUILD_ID="2.8", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.25,item:.5}, FRESH=21*DAY, SLICE_BUDGET=6;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -319,6 +319,115 @@ function cat(id){for(var i=0;i<CATS.length;i++)if(CATS[i].id===id)return CATS[i]
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function toast(m,long,action){var t=$("toast");t.textContent=m;if(action){var b=document.createElement("button");b.textContent=action.label;b.onclick=function(){t.classList.remove("show");action.fn();};t.appendChild(b);}t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove("show");},action?4500:(long?3600:2000));}
 function normAr(s){return String(s||"").replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[()،,.\-_/]/g," ").replace(/\s+/g," ").trim().toLowerCase();}
+/* PARSE-START — receipt text parser. Pure rules, no network, no AI.
+   Input: text copied from the phone's own OCR (Google Lens / Photos / Live Text) or
+   from the in-browser reader. Output: the shape the review screen already uses.
+   Saudi till rolls print, per item, an item code (PLU or EAN), an amount and a
+   quantity, and a name — usually on 2-3 separate lines — and OCR may hand us the
+   columns in almost any order. So: classify every line, then reconstruct rows. */
+var AR_DIGITS={"\u0660":"0","\u0661":"1","\u0662":"2","\u0663":"3","\u0664":"4","\u0665":"5","\u0666":"6","\u0667":"7","\u0668":"8","\u0669":"9","\u066B":".","\u066C":","};
+function latinDigits(s){return String(s||"").replace(/[\u0660-\u0669\u066B\u066C]/g,function(c){return AR_DIGITS[c]||c;});}
+function hasArabic(s){return /[\u0600-\u06FF]/.test(s);}
+var RX_DEC=/(?<![\d.])\d{1,5}\.\d{2}(?![\d.])/g;
+var RX_CODE=/(?<!\d)(\d{4,14})(?!\d)/g;
+var STOP_WORDS=/الاجمالي|الإجمالي|اجمالي|إجمالي|صافي|ضريبة|القيمة المضافة|عدد القطع|الكاونتر|البائع|بطاقة|مدفوع|المدفوع|الاسترجاع|الاستبدال|الشبكة|نقدا|نقداً|الباقي|يجب احضار|لا يتم|\btotal\b|\bvat\b|subtotal|\bcash\b|\bcard\b|\bchange\b/i;
+var HEADER_WORDS=/فاتورة ضريبية|الرقم الضريبي|تليفون|هاتف|الرياض|شارع|حي |تاريخ|invoice|\btel\b|phone|\bdate\b|\btime\b/i;
+function classifyLine(raw){
+  var t=latinDigits(raw).replace(/[|_\u2014\u2013]+/g," ").replace(/\s+/g," ").trim();
+  if(!t)return null;
+  var decs=(t.match(RX_DEC)||[]).map(Number);
+  var codes=(t.replace(RX_DEC,"").match(RX_CODE)||[]);
+  var words=t.replace(/[\d.\s*\u00d7xX:\/-]+/g," ").replace(/\s+/g," ").trim();
+  // the name as printed, minus the item code and the money columns, sizes kept ("200 جم")
+  var name=t.replace(RX_DEC," ");if(codes.length===1)name=name.replace(codes[0]," ");
+  name=name.replace(/^[\s*\u00d7xX:\/-]+|[\s*\u00d7xX:\/-]+$/g,"").replace(/\s+/g," ").trim();
+  var header=HEADER_WORDS.test(t)||/\d{4}[\/-]\d{2}[\/-]\d{2}/.test(t);
+  return {raw:raw,t:t,decs:decs,codes:codes,ar:hasArabic(t),words:words,name:name,stop:STOP_WORDS.test(t),header:header};
+}
+function parseReceiptText(text){
+  var L=[];String(text||"").split(/\r?\n/).forEach(function(x){var c=classifyLine(x);if(c)L.push(c);});
+  var out={store_raw:"",date:null,total:null,lines:[]};
+  for(var i=0;i<Math.min(10,L.length);i++){
+    var c=L[i];
+    if(!out.store_raw&&c.ar&&!c.decs.length&&!c.codes.length&&!c.header&&!c.stop&&c.words.length>=3)out.store_raw=c.words;
+    var dm=c.t.match(/(\d{4})[\/-](\d{2})[\/-](\d{2})/);if(dm&&!out.date)out.date=dm[1]+"-"+dm[2]+"-"+dm[3];
+  }
+  var end=L.length;
+  for(var i=0;i<L.length;i++){
+    var c=L[i];
+    if(/الاجمالي|الإجمالي|اجمالي|إجمالي|صافي الفاتورة|\btotal\b/i.test(c.t)&&c.decs.length){if(out.total==null)out.total=Math.max.apply(null,c.decs);if(end===L.length)end=i;}
+    else if(c.stop&&i>3&&end===L.length)end=i;
+  }
+  var start=0;
+  for(var i=0;i<Math.min(end,25);i++){if(/المبلغ|الكمية|رقم الصنف|الصنف|السعر|\bamount\b|\bprice\b/i.test(L[i].t)&&!L[i].decs.length)start=i+1;}
+  var body=L.slice(start,end).filter(function(c){return !c.header||c.decs.length||c.codes.length;});
+  var firstNum=-1;for(var i=0;i<body.length;i++){if(body[i].decs.length||body[i].codes.length){firstNum=i;break;}}
+  body=firstNum>0?body.slice(firstNum):(firstNum<0?[]:body);
+  var codes=[],nums=[],names=[];
+  body.forEach(function(c,idx){
+    if(c.codes.length===1&&!c.decs.length)codes.push({i:idx,code:c.codes[0]});
+    if(c.decs.length>=1&&(!c.ar||c.words.length<3))nums.push({i:idx,decs:c.decs.slice(0,3)});
+    if(c.ar&&c.words.length>=2&&!c.stop)names.push({i:idx,name:c.name,decs:c.decs});
+  });
+  var rowwise=true;
+  if(codes.length>=3&&nums.length>=3){
+    var between=0;for(var k=1;k<codes.length;k++){var a=codes[k-1].i,b=codes[k].i;if(nums.some(function(n){return n.i>a&&n.i<b;}))between++;}
+    rowwise=between>=Math.floor((codes.length-1)*0.6);
+  } else if(codes.length<3&&names.length){
+    var adj=0;names.forEach(function(n){if(n.decs.length||nums.some(function(x){return Math.abs(x.i-n.i)<=2;}))adj++;});
+    rowwise=adj>=names.length*0.6;
+  }
+  var rows=[];
+  if(rowwise){
+    var anchors=codes.length>=3?codes.map(function(c){return {i:c.i,code:c.code};})
+      :names.filter(function(n){return n.decs.length||nums.some(function(x){return Math.abs(x.i-n.i)<=2;});}).map(function(n){return {i:n.i,code:null};});
+    for(var r=0;r<anchors.length;r++){
+      var a=anchors[r].i,b=r+1<anchors.length?anchors[r+1].i:body.length,lo=Math.max(0,a-2);
+      var cand=nums.filter(function(n){return n.i>=lo&&n.i<b;}).sort(function(x,y){return Math.abs(x.i-a)-Math.abs(y.i-a);});
+      var nd=cand[0]||null;
+      var cn=names.filter(function(n){return n.i>=lo&&n.i<b;}).sort(function(x,y){return Math.abs(x.i-a)-Math.abs(y.i-a);});
+      var nm=cn[0]||null;
+      if(!nd&&nm&&nm.decs.length)nd={i:nm.i,decs:nm.decs};
+      rows.push({code:anchors[r].code,name:nm?nm.name:null,decs:nd?nd.decs:[]});
+      if(nd)nums=nums.filter(function(n){return n!==nd;});
+      if(nm)names=names.filter(function(n){return n!==nm;});
+    }
+  } else {
+    var n=Math.max(codes.length,nums.length,names.length);
+    for(var r=0;r<n;r++)rows.push({code:codes[r]?codes[r].code:null,name:names[r]?names[r].name:null,decs:nums[r]?nums[r].decs:[]});
+  }
+  function sumWith(first){return rows.reduce(function(a,r){var d=r.decs;if(!d.length)return a;if(d.length>=3)return a+d[d.length-1];return a+(d.length===1?d[0]:(first?d[0]:d[1]));},0);}
+  var amountFirst=true;
+  if(out.total&&rows.some(function(r){return r.decs.length>=2;})){
+    var dA=Math.abs(sumWith(true)-out.total),dB=Math.abs(sumWith(false)-out.total);
+    amountFirst=dA<=dB;
+  }
+  out.layout=amountFirst?"amount-qty":"qty-amount";
+  rows.forEach(function(r){
+    var d=r.decs,amount=null,qty=1,unit=null;
+    if(d.length>=3){qty=d[0];unit=d[1];amount=d[d.length-1];}
+    else if(d.length===2){amount=amountFirst?d[0]:d[1];qty=amountFirst?d[1]:d[0];if(qty>20&&amount<=20){var t=amount;amount=qty;qty=t;}if(qty>0&&amount>0)unit=Math.round(amount/qty*100)/100;}
+    else if(d.length===1)amount=d[0];
+    var nm=r.name?r.name.trim():null;
+    var sure=!!(nm&&amount!=null);
+    out.lines.push({code:r.code||null,raw:((r.code||"")+" "+(nm||"")+" "+d.join(" ")).trim(),name_ar:nm||null,confidence:sure?"high":"low",qty:qty>0?qty:1,unit_price:unit,line_total:amount||0,match:null,category:"other",source:"text"});
+  });
+  out.lines=out.lines.filter(function(l){return l.code||l.name_ar||l.line_total;});
+  var sum=out.lines.reduce(function(a,l){return a+(l.line_total||0);},0);
+  out.sum=Math.round(sum*100)/100;
+  out.mismatch=out.total&&Math.abs(sum-out.total)>Math.max(1,out.total*.02)?Math.round((sum-out.total)*100)/100:0;
+  out.unreadable=out.lines.filter(function(l){return l.confidence==="low";}).length;
+  out.store=guessStore(out.store_raw);
+  return out;
+}
+function guessStore(raw){
+  var t=String(raw||"");
+  if(/دانوب|danube/i.test(t))return "Danube";if(/بنده|panda/i.test(t))return "Panda";if(/التميمي|tamimi/i.test(t))return "Tamimi";
+  if(/كارفور|carrefour/i.test(t))return "Carrefour";if(/لولو|lulu/i.test(t))return "LuLu";if(/العثيم|othaim/i.test(t))return "Othaim";
+  if(/نعناع|nana/i.test(t))return "Nana";if(/الراية|raya/i.test(t))return "Al Raya";if(/مانويل|manuel/i.test(t))return "Manuel";if(/سبار|spar/i.test(t))return "Spar";
+  return "Other";
+}
+/* PARSE-END */
 function tokens(s){return normAr(s).split(" ").filter(function(t){return t.length>1&&!/^[0-9٠-٩]+$/.test(t)&&["الدسم","اي","نوع","للحلا","حبه","حبات","لتر","كيلو","كجم","جم","مل","علبه","كيس","باكيت"].indexOf(t)<0;});}
 // Brand and size words say nothing about WHAT the product is. "حلبة المراعي" must not
 // become "لبنة المراعي" because they share a brand.
@@ -334,7 +443,7 @@ function seed(){
   });});
   return {items:items,list:{},cart:{},receipts:[],codes:{},photoV:0,created:Date.now()};
 }
-function norm(st){st=st||{};if(!st.items||!Object.keys(st.items).length)return migrate(seed());st.list=st.list||{};st.cart=st.cart||{};st.receipts=st.receipts||[];st.trips=st.trips||[];st.stores=st.stores||[];st.codes=st.codes||{};st.photoV=st.photoV||0;return migrate(st);}
+function norm(st){st=st||{};if(!st.items||!Object.keys(st.items).length)return migrate(seed());st.list=st.list||{};st.cart=st.cart||{};st.receipts=st.receipts||[];st.trips=st.trips||[];st.stores=st.stores||[];st.codes=st.codes||{};st.names=st.names||{};st.photoV=st.photoV||0;return migrate(st);}
 function migrate(st){
   if((st.catalogV||1)>=CATALOG_V)return st;
   if((st.catalogV||1)>=2){ Object.keys(st.items).forEach(function(id){var it=st.items[id];if(!it.brands)it.brands=seedBrands(it.name);}); st.catalogV=CATALOG_V; return st; }
@@ -409,7 +518,7 @@ function apply(st,op){
       break;
     case "suggest.dismiss": if(st.items[p.id]){var d=st.items[p.id];d.dismissed=(d.dismissed||[]).concat([op.ts]).slice(-6);} break;
     case "trip.add": st.trips=[p.trip].concat(st.trips||[]).slice(0,30); break;
-    case "codes.learn": st.codes=st.codes||{};Object.keys(p.codes||{}).forEach(function(c){if(p.codes[c])st.codes[c]=p.codes[c];}); break;
+    case "codes.learn": st.codes=st.codes||{};st.names=st.names||{};Object.keys(p.codes||{}).forEach(function(c){if(p.codes[c])st.codes[c]=p.codes[c];});Object.keys(p.names||{}).forEach(function(c){if(p.names[c])st.names[c]=p.names[c];}); break;
     case "receipt.add": st.receipts=[p.receipt].concat(st.receipts).slice(0,40); break;
     case "receipt.compare": st.receipts.forEach(function(r){if(r.id===p.rid){r.compare=p.results;r.comparedAt=op.ts;}}); break;
   }
@@ -735,29 +844,21 @@ function rSoonCard(pad){
 function rRcpt(){
   var v=$("view");
   if(rcptUI.mode==="reading"){
-    hd("الفاتورة",rcptUI.step===2?"الخطوة ٢ من ٢":"الخطوة ١ من ٢");
-    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px"><img src="'+rcptUI.preview+'" style="max-height:220px;border-radius:12px;max-width:100%"><div style="margin-top:16px"><span class="spin"></span> <span class="muted">'+(rcptUI.step===2?"قرأنا الأرقام. نستنتج أسماء الأصناف الجديدة من السعر والماركة…":"يقرأ الرموز والأسعار من الصور…")+'</span></div></div></div></div>';
+    hd("الفاتورة","يقرأ على الجوال — بدون إنترنت وبدون تكلفة");
+    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px"><img src="'+rcptUI.preview+'" style="max-height:220px;border-radius:12px;max-width:100%"><div style="margin-top:16px"><span class="spin"></span> <span class="muted" id="ocrp">'+esc(rcptUI.progress||"يجهّز…")+'</span></div></div></div></div>';
     return;
   }
   if(rcptUI.mode==="shots")return rShots();
   if(rcptUI.mode==="review")return rReview();
   if(rcptUI.mode==="result")return rResult(rcptUI.rid);
 
-  hd("الفاتورة","صوّرها وخلّ التطبيق يشتغل",[{icon:"📷",go:true,label:"صوّر",fn:function(){$("camIn").click();}}]);
+  hd("الفاتورة","جوالك يقرأها — ببلاش وفوري",[{icon:"📋",go:true,label:"الصق",fn:function(){pasteReceipt();}}]);
   v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
   var dz=document.createElement("div");dz.className="sec";
-  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>صوّر فاتورة السوق</b><p>يقرأ كل صنف وسعره، يسجّله كمشترى، يحفظ السعر، ثم يقارنه بأرخص سعر عند الدانوب وبنده والتميمي وكارفور ولولو والعثيم ونعناع.</p><button class="alt" id="dzlib">أو اختر صورة من الاستوديو</button></div>';
+  dz.innerHTML='<div class="dz"><div class="cam" id="dzpaste">📋</div><b>الصق نص الفاتورة</b><p style="line-height:1.85">١. صوّر الفاتورة كالعادة.<br>٢. افتح الصورة في <b>Google Photos</b> ← «نسخ النص» (Lens)، أو Live Text في «الصور» ← «تحديد الكل» ← «نسخ».<br>٣. ارجع هنا واضغط «الصق».<br><span style="color:var(--go)">القراءة تصير على جوالك. ما يطلع شي من الجوال، وما يكلّف شي.</span></p><button class="btn" id="dzgo" style="margin-top:6px">الصق الفاتورة</button><button class="alt" id="dzcam" style="margin-top:10px">📷 أو خلّ التطبيق يقرأ الصورة بنفسه (ببلاش، أبطأ)</button></div>';
   pad.appendChild(dz);
-  $("dzcam").onclick=function(){$("camIn").click();};$("dzlib").onclick=function(){$("libIn").click();};
-  var tip=document.createElement("div");tip.className="sec";
-  tip.innerHTML='<div class="card" style="padding:14px;font-size:13px;line-height:1.85;color:var(--dim)">'
-    +'<b style="color:var(--ink)">\u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0637\u0648\u064a\u0644\u0629\u061f \u0635\u0648\u0651\u0631\u0647\u0627 \u0639\u0644\u0649 \u0623\u062c\u0632\u0627\u0621</b><br>'
-    +'\u0645\u0627 \u064a\u0646\u0641\u0639 \u0635\u0648\u0631\u0629 \u0648\u0627\u062d\u062f\u0629 \u0644\u0643\u0644 \u0627\u0644\u0648\u0631\u0642\u0629 \u2014 \u0627\u0644\u062e\u0637 \u064a\u0637\u0644\u0639 \u0635\u063a\u064a\u0631 \u0645\u0627 \u064a\u0646\u0642\u0631\u0623. \u0642\u0633\u0651\u0645\u0647\u0627: \u0627\u0644\u0623\u0639\u0644\u0649 \u060c \u0627\u0644\u0648\u0633\u0637 \u060c \u0627\u0644\u0623\u0633\u0641\u0644\u060c \u0648\u062e\u0644\u0651 \u0643\u0644 \u0635\u0648\u0631\u0629 \u062a\u0645\u0644\u0627 \u0627\u0644\u0634\u0627\u0634\u0629.<br>'
-    +'\u2022 \u0627\u0641\u0631\u062f \u0627\u0644\u0648\u0631\u0642\u0629 \u0639\u0644\u0649 \u0633\u0637\u062d \u0645\u0633\u062a\u0648\u064a (\u0645\u0627 \u062a\u0645\u0633\u0643\u0647\u0627 \u0628\u0627\u0644\u0647\u0648\u0627\u0621)<br>'
-    +'\u2022 \u062e\u0644\u0651 \u0627\u0644\u0636\u0648\u0621 \u0645\u0646 \u062c\u0647\u0629 \u0648\u0627\u062d\u062f\u0629 \u0628\u0644\u0627 \u0644\u0645\u0639\u0629 \u0648\u0644\u0627 \u0638\u0644 \u0625\u064a\u062f<br>'
-    +'\u2022 \u0623\u0648 \u0627\u0645\u0633\u062d\u0647\u0627 \u0645\u0646 \u062a\u0637\u0628\u064a\u0642 \u00ab\u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0627\u062a\u00bb \u2190 \u0645\u0633\u062d \u0627\u0644\u0645\u0633\u062a\u0646\u062f\u0627\u062a\u060c \u062b\u0645 \u0627\u062e\u062a\u0631 \u0627\u0644\u0635\u0648\u0631 \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648 (\u064a\u0641\u0631\u062f \u0627\u0644\u0648\u0631\u0642\u0629 \u0648\u064a\u0634\u064a\u0644 \u0627\u0644\u0644\u0645\u0639\u0629)'
-    +'</div>';
-  pad.appendChild(tip);
+  $("dzgo").onclick=function(){pasteReceipt();};$("dzpaste").onclick=function(){pasteReceipt();};$("dzcam").onclick=function(){rcptUI={mode:"shots",shots:[]};render();};
+
   if(S.receipts.length){
     var s=document.createElement("div");s.className="sec";s.innerHTML="<h2>الفواتير السابقة</h2>";
     var card=document.createElement("div");card.className="card";
@@ -793,8 +894,10 @@ function rShots(){
   var grid=document.createElement("div");grid.style.cssText="display:flex;gap:10px;overflow-x:auto;padding:4px 0";
   sh.forEach(function(x,i){
     var w=document.createElement("div");w.style.cssText="position:relative;flex:0 0 auto";
-    w.innerHTML='<img src="'+x.preview+'" style="height:150px;border-radius:10px;border:1px solid var(--line);display:block">'
-      +'<div style="position:absolute;bottom:6px;'+(document.dir==="rtl"?"right":"left")+':6px;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px">'+ar(i+1)+'</div>';
+    var q=x.quality||{};var bad=q.blur||q.glare;
+    w.innerHTML='<img src="'+x.preview+'" style="height:150px;border-radius:10px;border:2px solid '+(bad?"var(--late)":"var(--line)")+';display:block">'
+      +'<div style="position:absolute;bottom:6px;'+(document.dir==="rtl"?"right":"left")+':6px;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px">'+ar(i+1)+'</div>'
+      +(bad?'<div style="position:absolute;top:6px;inset-inline-start:6px;background:var(--late);color:#fff;border-radius:6px;padding:1px 7px;font-size:11px">'+(q.blur?"مهزوزة":"لمعة")+'</div>':'');
     var x2=document.createElement("button");x2.textContent="\u00d7";
     x2.style.cssText="position:absolute;top:-6px;inset-inline-end:-6px;width:26px;height:26px;border-radius:50%;border:none;background:var(--late);color:#fff;font-size:16px;line-height:1";
     x2.onclick=function(){rcptUI.shots.splice(i,1);render();};
@@ -807,13 +910,31 @@ function rShots(){
   grid.appendChild(add);g.appendChild(grid);pad.appendChild(g);
   var cta=document.createElement("div");cta.className="cta";
   var b=document.createElement("button");b.className="btn";
-  b.innerHTML=sh.length?"\u0627\u0642\u0631\u0623 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 ("+ar(sh.length)+') <small style="opacity:.8">\u2248 '+money(COST.receipt)+'</small>':"\u0635\u0648\u0651\u0631 \u0623\u0648\u0644\u0627\u064b";
+  b.innerHTML=sh.length?"\u0627\u0642\u0631\u0623 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 ("+ar(sh.length)+') <small style="opacity:.8">\u0639\u0644\u0649 \u0627\u0644\u062c\u0648\u0627\u0644 \u00b7 \u0628\u0628\u0644\u0627\u0634</small>':"\u0635\u0648\u0651\u0631 \u0623\u0648\u0644\u0627\u064b";
   b.disabled=!sh.length;
   b.onclick=function(){rcptUI.error=null;readReceipt(sh.map(function(x){return x.file;}));};
   cta.appendChild(b);pad.appendChild(cta);
+  var warn=sh.filter(function(x){return x.quality&&(x.quality.blur||x.quality.glare);}).length;
+  if(warn){var wq=document.createElement("div");wq.className="muted";wq.style.cssText="margin-top:10px;font-size:12.5px;color:var(--late)";wq.textContent=ar(warn)+" صورة مهزوزة أو فيها لمعة — أعد تصويرها: افرد الورقة، قرّب، وخلّ الضوء من الجنب.";pad.appendChild(wq);}
   var lib=document.createElement("button");lib.className="link";lib.style.cssText="display:block;margin:12px auto 0";
   lib.textContent="\u0623\u0648 \u0627\u062e\u062a\u0631 \u0639\u062f\u0629 \u0635\u0648\u0631 \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648";
   lib.onclick=function(){$("libIn").click();};pad.appendChild(lib);
+}
+/* Quality gate. Blur = variance of a Laplacian over the grey image; glare = a solid
+   block of blown-out pixels. Runs on the 340px preview, so it is instant, and it only
+   warns - it never blocks him. */
+function assessQuality(url,cb){
+  var img=new Image();img.onload=function(){
+    try{
+      var W=Math.min(300,img.width),H=Math.round(img.height*W/img.width),cv=document.createElement("canvas");cv.width=W;cv.height=H;
+      var g=cv.getContext("2d");g.drawImage(img,0,0,W,H);var d=g.getImageData(0,0,W,H).data,N=W*H,gr=new Float32Array(N);
+      for(var i=0,j=0;i<N;i++,j+=4)gr[i]=d[j]*.299+d[j+1]*.587+d[j+2]*.114;
+      var sum=0,sum2=0,n=0,hot=0;
+      for(var y=1;y<H-1;y++)for(var x=1;x<W-1;x++){var k=y*W+x;var lap=4*gr[k]-gr[k-1]-gr[k+1]-gr[k-W]-gr[k+W];sum+=lap;sum2+=lap*lap;n++;if(gr[k]>250)hot++;}
+      var v=sum2/n-(sum/n)*(sum/n);
+      cb({sharp:Math.round(v),blur:v<60,glare:hot/n>0.12});
+    }catch(e){cb(null);}
+  };img.onerror=function(){cb(null);};img.src=url;
 }
 function addShots(files){
   if(!files||!files.length)return;
@@ -822,7 +943,9 @@ function addShots(files){
   var list=[].slice.call(files),done=0;
   list.forEach(function(f){
     shrink(f,340,.7,function(url){
-      rcptUI.shots.push({file:f,preview:url});
+      var shot={file:f,preview:url,quality:null};
+      rcptUI.shots.push(shot);
+      assessQuality(url,function(q){shot.quality=q;if(rcptUI.mode==="shots")render();});
       if(++done===list.length){
         // keep them in the order he shot them, not the order thumbnails finished
         rcptUI.shots.sort(function(a,b){return list.indexOf(a.file)-list.indexOf(b.file);});
@@ -837,8 +960,8 @@ function rReview(){
   var v=$("view");v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
   // Say it out loud when the reading is incomplete, instead of showing a tidy screen
   // that is quietly missing an item or double-counting one.
-  var unsure=R.lines.filter(function(l){return !l.sure&&!l.itemId;}).length;
-  if(R.reconcileFailed){var rf=document.createElement("div");rf.className="sec";rf.innerHTML='<div class="card" style="padding:12px;font-size:13px;color:var(--dim)">الخطوة الثانية (استنتاج الأسماء) ما اشتغلت هالمرة — الأرقام صحيحة، بس بتحتاج تختار أصناف أكثر بنفسك.</div>';pad.appendChild(rf);}
+  var unsure=R.lines.filter(function(l){return (!l.sure&&!l.itemId)||l.conflict;}).length;
+  if(R.source){var ps=document.createElement("div");ps.className="sec";ps.innerHTML='<div class="card" style="padding:10px 12px;font-size:12.5px;color:var(--dim)">'+(R.source==="text"?"قُرئت من النص اللي لصقته":"قُرئت على الجوال من الصورة")+' — بدون ذكاء اصطناعي، بدون تكلفة.'+(R.crossChecked?(R.conflicts?' قارنّاها بالقراءة الثانية: <b style="color:var(--late)">'+ar(R.conflicts)+'</b> سطر السعر فيه مختلف.':' وتطابقت أسعارها مع القراءة الثانية ✓'):'')+'</div>';pad.appendChild(ps);}
   if(R.mismatch||unsure){
     var wb=document.createElement("div");wb.className="sec";
     var msg=[];
@@ -858,7 +981,11 @@ function rReview(){
     var d=document.createElement("div");d.className="line";
     var it=l.itemId?S.items[l.itemId]:null;
     var nm,sub;
-    if(!l.sure&&!l.itemId){
+    if(l.conflict){
+      nm=esc(l.name||(it?it.name:""));
+      sub='<span style="color:var(--late)">'+esc(l.conflict)+' · </span><span class="link" style="color:var(--go)">هذا صحيح</span>';
+      d.style.background="rgba(220,80,60,.06)";
+    } else if(!l.sure&&!l.itemId){
       // could not read the name and nothing else identifies it - he has to look
       nm=l.name?esc(l.name):'<span style="color:var(--late)">اسم غير واضح في الفاتورة</span>';
       var hn=l.hint?S.items[l.hint]:null;
@@ -869,7 +996,7 @@ function rReview(){
       // resolved. If the name was unreadable, the code did it - say so plainly.
       nm=esc(l.name||it.name);
       sub='✓ '+esc(it.name)
-        +(l.how==="code"?' · <span style="color:var(--go)">متطابق برمز الصنف</span>':l.how==="reasoned"?' · <span style="color:var(--dimmer)">مستنتج من السعر والماركة</span>':'')
+        +(l.how==="code"?' · <span style="color:var(--go)">متطابق برمز الصنف</span>':l.how==="name"?' · <span style="color:var(--go)">اسم محفوظ</span>':'')
         +(!l.name?' · <span style="color:var(--dimmer)">الاسم في الورقة غير واضح</span>':'');
     } else {
       nm=esc(l.name);
@@ -878,6 +1005,7 @@ function rReview(){
     d.innerHTML='<div class="nm">'+nm+'<small>'+sub+' · <span class="link">غيّر</span></small></div><div class="pr">'+money(l.total)+'<small>'+ar(l.qty)+' × '+money(l.unit!=null?l.unit:l.total/(l.qty||1))+'</small></div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
     d.querySelector(".link").onclick=function(){sheetLink(l,function(){render();});};
     var hb=d.querySelector(".hint");if(hb)hb.onclick=function(e){e.stopPropagation();l.itemId=l.hint;l.sure=true;if(!l.name)l.name=S.items[l.hint].name;render();};
+    if(l.conflict){var ok=d.querySelectorAll(".link");ok[0].onclick=function(){l.conflict=null;l.sure=true;render();};if(ok[1])ok[1].onclick=function(){sheetLink(l,function(){l.conflict=null;render();});};}
     d.querySelector(".rm").onclick=function(){R.lines.splice(i,1);render();};
     card.appendChild(d);
   });
@@ -906,8 +1034,8 @@ function commitReceipt(R){
     var it=S.items[l.itemId];if(it&&(it.brands||[]).length){var hit=it.brands.find(function(b){return normAr(l.name).indexOf(normAr(b))>=0;});if(hit&&it.usual!==hit)op("item.update",{id:it.id,patch:{usual:hit}});}});
   // Remember what each printed item code means. Next receipt from this shop matches on
   // the code and never depends on reading the Arabic again.
-  var learn={};R.lines.forEach(function(l){if(l.code&&l.itemId)learn[l.code]=l.itemId;});
-  if(Object.keys(learn).length)op("codes.learn",{codes:learn});
+  var learn={},learnN={};R.lines.forEach(function(l){if(l.code&&l.itemId)learn[l.code]=l.itemId;if(l.name&&l.itemId)learnN[normAr(l.name)]=l.itemId;});
+  if(Object.keys(learn).length||Object.keys(learnN).length)op("codes.learn",{codes:learn,names:learnN});
   var rc={id:uid(),ts:R.date?Math.max(Date.now()-90*DAY,new Date(R.date).getTime()||Date.now()):Date.now(),store:R.store||"Other",total:R.total,lines:R.lines.map(function(l){return {name:l.name,code:l.code||null,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.total};}),compare:null};
   if(recent){
     op("prices.paid",{store:rc.store,prices:prices,ts:recent.ts});
@@ -1168,6 +1296,17 @@ function sheetLink(line,done){
     Object.keys(S.items).map(function(id){return S.items[id];}).filter(function(it){return !q||normAr(it.name).indexOf(q)>=0;}).sort(function(a,b){return a.name.localeCompare(b.name,"ar");}).slice(0,60).forEach(function(it){var b=document.createElement("button");b.innerHTML='<span class="em">'+(it.em||"")+'</span>'+esc(it.name);b.onclick=function(){line.itemId=it.id;line.sure=true;if(!line.name)line.name=it.name;closeSheet();done();};box.appendChild(b);});}
   $("lq").addEventListener("input",fill);fill();
 }
+function pasteReceipt(){
+  // try the clipboard directly first; fall back to a textarea if iOS denies it
+  var go=function(t){if(t&&parseReceiptText(t).lines.length){readReceiptText(t);return true;}return false;};
+  var open=function(){
+    sheet('<h3>الصق نص الفاتورة</h3><div class="muted" style="margin:-6px 0 10px;font-size:13px;line-height:1.7">Google Photos ← «نسخ النص» · أو Live Text في «الصور» ← «تحديد الكل» ← «نسخ» · ثم الصق هنا</div><textarea id="pt" style="width:100%;min-height:200px;font-size:13px;direction:rtl;border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit" placeholder="الصق هنا…"></textarea><div class="cta" style="margin-top:12px"><button class="btn" id="pgo">اقرأ — ببلاش</button></div>');
+    $("pgo").onclick=function(){var t=$("pt").value;if(!t.trim())return;if(!go(t)){toast("ما لقينا أصناف — تأكد إنك نسخت نص الفاتورة كامل",true);return;}closeSheet();};
+    setTimeout(function(){var el=$("pt");if(el)el.focus();},50);
+  };
+  if(navigator.clipboard&&navigator.clipboard.readText){navigator.clipboard.readText().then(function(t){if(!go(t))open();}).catch(open);}
+  else open();
+}
 function sheetStorePick(done){
   sheet('<h3>من وين اشتريتوا؟</h3><div class="stores" id="sp"></div>');
   allStores().forEach(function(s){var b=document.createElement("button");b.textContent=storeName(s);b.onclick=function(){closeSheet();done(s);};$("sp").appendChild(b);});
@@ -1268,67 +1407,101 @@ function sliceAll(files,cb){
     });
   })();
 }
+/* ---- turn a parsed result into review lines. Shared by the paste path and the
+   on-device photo reader. Matching order: confirmed item code > learned name > exact
+   catalog name > strict fuzzy on product words. Never a guess with a tick. ---- */
+function toReviewLines(r){
+  var codes=S.codes||{},namesMap=S.names||{};
+  return r.lines.map(function(l){
+    var it=null,how="";
+    if(l.code&&codes[l.code]&&S.items[codes[l.code]]){it=S.items[codes[l.code]];how="code";}
+    if(!it&&l.name_ar&&namesMap[normAr(l.name_ar)]&&S.items[namesMap[normAr(l.name_ar)]]){it=S.items[namesMap[normAr(l.name_ar)]];how="name";}
+    if(!it&&l.confidence!=="low"&&l.match){var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});if(id){it=S.items[id];how="match";}}
+    if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
+    var hint=null;
+    if(!it&&l.name_ar){var c=closestItems(l.name_ar,1)[0];if(c&&c.score>=.5)hint=c.it;}
+    return {name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,hint:hint?hint.id:null,conflict:null,
+            raw:l.raw,qty:l.qty||1,unit:l.unit_price,total:l.line_total,
+            itemId:it?it.id:null,category:it?it.cat:(l.category||"other")};
+  });
+}
+/* nearest catalog items by product-word overlap, for one-tap hints */
+function closestItems(name,n){
+  var tk=coreTokens(name);if(!tk.length)return [];
+  var res=[];
+  Object.keys(S.items).forEach(function(id){
+    var it=S.items[id],ct=coreTokens(it.name);if(!ct.length)return;
+    var hit=0;ct.forEach(function(c){if(tk.some(function(t){return c===t||(c.length>3&&t.length>3&&(c.indexOf(t)===0||t.indexOf(c)===0));}))hit++;});
+    if(hit)res.push({it:it,score:hit/Math.max(ct.length,tk.length)});
+  });
+  return res.sort(function(a,b){return b.score-a.score;}).slice(0,n||5);
+}
+function openReview(r,preview,source){
+  var lines=toReviewLines(r);
+  // cross-check: if the other reader already read this receipt, compare line by line
+  var other=rcptUI.lastRead&&rcptUI.lastRead.source!==source?rcptUI.lastRead:null;
+  var conflicts=0;
+  if(other){
+    var byCode={};other.lines.forEach(function(l){if(l.code)byCode[l.code]=l;});
+    lines.forEach(function(l){var o=l.code?byCode[l.code]:null;if(!o)return;
+      if(Math.abs((o.line_total||0)-(l.total||0))>0.005){l.conflict="هنا "+money(l.total)+" وفي القراءة الثانية "+money(o.line_total);l.sure=false;conflicts++;}
+    });
+  }
+  rcptUI={mode:"review",preview:preview||null,lastRead:{source:source,lines:r.lines,total:r.total},
+    data:{store:allStores().indexOf(r.store)>=0?r.store:"Other",date:r.date,
+      total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),
+      printed:r.total||0,sum:r.sum||0,mismatch:r.mismatch||0,source:source,crossChecked:!!other,conflicts:conflicts,lines:lines}};
+  view="rcpt";render();
+}
+
+/* ---- Reader A: text from the phone's own OCR, pasted. Free, instant, best Arabic. ---- */
+function readReceiptText(txt){
+  var r=parseReceiptText(txt);
+  if(!r.lines.length){toast("ما لقينا أصناف في النص — انسخ نص الفاتورة كامل من Google Photos أو Lens",true);return;}
+  openReview(r,null,"text");
+}
+
+/* ---- Reader B: the photo, read ON the phone (Tesseract; free, offline after the
+   first load). Weaker on Arabic than Reader A, solid on codes and prices, so it stands
+   in when there is no text to paste and cross-checks prices when there is. ---- */
+var OCR=null;
+function loadOCR(onProgress){
+  if(OCR)return Promise.resolve(OCR);
+  return new Promise(function(res,rej){
+    var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    sc.onload=function(){
+      window.Tesseract.createWorker(["ara","eng"],1,{logger:function(m){if(onProgress)onProgress(m);}}).then(function(w){OCR=w;res(w);}).catch(rej);
+    };
+    sc.onerror=function(){rej(new Error("ما قدرنا نحمّل القارئ — تحقق من الإنترنت (أول مرة فقط)"));};
+    document.head.appendChild(sc);
+  });
+}
 async function readReceipt(files){
   if(!files)return;
   if(!Array.isArray(files))files=[files];
   sliceAll(files,async function(slices,preview){
     if(!slices||!slices.length){toast("ما قدرنا نفتح الصورة",true);return;}
-    var keep=rcptUI.shots||null;
-    rcptUI={mode:"reading",preview:preview,shots:keep,step:1};view="rcpt";render();
-    var r=null;
+    var keep=rcptUI.shots||null,lastRead=rcptUI.lastRead||null;
+    rcptUI={mode:"reading",preview:preview,shots:keep,lastRead:lastRead,progress:"يحمّل القارئ (أول مرة فقط)…"};view="rcpt";render();
+    var say=function(t){rcptUI.progress=t;var el=$("ocrp");if(el)el.textContent=t;};
     try{
-      var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
-      r=await call({action:"receipt",images:slices,mime:"image/jpeg",catalog:names,known:Object.keys(S.codes||{})},59000);
-      if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — جرّب صورة أوضح");
-    }catch(e){
-      // step 1 failed: back to the shots screen WITH the photos, and say why
-      rcptUI={mode:"shots",shots:keep||[],error:String(e.message||e)};render();return;
-    }
-    try{
-      // step 2: reason about the lines whose code the household has not confirmed yet.
-      // Its own request so the 60 s function limit is never in play. If it fails, the
-      // vision result still stands - he just gets more lines to confirm by hand.
-      var codes0=S.codes||{};
-      var unknown=r.lines.some(function(l){return !(l.code&&codes0[l.code]);});
-      if(unknown){
-        rcptUI.step=2;render();
-        var r2=await call({action:"reconcile",store:r.store_raw||r.store,catalog:names,lines:r.lines.map(function(l){return Object.assign({},l,{known:!!(l.code&&codes0[l.code])});})},59000);
-        if(r2&&Array.isArray(r2.lines)&&r2.lines.length===r.lines.length){r.lines=r2.lines;r.unreadable=r2.unreadable;}
+      var w=await loadOCR(function(m){if(m&&m.status&&rcptUI.mode==="reading"&&m.status!=="recognizing text"){say("يجهّز القارئ"+(m.progress!=null?" "+Math.round(m.progress*100)+"%":""));}});
+      var text="";
+      for(var i=0;i<slices.length;i++){
+        say("يقرأ الجزء "+ar(i+1)+" من "+ar(slices.length)+"…");
+        var res=await w.recognize("data:image/jpeg;base64,"+slices[i]);
+        text+=(res&&res.data&&res.data.text?res.data.text:"")+"\n";
       }
-    }catch(e){r.reconcileFailed=true;}
-    try{
-      var codes=S.codes||{};
-      var lines=r.lines.map(function(l){
-        var it=null,how="";
-        // 1) the printed item code is exact, and digits survive a bad photo. It wins.
-        if(l.code&&codes[l.code]&&S.items[codes[l.code]]){it=S.items[codes[l.code]];how="code";}
-        // 2) the model's own catalog pick - only from a name it could actually read
-        if(!it&&l.sure!==false&&l.confidence!=="low"&&l.match){
-          var id=Object.keys(S.items).find(function(k){return S.items[k].name===l.match;});
-          if(id){it=S.items[id];how="match";}
-        }
-        // 3) fuzzy match, never on a name the model was unsure of (that is what produced
-        //    "لحم دجاج" -> "لحم حاشي" with a confident green tick in v2.2)
-        if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
-        if(it&&how!=="code"&&l.reasoned)how="reasoned";
-        // a low-confidence line may still carry the reasoner's best guess - offer it, never assume it
-        var hint=null;
-        if(!it&&l.hint_match){var hid=Object.keys(S.items).find(function(k){return S.items[k].name===l.hint_match;});if(hid)hint=S.items[hid];}
-        return {name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,hint:hint?hint.id:null,hintName:l.hint||null,
-                raw:l.raw,qty:l.qty||1,unit:l.unit_price,total:l.line_total,
-                itemId:it?it.id:null,category:it?it.cat:(l.category||"other")};
-      });
-      rcptUI={mode:"review",preview:preview,data:{store:allStores().indexOf(r.store)>=0?r.store:"Other",date:r.date,
-        total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),
-        printed:r.total||0,sum:r.sum||0,mismatch:r.mismatch||0,slices:slices.length,reconcileFailed:!!r.reconcileFailed,lines:lines}};
-      render();
-    }catch(e){rcptUI={mode:"shots",shots:keep||[],error:String(e.message||e)};render();}
+      var r=parseReceiptText(text);
+      if(!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — الأسهل: انسخ النص من Google Photos والصقه");
+      rcptUI.lastRead=lastRead;
+      openReview(r,preview,"photo");
+    }catch(e){rcptUI={mode:"shots",shots:keep||[],lastRead:lastRead,error:String(e.message||e)};render();}
   });
 }
 
 $("camIn").onchange=function(){var f=$("camIn").files;var a=[].slice.call(f);$("camIn").value="";addShots(a);};
 $("libIn").onchange=function(){var f=$("libIn").files;var a=[].slice.call(f);$("libIn").value="";addShots(a);};
-
 /* =================================================================
    BOOT
    ================================================================= */
