@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="3.2", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="3.3", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -660,7 +660,7 @@ function rTrip(){
   }
   var cta=document.createElement("div");cta.className="cta";
   var b1=document.createElement("button");b1.className="btn";b1.textContent=done.length?"تمت المقاضي ✓ ("+ar(done.length)+")":"تمت المقاضي ✓";b1.onclick=function(){finishTrip();};
-  var b2=document.createElement("button");b2.className="btn soft";b2.style.flex="0 0 auto";b2.textContent="📷 رمز الفاتورة";b2.onclick=function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();};
+  var b2=document.createElement("button");b2.className="btn soft";b2.style.flex="0 0 auto";b2.textContent="📷 صوّر الفاتورة";b2.onclick=function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();};
   cta.appendChild(b1);cta.appendChild(b2);pad.appendChild(cta);
   var note=document.createElement("div");note.className="muted";note.style.marginTop="10px";note.style.fontSize="12.5px";note.textContent=done.length?"يسجّل اللي أشّرت عليه كمشترى اليوم ويخلّي الباقي في القائمة.":"أشّر على اللي اشتريته وأنت في السوق، ثم اضغط «تمت المقاضي». لو ما أشّرت على شي بنسأل إذا تبي تسجّل القائمة كلها.";pad.appendChild(note);
   rLastTrip(pad,true);
@@ -672,7 +672,7 @@ function finishTrip(){
     var now=Date.now(),trip={id:uid(),ts:now,store:store,items:done.map(function(id){var l=S.list[id]||{};return {id:id,name:S.items[id].name,qty:l.qty||1,brand:l.brand||null};})};
     op("bought",{ids:done,store:store,ts:now});op("trip.add",{trip:trip});
     var left=Object.keys(S.list).length;
-    toast("سجّلنا "+ar(done.length)+" صنف"+(left?" · باقي "+ar(left)+" في القائمة":""),true,{label:"امسح رمز الفاتورة؟",fn:function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();}});
+    toast("سجّلنا "+ar(done.length)+" صنف"+(left?" · باقي "+ar(left)+" في القائمة":""),true,{label:"صوّر الفاتورة؟",fn:function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();}});
     if(!left){view="out";}render();
   });
 }
@@ -747,7 +747,7 @@ function rRcpt(){
   if(rcptUI.error){var eb=document.createElement("div");eb.className="sec";eb.innerHTML='<div class="card" style="border:1px solid var(--late);padding:12px;font-size:13.5px;line-height:1.7"><b style="color:var(--late)">ما قدرنا</b><br>'+esc(rcptUI.error)+'</div>';pad.appendChild(eb);}
   var dz=document.createElement("div");dz.className="sec";
   var rt=recentTrip();
-  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>صوّر الفاتورة</b><p style="line-height:1.85">صورة واحدة للفاتورة كاملة — التطبيق يقرأ الأصناف والأسعار والإجمالي.<br><span style="color:var(--dim)">افردها على سطح وخلّ الضوء من الجنب، وحاول يبان رمز QR في الصورة (يعطينا الإجمالي بالضبط).</span></p><button class="btn" id="dzgo" style="margin-top:6px">صوّر الفاتورة</button><button class="alt" id="dzlib" style="margin-top:10px">أو اختر صورة من الاستوديو</button><button class="link" id="dzman" style="display:block;margin:12px auto 0">أو اكتب الإجمالي بنفسي</button></div>';
+  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">📷</div><b>صوّر الفاتورة</b><p style="line-height:1.85">صورة واحدة للفاتورة كاملة — التطبيق يقرأ الأصناف والأسعار والإجمالي.<br><span style="color:var(--dim)">افردها على سطح وخلّ الضوء من الجنب، وخلّ الفاتورة كاملة داخل الصورة.</span></p><button class="btn" id="dzgo" style="margin-top:6px">صوّر الفاتورة</button><button class="alt" id="dzlib" style="margin-top:10px">أو اختر صورة من الاستوديو</button><button class="link" id="dzman" style="display:block;margin:12px auto 0">أو اكتب الإجمالي بنفسي</button></div>';
   pad.appendChild(dz);
   $("dzgo").onclick=function(){$("camIn").click();};$("dzcam").onclick=function(){$("camIn").click();};$("dzlib").onclick=function(){$("libIn").click();};$("dzman").onclick=function(){manualReceipt();};
   if(S.receipts.length){
