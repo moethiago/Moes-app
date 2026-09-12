@@ -33,6 +33,17 @@ const rows=()=>page.evaluate(()=>[...document.querySelectorAll(".line")].map(d=>
 await boot(); let t=await body();
 check("idle: one-capture wording",/صورة واحدة/.test(t));
 check("idle: no paste, no parts, no multi-step",!/الصق|أجزاء|الجزء التالي/.test(t));
+// v3.3: no screen may offer a QR scan as the way in
+const allScreens = [];
+for (const nm of ["\u062e\u0644\u0635", "\u0627\u0644\u0637\u0644\u0639\u0629", "\u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629", "\u0627\u0644\u0628\u064a\u062a"]) {
+  await page.evaluate((n) => { const b = [...document.querySelectorAll(".tabs button")].find((x) => x.textContent.indexOf(n) >= 0); if (b) b.click(); }, nm);
+  await page.waitForTimeout(250);
+  allScreens.push(await page.evaluate(() => document.body.innerText));
+}
+check("no screen asks for a QR code", !allScreens.some((x) => /\u0631\u0645\u0632 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629|\u0631\u0645\u0632 QR|\u0627\u0645\u0633\u062d/.test(x)), (allScreens.find((x) => /\u0631\u0645\u0632|\u0627\u0645\u0633\u062d/.test(x)) || "").slice(0, 120));
+check("the trip screen offers taking a photo", allScreens.some((x) => /\u0635\u0648\u0651\u0631 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629/.test(x)));
+await page.evaluate(() => { [...document.querySelectorAll(".tabs button")].find((x) => x.textContent.indexOf("\u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629") >= 0).click(); });
+await page.waitForTimeout(200); t = await body();
 check("idle: manual total still offered",/اكتب الإجمالي/.test(t));
 
 /* 2 — one photo, items on screen */
