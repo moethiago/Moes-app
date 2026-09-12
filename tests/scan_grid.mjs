@@ -8,7 +8,7 @@ const store=new Map(); let OA=null, AZ=null, CL=null, SENT=[], SENT_BODIES=[], P
 globalThis.fetch = async (url, opts={}) => {
   const u=String(url); SENT.push(u);
   if(u.startsWith("https://kv.mock")){const [op,k,v]=JSON.parse(opts.body);let result=null;
-    if(op==="GET")result=store.has(k)?store.get(k):null; else if(op==="SET"){store.set(k,v);result="OK";}
+    if(op==="GET")result=store.has(k)?store.get(k):null; else if(op==="SET"){store.set(k,v);result="OK";} else if(op==="DEL"){store.delete(k);result=1;}
     return new Response(JSON.stringify({result}),{status:200});}
   if(u.includes("api.openai.com")){ const b=JSON.parse(opts.body||"{}");SENT_BODIES.push(b);
     const sm=(b.messages||[]).find(m=>m.role==="system");if(sm)PROMPT_SEEN=String(sm.content);
@@ -91,6 +91,35 @@ check("cascade: failures recorded",Array.isArray(r.j.tried)&&r.j.tried.length===
 CLAUDE_CALLS=0; r=await call({action:"scan",pin:"2026",catalog:CAT,images:["a","b","c"],mime:"image/jpeg"});
 check("claude: one call per slice",CLAUDE_CALLS===3,"calls "+CLAUDE_CALLS);
 check("claude: slices merged into one result",r.code===200&&r.j.lines.length===1,"lines "+(r.j.lines||[]).length);
+
+/* 4b — the simpler {itemName, quantity, price} shape is accepted too */
+OA=[{itemName:"جزر",quantity:1,price:10},{itemName:"كزبرة",quantity:2,price:4}];
+r=await fire();
+check("bare array of itemName/quantity/price accepted",r.code===200&&r.j.lines.length===2,JSON.stringify(r.j.lines&&r.j.lines.length));
+check("itemName mapped to the product name",r.j.lines[0].name_ar==="جزر");
+check("price mapped to the line total",r.j.lines[0].line_total===10);
+check("quantity mapped, unit price derived",r.j.lines[1].qty===2&&r.j.lines[1].unit_price===2);
+OA={items:[{itemName:"بصل",quantity:1,price:4}],total:4};
+r=await fire();
+check("object form with itemName/price also accepted",r.j.lines[0].name_ar==="بصل"&&r.j.total===4);
+
+/* 4c — the reader key lives server-side, never echoed back */
+r=await call({action:"keystatus",pin:"2026"});
+check("keystatus: reports engines",r.code===200&&Array.isArray(r.j.engines));
+r=await call({action:"setkey",pin:"2026",key:"not-a-key"});
+check("setkey: rejects a malformed key",r.code===400,"code "+r.code);
+r=await call({action:"setkey",pin:"2026",key:"sk-abcdefghijklmnopqrstuvwxyz0123"});
+check("setkey: accepts a valid key",r.code===200&&r.j.hasKey===true);
+check("setkey: key stored server-side",String(store.get("maqadi:reader_key")||"").startsWith("sk-"));
+r=await call({action:"keystatus",pin:"2026"});
+check("keystatus: never returns the key itself",r.code===200&&!JSON.stringify(r.j).includes("abcdefghijklmnopqrstuvwxyz"),JSON.stringify(r.j));
+check("keystatus: only a masked hint",/…/.test(String(r.j.masked||"")),String(r.j.masked));
+r=await call({action:"setkey",pin:"2026",key:""});
+check("setkey: empty clears it",r.code===200&&!store.has("maqadi:reader_key"));
+r=await call({action:"setkey",pin:"1234",key:"sk-abcdefghijklmnopqrstuvwxyz0123"});
+check("wife's code cannot set the key",r.code===403,"code "+r.code);
+r=await call({action:"keystatus",pin:"1234"});
+check("wife's code cannot read key status",r.code===403,"code "+r.code);
 
 /* 5 — guards */
 r=await call({action:"scan",pin:"1234",images:["a"]});
