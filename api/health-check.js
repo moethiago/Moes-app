@@ -156,8 +156,51 @@ function normAr(s) {
 // guessing and anchors every line on its printed item code (Latin digits survive bad
 // thermal print). Unreadable is an allowed answer; a confident wrong name is not.
 function digits(s) { return String(s == null ? "" : s).replace(/\D/g, ""); }
-async function readReceipt({ image, images, mime, catalog }) {
+/* ---------------- reconcile: reason, don't read ---------------- */
+// Vision OCR of Arabic thermal print swaps single letters (قشطة->حلبة, كزبرة->زيرة).
+// A text model with the brand, size, quantity, unit price and the household catalog can
+// work out what the line actually is - the way a person would - where a vision model
+// only sees pixels. Runs only on lines whose code the household has not confirmed yet.
+async function reconcile({ store, lines, names }) {
+  const todo = lines.map((l, i) => ({ i, l })).filter((x) => !x.l.known);
+  if (!todo.length) return lines;
+  const system = `You reconcile noisy OCR of a Saudi supermarket receipt against a household's grocery catalog. Return ONLY a JSON array, no prose, no markdown.
+
+The "read" field is what a vision model transcribed from thermal print. Single letters are often wrong or dropped (ق↔ح, ك dropped, ط↔ظ, ز↔ر, ن↔ب↔ت, د↔ذ, ج↔ح↔خ). Do NOT trust the spelling. Reason from everything else: the brand, the size, the quantity, the unit price, the store, and your knowledge of what Saudi supermarkets sell at those prices. Examples of the reasoning wanted:
+- read "حلبة المراعي لايت 100 جرام", 2 × 4.00 → Almarai Light 100g at 4 SAR is cream: "قشطة المراعي لايت 100 جرام".
+- read "زيرة", 1 × 2.00, in a herbs section next to بقدونس → "كزبرة".
+- read "خبز عربي بر شعير", 1 × 1.00 → the printed word was almost certainly "كبير" (a 1 SAR loaf), not "شعير".
+- read "حليب ناشك طارح", 800 مل → "حليب نادك طازج".
+
+For EACH input line return an object:
+{ "i": <same index>,
+  "name": "<the correct clean Arabic product name>",
+  "match": "<exact string from the HOUSEHOLD CATALOG below, or null if no catalog item is that product>",
+  "confidence": "high" | "low" }
+"high" only when brand/size/price leave little doubt. If two products are plausible, "low". Never invent a product that does not exist in Saudi supermarkets.
+
+HOUSEHOLD CATALOG:
+${names.join("\n")}`;
+  const user = JSON.stringify({ store: store || "", lines: todo.map((x) => ({ i: x.i, code: x.l.code, read: x.l.name_ar, raw: x.l.raw, qty: x.l.qty, unit_price: x.l.unit_price, line_total: x.l.line_total })) });
+  let out = null;
+  try { out = parseJSON(textOf(await claude({ model: MODEL_RECEIPT, max_tokens: 4000, system, messages: [{ role: "user", content: user }] }))); } catch (e) { out = null; }
+  if (!Array.isArray(out)) return lines;
+  for (const r of out) {
+    const l = lines[Number(r && r.i)];
+    if (!l || l.known) continue;
+    const nm = r.name == null ? null : String(r.name).trim().slice(0, 80) || null;
+    const high = String(r.confidence || "").toLowerCase() === "high" && !!nm;
+    const match = r.match && names.includes(r.match) ? r.match : null;
+    l.reasoned = true;
+    if (high) { l.read_as = l.name_ar; l.name_ar = nm; l.confidence = "high"; l.match = match; }
+    else { l.hint = nm; l.hint_match = match; l.confidence = "low"; l.match = null; }
+  }
+  return lines;
+}
+
+async function readReceipt({ image, images, mime, catalog, known }) {
   const names = (catalog || []).slice(0, 400);
+  const knownSet = new Set((Array.isArray(known) ? known : []).map((c) => digits(c)).filter(Boolean));
   const imgs = (Array.isArray(images) && images.length ? images : [image]).filter(Boolean).slice(0, 6);
   if (!imgs.length) throw new Error("no image");
   const multi = imgs.length > 1;
@@ -243,9 +286,11 @@ ${names.join("\n")}`;
       // A match derived from an unreadable name is worse than no match at all.
       match: !low && l.match && names.includes(l.match) ? l.match : null,
       category: l.category || "other",
+      known: !!code && knownSet.has(code),
     });
   }
-  out.lines = lines;
+  out.lines = await reconcile({ store: out.store_raw || out.store, lines, names });
+  out.lines.forEach((l) => { delete l.known; });
 
   // Reconcile: if the lines don't add up to the printed total, say so instead of
   // presenting a tidy screen that is quietly missing or double-counting an item.
