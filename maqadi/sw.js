@@ -1,5 +1,5 @@
 // مقاضي — service worker: instant open, offline shell. API is never cached.
-var C = "maqadi-v24";
+var C = "maqadi-v26";
 var SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(C).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
