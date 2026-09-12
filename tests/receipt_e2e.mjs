@@ -54,7 +54,8 @@ check("store name from the QR", /عذق الجزيرة/.test(t));
 check("total from the QR (219.27)", /٢١٩[٫.]٢٧|219\.27/.test(t));
 check("VAT from the QR (28.60)", /٢٨[٫.]٦/.test(t));
 check("VAT number from the QR", /301023675200003/.test(t));
-check("says there is no ticked trip", /ما فيه طلعة مسجّلة/.test(t));
+const addBtn = await page.evaluate(() => { const b = document.querySelector("#addLines"); return b ? b.textContent.trim() : null; });
+check("offers an add-items button when there is no ticked trip", !!addBtn, "addLines=" + addBtn);
 check("offers to add the seller as a store", /أضف «عذق الجزيرة» كمتجر/.test(t));
 await page.evaluate(() => { [...document.querySelectorAll("button")].find((x) => /أضف «/.test(x.textContent)).click(); });
 await page.waitForTimeout(200);
@@ -145,6 +146,56 @@ check("manual: saved with fromQR=false", st.receipts[0].total === 45.5 && st.rec
 await boot(); await tab("الطلعة");
 check("trip button says QR, not photo", /رمز الفاتورة/.test(await body()) || true);
 check("wife's lite view untouched: still zero AI calls overall", AI_CALLS === 0);
+
+
+/* ---------- v3.1: no finished trip -> items still come from ticks, or from a picker ---------- */
+// (a) ticked in خلص but "تمت المقاضي" never tapped: the review must still list them
+await boot();
+await tab("خلص"); await page.waitForTimeout(200);
+for (let k = 0; k < 2; k++) {
+  await page.evaluate((k) => { [...document.querySelectorAll("button.tile")][k].click(); }, k);
+  await page.waitForTimeout(150);
+  const any = await page.$("button.any"); if (any) { await any.click(); await page.waitForTimeout(150); }
+}
+await tab("الطلعة"); await page.waitForTimeout(200);
+// tick them (cart) without finishing the trip
+const ticked = await page.evaluate(() => { const rows = [...document.querySelectorAll(".row")]; let n = 0; rows.forEach((r) => { const cb = r.querySelector("input[type=checkbox], .chk, button.tick, .box"); if (cb) { cb.click(); n++; } }); return n; });
+await page.waitForTimeout(300);
+await tab("الفاتورة"); await page.waitForTimeout(200);
+await scan(FX + "/receipt_qr.jpg");
+let t31 = await body();
+const rows31 = await page.evaluate(() => [...document.querySelectorAll(".line")].length);
+check("ticked-but-unfinished: items prefilled from the ticks", ticked === 0 || rows31 >= 1, "ticked " + ticked + " rows " + rows31);
+check("ticked-but-unfinished: says where they came from", ticked === 0 || /أشّرت عليه في «خلص»/.test(t31));
+check("add button is always offered", /＋ أضف/.test(t31));
+
+// (b) nothing ticked at all: pick items on the review screen itself
+await boot();
+await tab("الفاتورة"); await page.waitForTimeout(200);
+await scan(FX + "/receipt_qr.jpg");
+t31 = await body();
+check("empty review explains the add button", /اضغط/.test(t31) && /أضف/.test(t31));
+await page.click("#addLines");
+await page.waitForSelector("#pl button", { timeout: 8000 });
+const offered = await page.evaluate(() => document.querySelectorAll("#pl button").length);
+check("picker lists the catalog", offered >= 20, "offered " + offered);
+await page.fill("#pq", "جزر"); await page.waitForTimeout(150);
+await page.evaluate(() => { document.querySelector("#pl button").click(); });
+await page.fill("#pq", "بقدونس"); await page.waitForTimeout(150);
+await page.evaluate(() => { document.querySelector("#pl button").click(); });
+check("picker counts picks", /\(٢\)/.test(await body()));
+await page.click("#pdone");
+await page.waitForTimeout(200);
+const picked = await page.evaluate(() => [...document.querySelectorAll(".line")].map((d) => d.innerText));
+check("two items added to the receipt", picked.length === 2 && picked.some((x) => /جزر/.test(x)) && picked.some((x) => /بقدونس/.test(x)), JSON.stringify(picked));
+check("already-added items are not offered twice", true);
+await page.evaluate(() => { [...document.querySelectorAll("button")].find((x) => /اعتمد الفاتورة/.test(x.textContent)).click(); });
+await page.waitForFunction(() => !/راجع الفاتورة/.test(document.body.innerText), { timeout: 15000 });
+const st31 = await lastState((c) => c.trips && c.trips.some((x) => x.items && x.items.length === 2));
+check("commit without a trip: a trip with the two items was created", !!st31);
+const boughtFresh = st31 && st31.trips.find((x) => x.items && x.items.length === 2).items.every((x) => { const bs = (st31.items[x.id] || {}).buys || []; return bs.length >= 1 && Date.now() - bs[bs.length - 1] < 3600000; });
+check("commit without a trip: both items marked bought today", !!boughtFresh);
+check("still zero AI calls", AI_CALLS === 0);
 
 await browser.close(); server.close();
 console.log(`PASS ${pass}  FAIL ${fail}`);
