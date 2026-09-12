@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="2.5", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.15,item:.5}, FRESH=21*DAY, SLICE_BUDGET=8;
+var BUILD_ID="2.6", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={receipt:.25,item:.5}, FRESH=21*DAY, SLICE_BUDGET=8;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -855,13 +855,15 @@ function rReview(){
     if(!l.sure&&!l.itemId){
       // could not read the name and nothing else identifies it - he has to look
       nm=l.name?esc(l.name):'<span style="color:var(--late)">اسم غير واضح في الفاتورة</span>';
-      sub='<span style="color:var(--late)">ما قدرنا نقرأه — اختر الصنف</span>';
+      var hn=l.hint?S.items[l.hint]:null;
+      sub=hn?'<span style="color:var(--late)">يمكن </span><span class="hint" style="color:var(--go);font-weight:600;text-decoration:underline">'+esc(hn.name)+'</span><span style="color:var(--late)">؟ اضغط للتأكيد</span>'
+            :'<span style="color:var(--late)">ما قدرنا نقرأه — اختر الصنف</span>';
       d.style.background="rgba(220,80,60,.06)";
     } else if(it){
       // resolved. If the name was unreadable, the code did it - say so plainly.
       nm=esc(l.name||it.name);
       sub='✓ '+esc(it.name)
-        +(l.how==="code"?' · <span style="color:var(--go)">متطابق برمز الصنف</span>':'')
+        +(l.how==="code"?' · <span style="color:var(--go)">متطابق برمز الصنف</span>':l.how==="reasoned"?' · <span style="color:var(--dimmer)">مستنتج من السعر والماركة</span>':'')
         +(!l.name?' · <span style="color:var(--dimmer)">الاسم في الورقة غير واضح</span>':'');
     } else {
       nm=esc(l.name);
@@ -869,6 +871,7 @@ function rReview(){
     }
     d.innerHTML='<div class="nm">'+nm+'<small>'+sub+' · <span class="link">غيّر</span></small></div><div class="pr">'+money(l.total)+'<small>'+ar(l.qty)+' × '+money(l.unit!=null?l.unit:l.total/(l.qty||1))+'</small></div><button class="rm" style="color:var(--dimmer);font-size:20px;padding:0 4px">×</button>';
     d.querySelector(".link").onclick=function(){sheetLink(l,function(){render();});};
+    var hb=d.querySelector(".hint");if(hb)hb.onclick=function(e){e.stopPropagation();l.itemId=l.hint;l.sure=true;if(!l.name)l.name=S.items[l.hint].name;render();};
     d.querySelector(".rm").onclick=function(){R.lines.splice(i,1);render();};
     card.appendChild(d);
   });
@@ -1190,6 +1193,28 @@ function shrink(file,max,q,cb){
    slices and send them as separate images, so each slice gets the full budget for a
    few centimetres of print. Overlap means no line is lost at a cut; the backend
    de-duplicates by item code. */
+/* Local contrast normalisation. Each pixel is judged against the average of its
+   neighbourhood, so paper goes white and ink goes black regardless of shadow, glare or
+   the greyness of the thermal print. This is the single cheapest thing that helps OCR. */
+function enhance(cv){
+  var g=cv.getContext("2d"),W=cv.width,H=cv.height,im=g.getImageData(0,0,W,H),d=im.data,N=W*H;
+  var gray=new Float32Array(N);
+  for(var i=0,j=0;i<N;i++,j+=4)gray[i]=d[j]*.299+d[j+1]*.587+d[j+2]*.114;
+  var S1=W+1,I=new Float64Array(S1*(H+1));
+  for(var y=1;y<=H;y++){var row=0,b=(y-1)*W,o=y*S1,p=(y-1)*S1;for(var x=1;x<=W;x++){row+=gray[b+x-1];I[o+x]=I[p+x]+row;}}
+  var r=Math.max(10,Math.round(W/36));
+  for(var y=0;y<H;y++){
+    var y0=y-r<0?0:y-r,y1=y+r+1>H?H:y+r+1,oy=y*W;
+    for(var x=0;x<W;x++){
+      var x0=x-r<0?0:x-r,x1=x+r+1>W?W:x+r+1;
+      var sum=I[y1*S1+x1]-I[y0*S1+x1]-I[y1*S1+x0]+I[y0*S1+x0];
+      var m=sum/((y1-y0)*(x1-x0));
+      var v=(gray[oy+x]-m)*2.8+222;v=v<0?0:v>255?255:v;
+      var k=(oy+x)*4;d[k]=d[k+1]=d[k+2]=v;
+    }
+  }
+  g.putImageData(im,0,0);
+}
 function sliceReceipt(file,maxN,cb){
   var img=new Image(),url=URL.createObjectURL(file);
   img.onerror=function(){URL.revokeObjectURL(url);cb(null,null);};
@@ -1201,6 +1226,7 @@ function sliceReceipt(file,maxN,cb){
       var cv=document.createElement("canvas");cv.width=W;cv.height=Math.max(1,Math.round(sh*W/w));
       var g=cv.getContext("2d");g.imageSmoothingEnabled=true;g.imageSmoothingQuality="high";
       g.drawImage(img,0,sy,w,sh,0,0,cv.width,cv.height);
+      try{enhance(cv);}catch(e){}
       return cv.toDataURL("image/jpeg",.9).split(",")[1];
     }
     var pv=document.createElement("canvas"),ps=Math.min(1,700/Math.max(w,h));
@@ -1244,7 +1270,7 @@ async function readReceipt(files){
     rcptUI={mode:"reading",preview:preview};view="rcpt";render();
     try{
       var names=Object.keys(S.items).map(function(id){return S.items[id].name;});
-      var r=await call({action:"receipt",images:slices,mime:"image/jpeg",catalog:names},58000);
+      var r=await call({action:"receipt",images:slices,mime:"image/jpeg",catalog:names,known:Object.keys(S.codes||{})},58000);
       if(!r.lines||!r.lines.length)throw new Error("ما قدرنا نقرأ أصناف من الصورة — جرّب صورة أوضح");
       var codes=S.codes||{};
       var lines=r.lines.map(function(l){
@@ -1259,7 +1285,11 @@ async function readReceipt(files){
         // 3) fuzzy match, never on a name the model was unsure of (that is what produced
         //    "لحم دجاج" -> "لحم حاشي" with a confident green tick in v2.2)
         if(!it&&l.confidence!=="low"&&l.name_ar){it=matchCatalog(l.name_ar);if(it)how="fuzzy";}
-        return {name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,
+        if(it&&how!=="code"&&l.reasoned)how="reasoned";
+        // a low-confidence line may still carry the reasoner's best guess - offer it, never assume it
+        var hint=null;
+        if(!it&&l.hint_match){var hid=Object.keys(S.items).find(function(k){return S.items[k].name===l.hint_match;});if(hid)hint=S.items[hid];}
+        return {name:l.name_ar||"",code:l.code||null,sure:l.confidence!=="low",how:how,hint:hint?hint.id:null,hintName:l.hint||null,
                 raw:l.raw,qty:l.qty||1,unit:l.unit_price,total:l.line_total,
                 itemId:it?it.id:null,category:it?it.cat:(l.category||"other")};
       });
