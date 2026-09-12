@@ -426,8 +426,12 @@ function solveReceipt({ lines, candidates, total, pieces }) {
     totalOK, piecesOK, pieces: pieces || null, doubts,
     // verified means the arithmetic closes AND nothing is left ambiguous
     verified: totalOK === true && doubts === 0,
+    // The lines add up to LESS than the printed total: part of the roll was outside the
+    // frame. That is not a bad reading - it is an incomplete one. Keep what was read and
+    // ask for a photo of the rest, instead of throwing the work away.
+    missing: tot > 0 && diff < -Math.max(0.5, tot * 0.02) ? Math.round(-diff * 100) / 100 : 0,
     // more than a few questions is the solver failing, not the shopper's job
-    retake: doubts > MAX_DOUBTS || (totalOK === false && doubts > 0),
+    retake: doubts > MAX_DOUBTS || (tot > 0 && diff > Math.max(0.5, tot * 0.02)),
   };
 }
 
