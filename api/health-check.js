@@ -63,7 +63,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
-const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset"];
+const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset", "setkey", "keystatus"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
@@ -257,13 +257,16 @@ Return ONLY valid JSON:
    given a product match, and flagged for him to pick. */
 function fromScanSchema(out, engine) {
   const seen = new Set(), lines = [];
-  for (const it of (Array.isArray(out && out.items) ? out.items : [])) {
-    const total = Number(it && it.price_sar) || 0;
+  // accept either the requested schema or a bare array of {itemName, quantity, price}
+  const src = Array.isArray(out) ? out : Array.isArray(out && out.items) ? out.items : [];
+  for (const it of src) {
+    const total = Number(it && (it.price_sar != null ? it.price_sar : it.price)) || 0;
     const wt = it && it.weight_kg != null ? Number(it.weight_kg) : null;
     let qty = Number(it && it.quantity) > 0 ? Number(it.quantity) : 1;
     if (wt > 0) qty = wt;
     const conf = typeof (it && it.confidence) === "number" ? it.confidence : 1;
-    let nm = it && it.name != null ? String(it.name).trim().slice(0, 80) : "";
+    const rawName = it && (it.name != null ? it.name : it.itemName);
+    let nm = rawName != null ? String(rawName).trim().slice(0, 80) : "";
     const unclear = !nm || /^unclear$/i.test(nm) || conf < 0.6;
     if (unclear && !total) continue;
     nm = /^unclear$/i.test(nm) ? null : (nm || null);
@@ -276,12 +279,23 @@ function fromScanSchema(out, engine) {
       line_total: total, match: null, category: "other", weight_kg: wt });
   }
   const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
-  const tot = Number(out && out.receipt_total_sar) || 0;
+  const tot = Number(out && !Array.isArray(out) ? (out.receipt_total_sar != null ? out.receipt_total_sar : out.total) : 0) || 0;
   return { engine, store: "Other", store_raw: "", seller: "", date: null, total: tot || null, vat: null,
     lines, sum: Math.round(sum * 100) / 100,
     unreadable: lines.filter((l) => l.confidence === "low").length,
     mismatch: tot > 0 && Math.abs(sum - tot) > Math.max(1, tot * 0.02) ? Math.round((sum - tot) * 100) / 100 : 0 };
 }
+
+/* ---------------- reader key, stored server-side ----------------
+   He pastes an OpenAI key once in the app; it is kept in his own Upstash, never in
+   localStorage and never returned to the browser. A key in a GitHub Pages frontend
+   would be readable by anyone who opens the page source or the dev tools. */
+const KEY_STORE = "maqadi:reader_key";
+async function readerKey() {
+  if (OA_KEY) return OA_KEY;
+  try { const v = await kv(["GET", KEY_STORE]); return v ? String(v) : null; } catch { return null; }
+}
+function maskKey(k) { return k ? String(k).slice(0, 3) + "…" + String(k).slice(-4) : null; }
 
 /* ---------------- GPT engine ----------------
    Same job as the Azure engine, different vendor: one photo (or slices) in, line items
@@ -290,14 +304,14 @@ function fromScanSchema(out, engine) {
    function limit. */
 const OA_KEY = process.env.OPENAI_API_KEY;
 const OA_MODEL = process.env.OPENAI_MODEL || "gpt-4.1";
-async function gptReceipt(imgs, mime) {
+async function gptReceipt(imgs, mime, key) {
   const content = [{ type: "text", text: imgs.length > 1
     ? `These ${imgs.length} images are OVERLAPPING vertical slices of ONE receipt, top to bottom. Output every item ONCE.`
     : "This is one photo of one receipt." }];
   imgs.forEach((b64) => content.push({ type: "image_url", image_url: { url: "data:" + (mime || "image/jpeg") + ";base64," + b64, detail: "high" } }));
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: "Bearer " + OA_KEY, "Content-Type": "application/json" },
+    headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
     body: JSON.stringify({ model: OA_MODEL, max_tokens: 4000, response_format: { type: "json_object" },
       messages: [{ role: "system", content: SCAN_PROMPT }, { role: "user", content }] }),
   });
@@ -305,7 +319,7 @@ async function gptReceipt(imgs, mime) {
   if (!r.ok) throw new Error("openai: " + (j.error && j.error.message ? j.error.message : r.status));
   const txt = j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "";
   const out = parseJSON(txt);
-  if (!out || !Array.isArray(out.items)) throw new Error("openai: no items");
+  if (!out || (!Array.isArray(out) && !Array.isArray(out.items))) throw new Error("openai: no items");
   return fromScanSchema(out, "gpt");
 }
 function normalizeScan(out, names, knownSet) {
@@ -559,13 +573,25 @@ async function maqadiHandler(req, res) {
       await kv(["SET", "maqadi:photos", JSON.stringify(photos)]);
       return res.status(200).json({ ok: true, count: Object.keys(photos).length });
     }
+    if (action === "keystatus") {
+      const k = await readerKey();
+      return res.status(200).json({ hasKey: !!k, masked: maskKey(k), fromEnv: !!OA_KEY, engines: [k ? "gpt" : null, AZ_KEY && AZ_ENDPOINT ? "azure" : null, ANTHROPIC_KEY ? "claude" : null].filter(Boolean) });
+    }
+    if (action === "setkey") {
+      const k = String(body.key || "").trim();
+      if (!k) { await kv(["DEL", KEY_STORE]); return res.status(200).json({ ok: true, hasKey: !!OA_KEY }); }
+      if (!/^sk-[A-Za-z0-9_\-]{20,}$/.test(k)) return res.status(400).json({ error: "المفتاح لازم يبدأ ب sk- ويكون كامل" });
+      await kv(["SET", KEY_STORE, k]);
+      return res.status(200).json({ ok: true, hasKey: true, masked: maskKey(k) });
+    }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
       if (!imgs.length) return res.status(400).json({ error: "no image" });
       const names = (body.catalog || []).slice(0, 400);
       const knownSet = new Set((Array.isArray(body.known) ? body.known : []).map((c) => digits(c)).filter(Boolean));
+      const oaKey = await readerKey();
       const engines = [];
-      if (OA_KEY) engines.push("gpt");
+      if (oaKey) engines.push("gpt");
       if (AZ_KEY && AZ_ENDPOINT) engines.push("azure");
       if (ANTHROPIC_KEY) engines.push("claude");
       if (!engines.length) return res.status(500).json({ error: "no reader configured" });
@@ -575,7 +601,7 @@ async function maqadiHandler(req, res) {
       for (const eng of [want].concat(engines.filter((e) => e !== want))) {
         try {
           let out = null;
-          if (eng === "gpt") out = await gptReceipt(imgs, body.mime);
+          if (eng === "gpt") out = await gptReceipt(imgs, body.mime, oaKey);
           else if (eng === "azure") out = fromAzure(await azureReceipt(imgs[0], body.mime), names);
           else out = await claudeScan(imgs, body.mime);
           if (out && out.lines.length) {
