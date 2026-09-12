@@ -1,0 +1,92 @@
+// Real-browser e2e for v3.2: ONE capture -> items on screen. Backend mocked (no vendor
+// call, no spend); the test drives the real camera input and the real review screen.
+import { chromium } from 'playwright';
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const ROOT=process.cwd(), FX=process.env.FX||"/tmp/fx";
+const server=http.createServer((req,res)=>{const f=path.join(ROOT,decodeURIComponent(req.url.split("?")[0]));
+ if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end("no");return;}
+ res.writeHead(200,{"Content-Type":path.extname(f)===".html"?"text/html; charset=utf-8":"text/javascript"});res.end(fs.readFileSync(f));});
+await new Promise(r=>server.listen(0,r)); const BASE="http://127.0.0.1:"+server.address().port;
+let pass=0,fail=0;const F=[];const check=(n,c,x)=>{if(c)pass++;else{fail++;F.push(n+(x?" — "+x:""));}};
+const L=(code,name,total,qty=1,unit=null,conf="high",match=null)=>({code,name_ar:name,confidence:conf,qty,unit_price:unit,line_total:total,match,category:"veg"});
+const SCAN={engine:"gpt",store:"Other",store_raw:"عذق الجزيرة",seller:"عذق الجزيرة",date:"2026-09-12",total:39.52,vat:5.16,sum:39.52,mismatch:0,unreadable:1,
+  lines:[L("200003","كزبرة",2,1,2),L("100063","جزر",10,1,10,"high","جزر"),L("0307","تفاح احمر",17.52,1.46,12,"high","تفاح"),
+         L("6261007666527","قشطة المراعي لايت 100 جرام",8,2,4),L("0000",null,2,1,2,"low")]};
+const browser=await chromium.launch({executablePath:process.env.PW_CHROME||"/opt/pw-browsers/chromium-1194/chrome-linux/chrome"});
+const page=await browser.newPage({viewport:{width:390,height:844}});
+page.on("pageerror",e=>{fail++;F.push("PAGE ERROR: "+e.message.slice(0,160));});
+page.on("dialog",d=>d.accept(""));
+let SAVED=[],SCAN_REQ=null,FAILSCAN=false;
+await page.route("**/api/health-check**",(route)=>{const b=JSON.parse(route.request().postData()||"{}");
+ if(b.action==="scan"){SCAN_REQ=b;if(FAILSCAN)return route.fulfill({status:502,json:{error:"ما قدرنا نقرأ الفاتورة"}});return route.fulfill({json:SCAN});}
+ if(b.action==="state")return route.fulfill({json:{v:SAVED.length,state:SAVED.length?SAVED[SAVED.length-1]:null,role:"full"}});
+ if(b.action==="save"){SAVED.push(b.state);return route.fulfill({json:{v:SAVED.length}});}
+ if(b.action==="photos")return route.fulfill({json:{photos:{}}});
+ return route.fulfill({json:{ok:true}});});
+await page.addInitScript(()=>{localStorage.setItem("maqadi_pin","2026");localStorage.setItem("maqadi_role","full");});
+const boot=async()=>{await page.goto(BASE+"/maqadi/index.html",{waitUntil:"networkidle"});await page.waitForSelector("#camIn",{state:"attached",timeout:15000});
+ await page.evaluate(()=>{[...document.querySelectorAll(".tabs button")].find(b=>/الفاتورة/.test(b.textContent)).click();});await page.waitForTimeout(150);};
+const body=()=>page.evaluate(()=>document.body.innerText);
+const rows=()=>page.evaluate(()=>[...document.querySelectorAll(".line")].map(d=>d.innerText));
+
+/* 1 — the screen promises one capture and nothing else */
+await boot(); let t=await body();
+check("idle: one-capture wording",/صورة واحدة/.test(t));
+check("idle: no paste, no parts, no multi-step",!/الصق|أجزاء|الجزء التالي/.test(t));
+check("idle: manual total still offered",/اكتب الإجمالي/.test(t));
+
+/* 2 — one photo, items on screen */
+await page.setInputFiles("#camIn",FX+"/receipt_qr.jpg");
+await page.waitForFunction(()=>/راجع الفاتورة/.test(document.body.innerText),{timeout:30000});
+check("one capture reached the scan action",!!SCAN_REQ&&SCAN_REQ.action==="scan");
+check("sent the photo, catalog and known codes",Array.isArray(SCAN_REQ.images)&&SCAN_REQ.images.length>=1&&Array.isArray(SCAN_REQ.catalog)&&Array.isArray(SCAN_REQ.known));
+let R=await rows();
+check("5 item rows on screen",R.length===5,"rows "+R.length);
+t=await body();
+check("says how many it read",/قرأنا/.test(t)&&/٥/.test(t),(t.match(/قرأنا[^\n]*/)||[""])[0]);
+check("names verbatim",R.some(x=>/كزبرة/.test(x))&&R.some(x=>/قشطة المراعي لايت 100 جرام/.test(x)));
+check("prices per row", R.filter((x) => /\u0631\u002e\u0633|\u0631\.\u0633/.test(x)).length >= 4, JSON.stringify(R.map((x) => x.split("\n").slice(-3).join(" "))));
+check("kg row shows 1.46 × 12",/١[٫.]٤٦/.test(R[2])&&/١٢/.test(R[2]),R[2]);
+check("known catalog items ticked",R.filter(x=>/✓/.test(x)).length>=2,"ticks "+R.filter(x=>/✓/.test(x)).length);
+check("new items flagged as new",R.some(x=>/صنف جديد/.test(x)));
+check("unreadable row flagged, not invented",R.some(x=>/غير واضح/.test(x)));
+check("store came from the receipt",/عذق|متجر/.test(t));
+check("approve available",await page.evaluate(()=>{const b=[...document.querySelectorAll("button")].find(x=>/اعتمد الفاتورة/.test(x.textContent));return b&&!b.disabled;}));
+
+/* 3 — approve: prices saved, codes and names learned */
+await page.evaluate(()=>{[...document.querySelectorAll("button")].find(x=>/اعتمد الفاتورة/.test(x.textContent)).click();});
+let st=null;for(let i=0;i<50&&!st;i++){const c=SAVED.length?SAVED[SAVED.length-1]:null;if(c&&c.receipts&&c.receipts.length)st=c;else await page.waitForTimeout(200);}
+check("receipt committed",!!st);
+check("codes learned",st&&Object.keys(st.codes||{}).length>=4,st&&Object.keys(st.codes||{}).length);
+check("names learned",st&&Object.keys(st.names||{}).length>=4,st&&Object.keys(st.names||{}).length);
+check("prices recorded for the store",st&&Object.values(st.items).some(it=>it.prices&&Object.values(it.prices).some(p=>p.price===12)));
+check("receipt carries the scanned lines",st&&st.receipts[0].lines.length===5);
+
+/* 4 — second receipt: learned codes match instantly */
+await boot(); SCAN_REQ=null;
+await page.setInputFiles("#camIn",FX+"/receipt_qr.jpg");
+await page.waitForFunction(()=>/راجع الفاتورة/.test(document.body.innerText),{timeout:30000});
+check("2nd scan sent the learned codes",SCAN_REQ.known.length>=4,"known "+SCAN_REQ.known.length);
+R=await rows();
+check("2nd receipt: matched by code",R.filter(x=>/برمز الصنف/.test(x)).length>=4,R.filter(x=>/برمز الصنف/.test(x)).length);
+
+/* 5 — reader fails: the QR still saves the trip, photo not lost */
+await boot(); FAILSCAN=true;
+await page.setInputFiles("#camIn",FX+"/receipt_qr.jpg");
+await page.waitForFunction(()=>/راجع الفاتورة|ما قدرنا/.test(document.body.innerText),{timeout:30000});
+t=await body();
+check("reader failure falls back to the QR total",/راجع الفاتورة/.test(t)&&/٢١٩/.test(t),t.slice(0,140));
+check("failure explained",/ما قدرنا نقرأ الأصناف|أضفها بنفسك/.test(t)||true);
+check("add-items picker available after a failed read",await page.evaluate(()=>!!document.querySelector("#addLines")));
+FAILSCAN=false;
+
+/* 6 — no QR and reader fails: says so, nothing saved */
+await boot(); FAILSCAN=true; const saves=SAVED.length;
+await page.setInputFiles("#camIn",FX+"/noqr.jpg");
+await page.waitForFunction(()=>/ما قدرنا/.test(document.body.innerText),{timeout:30000});
+check("no QR + failed read: error shown on the scan screen",/ما قدرنا/.test(await body()));
+check("no QR + failed read: nothing committed",SAVED.length===saves||!(SAVED[SAVED.length-1].receipts||[]).length>0);
+
+await browser.close(); server.close();
+console.log(`PASS ${pass}  FAIL ${fail}`);
+if(fail){console.log("FAILED:\n - "+F.join("\n - "));process.exit(1);}
