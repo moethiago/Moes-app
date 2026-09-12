@@ -35,6 +35,7 @@ await page.addInitScript(()=>{localStorage.setItem("maqadi_pin","2026");localSto
 const boot=async()=>{await page.goto(BASE+"/maqadi/index.html",{waitUntil:"networkidle"});await page.waitForSelector("#camIn",{state:"attached",timeout:15000});
  await page.evaluate(()=>{[...document.querySelectorAll(".tabs button")].find(b=>/الفاتورة/.test(b.textContent)).click();});await page.waitForTimeout(150);};
 const body=()=>page.evaluate(()=>document.body.innerText);
+const tab=async(n)=>{await page.evaluate((x)=>{const b=[...document.querySelectorAll(".tabs button")].find(y=>y.textContent.indexOf(x)>=0);if(b)b.click();},n);await page.waitForTimeout(200);};
 const rows=()=>page.evaluate(()=>[...document.querySelectorAll(".line")].map(d=>d.innerText));
 
 /* 1 — the screen promises one capture and nothing else */
@@ -146,6 +147,42 @@ await page.setInputFiles("#camIn",FX+"/noqr.jpg");
 await page.waitForFunction(()=>/ما قدرنا/.test(document.body.innerText),{timeout:30000});
 check("no QR + failed read: error shown on the scan screen",/ما قدرنا/.test(await body()));
 check("no QR + failed read: nothing committed",SAVED.length===saves||!(SAVED[SAVED.length-1].receipts||[]).length>0);
+
+/* ---------- v4.3: a receipt filed under the wrong shop can be corrected ---------- */
+SCAN=reply(); SAVED=[];                       // one trip only, so the assertions are unambiguous
+await page.context().clearCookies();
+await boot();
+await page.setInputFiles("#camIn",FX+"/receipt_qr.jpg");
+await page.waitForFunction(()=>/\u0631\u0627\u062c\u0639 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629/.test(document.body.innerText),{timeout:30000});
+// file it under the wrong shop on purpose
+await page.evaluate(()=>{const b=[...document.querySelectorAll(".stores button")].find(x=>/\u0627\u0644\u0631\u0634\u064a\u062f|\u0628\u0646\u062f\u0647/.test(x.textContent));if(b)b.click();});
+await page.waitForTimeout(200);
+await page.evaluate(()=>{[...document.querySelectorAll("button")].find(x=>/\u0627\u0639\u062a\u0645\u062f \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629/.test(x.textContent)).click();});
+let stW=null;for(let i=0;i<50&&!stW;i++){const c=SAVED.length?SAVED[SAVED.length-1]:null;if(c&&c.trips&&c.trips.length)stW=c;else await page.waitForTimeout(200);}
+const wrongStore=stW&&stW.trips[0].store;
+check("v4.3: the trip recorded a shop",!!wrongStore,String(wrongStore));
+const pricedUnder=stW&&Object.values(stW.items).filter(i=>i.prices&&i.prices[wrongStore]).length;
+// the invariant that matters: whatever was filed under the old shop must not stay there
+check("v4.3: price bookkeeping recorded for this trip",typeof pricedUnder==="number",String(pricedUnder));
+// now correct it from the home screen
+await tab("\u0627\u0644\u0628\u064a\u062a"); await page.waitForTimeout(300);
+// open the trip that actually carries a receipt (marked \u0628\u0641\u0627\u062a\u0648\u0631\u0629)
+await page.evaluate(()=>{const h=[...document.querySelectorAll(".hist")].find(x=>/\u0628\u0641\u0627\u062a\u0648\u0631\u0629/.test(x.innerText))||document.querySelectorAll(".hist")[0];if(h)h.click();});
+await page.waitForTimeout(250);
+check("v4.3: an opened trip offers changing the shop",await page.evaluate(()=>[...document.querySelectorAll(".hist button")].some(b=>/\u063a\u064a\u0651\u0631 \u0627\u0644\u0645\u062a\u062c\u0631/.test(b.textContent))));
+await page.evaluate(()=>{[...document.querySelectorAll(".hist button")].find(b=>/\u063a\u064a\u0651\u0631 \u0627\u0644\u0645\u062a\u062c\u0631/.test(b.textContent)).click();});
+await page.waitForTimeout(100);
+console.log("DBG trip0=",JSON.stringify(stW&&{id:stW.trips[0].id,rid:stW.trips[0].receiptId,store:stW.trips[0].store}),
+  "receipt0=",JSON.stringify(stW&&stW.receipts[0]&&{id:stW.receipts[0].id,store:stW.receipts[0].store,n:(stW.receipts[0].lines||[]).length,ids:(stW.receipts[0].lines||[]).map(l=>l.itemId)}));
+await page.waitForSelector("#sp",{timeout:8000});
+check("v4.3: the picker marks the shop it is set to now",await page.evaluate(()=>!!document.querySelector("#sp button.on")));
+await page.evaluate(()=>{const b=[...document.querySelectorAll("#sp button")].find(x=>/\u0627\u0644\u062a\u0645\u064a\u0645\u064a/.test(x.textContent));b.click();});
+await page.waitForTimeout(400);
+let stR=null;for(let i=0;i<50&&!stR;i++){const c=SAVED[SAVED.length-1];if(c&&c.trips&&c.trips[0].store!==wrongStore)stR=c;else await page.waitForTimeout(200);}
+check("v4.3: the trip moved to the right shop",!!stR&&stR.trips[0].store==="Tamimi",stR&&stR.trips[0].store);
+check("v4.3: the receipt moved too",!!stR&&stR.receipts[0].store==="Tamimi",stR&&stR.receipts[0].store);
+check("v4.3: the prices moved with it",!!stR&&Object.values(stR.items).filter(i=>i.prices&&i.prices.Tamimi).length>=pricedUnder,String(stR&&Object.values(stR.items).filter(i=>i.prices&&i.prices.Tamimi).length)+" vs "+pricedUnder);
+check("v4.3: nothing left under the wrong shop",!!stR&&Object.values(stR.items).every(i=>!i.prices||!i.prices[wrongStore]));
 
 await browser.close(); server.close();
 console.log(`PASS ${pass}  FAIL ${fail}`);
