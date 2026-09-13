@@ -93,6 +93,22 @@ ck('day defaults created', st3.day.wake === 360 && st3.day.sleep === 1380 && Obj
 ck('hm pads', MDAY.hm(65) === '01:05' && MDAY.hm(0) === '00:00');
 ck('dur reads naturally', MDAY.dur(90) === '1h 30m' && MDAY.dur(60) === '1h' && MDAY.dur(15) === '15m');
 
+// 11. the block you move keeps the time you gave it; everything else yields
+const base = [{ id: 'cm', title: 'Drive', s: 440, d: 40 }, { id: 'wk', title: 'Work', s: 480, d: 540 }, { id: 'fm', title: 'Fam', s: 1170, d: 90 }];
+const p1 = MDAY.place(base.map(b => ({ ...b })), { id: 'cm', title: 'Drive', s: 585, d: 40 });
+const drive = p1.find(b => b.id === 'cm');
+ck('moved block keeps its exact time', drive.s === 585, 'landed at ' + MDAY.hm(drive.s));
+ck('no overlap after the move', !ov(p1), JSON.stringify(p1.map(b => b.title + '@' + MDAY.hm(b.s))));
+ck('the colliding block is what moved', p1.find(b => b.id === 'wk').s === 625);
+ck('moved list reported to the user', (p1.moved || []).length === 1 && p1.moved[0].id === 'wk');
+const p2 = MDAY.place(base.map(b => ({ ...b })), { id: 'nw', title: 'Gym', s: 1080, d: 60 });
+ck('new block in a free gap moves nothing', (p2.moved || []).length === 0 && p2.length === 4);
+const p3 = MDAY.place(base.map(b => ({ ...b })), { id: 'cm', title: 'Drive', s: 480, d: 40 });
+ck('cascade keeps every block and order', p3.length === 3 && !ov(p3), JSON.stringify(p3.map(b => b.title + '@' + MDAY.hm(b.s))));
+ck('cascade never drops the last block', p3.some(b => b.id === 'fm'));
+
+console.log('');
+
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (F.length) { console.log('\nFAILURES:'); F.forEach(x => console.log(' - ' + x)); }
 process.exit(fail ? 1 : 0);
