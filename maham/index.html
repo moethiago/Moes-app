@@ -178,6 +178,29 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .toast button{margin-inline-start:14px;color:#8FE0B4;font-weight:700;font-size:13.5px;pointer-events:auto}
 .net{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:50%;transform:translateX(50%);background:var(--soon-soft);color:var(--soon);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;z-index:60}
 
+.obs{margin-top:14px;background:var(--sf);border-radius:18px;padding:14px 16px;display:flex;gap:11px;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.05);animation:obsIn .5s cubic-bezier(.2,.8,.2,1) both;text-align:start;width:100%}
+.obs .oi{flex:0 0 22px;color:var(--go);margin-top:1px}
+.obs .ot{font-size:14.5px;line-height:1.5;color:var(--ink);font-weight:500}
+.obs.soft .ot{color:var(--dim);font-weight:400}
+.obs.soft .oi{color:var(--dimmer)}
+@keyframes obsIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes cbIn{from{opacity:0;transform:translateY(7px) scale(.97)}to{opacity:1;transform:none}}
+.cal .cb{animation:cbIn .34s cubic-bezier(.2,.9,.25,1) both}
+.cb:active{transform:scale(.985)}
+.cb.own{transition:top .34s cubic-bezier(.22,1.3,.36,1),transform .16s ease,box-shadow .2s ease}
+.cb.grab{transition:transform .16s ease,box-shadow .2s ease;animation:none}
+.cb.drop{animation:none}
+.calwrap{transition:transform .16s ease,opacity .16s ease}
+.calwrap.out-l{transform:translateX(-14%);opacity:0}
+.calwrap.out-r{transform:translateX(14%);opacity:0}
+@keyframes slideInL{from{opacity:0;transform:translateX(16%)}to{opacity:1;transform:none}}
+@keyframes slideInR{from{opacity:0;transform:translateX(-16%)}to{opacity:1;transform:none}}
+.calwrap.in-l{animation:slideInL .3s cubic-bezier(.2,.85,.25,1) both}
+.calwrap.in-r{animation:slideInR .3s cubic-bezier(.2,.85,.25,1) both}
+.calwrap.in-l .cb,.calwrap.in-r .cb{animation:none}
+.nowc:before{animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.55}}
+.hrow{animation:cbIn .3s cubic-bezier(.2,.9,.25,1) both}
 .hd h1 .dsub{display:block;font-size:13px;color:var(--dim);font-weight:500;margin-top:2px}
 .hd h1 .chip{display:inline-block;vertical-align:middle;font-size:11.5px;font-weight:600;color:var(--go);background:var(--go-soft);padding:4px 9px;border-radius:999px;margin-inline-start:9px}
 .hd h1 .chip.soft{color:var(--dim);background:var(--sf)}
@@ -272,7 +295,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="4.0.1", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="5.0", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -1057,8 +1080,80 @@ function hd(title,sub,acts){
   return h;
 }
 
+/* ---- what it notices ---- */
+function dayKeysOf(log){var s={};log.forEach(function(e){s[MDAY.dkey(e.ts)]=1;});return s;}
+function hmOf(ts){var d=new Date(ts);return d.getHours()*60+d.getMinutes();}
+function insight(st,now){
+  now=now||Date.now();
+  var log=(st.log||[]).filter(function(e){return e&&e.ts;});
+  var n=log.length,out=[];
+  var days=dayKeysOf(log),nd=Object.keys(days).length;
+  if(n>=3){
+    var k=0,t=dayStart(now);
+    if(!days[MDAY.dkey(t)])t-=DAY;
+    while(days[MDAY.dkey(t)]){k++;t-=DAY;}
+    if(k>=3)out.push({text:k+" days in a row with something ticked off.",why:"Counted back from "+(days[MDAY.dkey(dayStart(now))]?"today":"yesterday")+".",kind:"streak"});
+  }
+  if(n>=12){
+    var late=0;log.forEach(function(e){var m=hmOf(e.ts);if(m>late)late=m;});
+    if(late<21*60)out.push({text:"You have never finished anything after "+MDAY.hm(late)+".",why:"Across all "+n+" completions.",kind:"late"});
+  }
+  if(n>=10){
+    var byH={},bh=0,bc=0;
+    log.forEach(function(e){var h=new Date(e.ts).getHours();byH[h]=(byH[h]||0)+1;if(byH[h]>bc){bc=byH[h];bh=h;}});
+    if(bc>=Math.max(3,Math.round(n*0.25)))out.push({text:"Most of what you get done lands between "+MDAY.hm(bh*60)+" and "+MDAY.hm(bh*60+60)+".",why:bc+" of "+n+" completions.",kind:"hour"});
+  }
+  if(n>=14&&nd>=5){
+    var byW=[0,0,0,0,0,0,0];log.forEach(function(e){byW[new Date(e.ts).getDay()]++;});
+    var hi=0,lo=0;for(var i=1;i<7;i++){if(byW[i]>byW[hi])hi=i;if(byW[i]<byW[lo])lo=i;}
+    if(byW[hi]>=byW[lo]*2+2)out.push({text:DAYSF[hi]+" is your heaviest day. "+DAYSF[lo]+" is your lightest.",why:byW[hi]+" done on "+DAYSF[hi]+"s against "+byW[lo]+" on "+DAYSF[lo]+"s.",kind:"weekday"});
+  }
+  if(n>=10&&nd>=5){
+    var cut=hmOf(now),tot=0,cnt=0,today=0,tk=MDAY.dkey(now);
+    Object.keys(days).forEach(function(dk){
+      var c=log.filter(function(e){return MDAY.dkey(e.ts)===dk&&hmOf(e.ts)<=cut;}).length;
+      if(dk===tk)today=c;else{tot+=c;cnt++;}
+    });
+    if(cnt>=4){
+      var avg=tot/cnt;
+      if(avg>=1.5&&today<=avg-1.5)out.push({text:"By this hour you have usually done "+Math.round(avg)+". Today it is "+today+".",why:"Averaged over "+cnt+" days.",kind:"pace"});
+      if(avg>=1&&today>=avg+2)out.push({text:"You are "+today+" in already, against a usual "+Math.round(avg)+" by now.",why:"Averaged over "+cnt+" days.",kind:"pace"});
+    }
+  }
+  var moved=pushPattern(st,now);
+  if(moved)out.push(moved);
+  if(!out.length){
+    var need=Math.max(0,4-nd);
+    return {text:need?("Give it about "+need+" more days of ticking things off and it starts noticing patterns."):"Nothing worth saying today.",soft:true,why:n+" completions on "+nd+" days so far.",kind:"none"};
+  }
+  var doy=Math.floor((dayStart(now)-Date.UTC(new Date(now).getFullYear(),0,1))/DAY);
+  return out[Math.abs(doy)%out.length];
+}
+function pushPattern(st,now){
+  if(!st.day||!st.day.ov)return null;
+  var best=null;
+  for(var w=0;w<7;w++){
+    var tpl=st.day.tpl[String(w)]||[];
+    tpl.forEach(function(b){
+      var diffs=[];
+      Object.keys(st.day.ov).forEach(function(k){
+        var d=new Date(k+"T12:00:00");
+        if(d.getDay()!==w||d.getTime()>now)return;
+        (st.day.ov[k]||[]).forEach(function(o){if(o.id===b.id&&o.s!==b.s)diffs.push(o.s-b.s);});
+      });
+      if(diffs.length<3)return;
+      var later=diffs.filter(function(x){return x>0;}).length,earlier=diffs.length-later;
+      if(later>=3&&earlier===0){
+        var avg=Math.round(diffs.reduce(function(a,x){return a+x;},0)/diffs.length);
+        if(!best||diffs.length>best.nn)best={text:"You keep pushing "+b.title+" later on "+DAYSF[w]+"s \u2014 about "+MDAY.dur(avg)+" later. Want it moved for good?",why:"Moved later on "+diffs.length+" "+DAYSF[w]+"s, never earlier.",kind:"push",nn:diffs.length};
+      }
+    });
+  }
+  return best;
+}
+
 /* ---- day ---- */
-var daySel=0,PXM=0.95,drag=null;
+var daySel=0,PXM=0.95,drag=null,slideDir="";
 var SVGC='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>';
 function dayTs(){return dayStart()+daySel*DAY;}
 function isPast(){return daySel<0;}
@@ -1156,6 +1251,7 @@ function rDay(){
     var st2="top:"+top+"px;height:"+hh+"px;left:calc(56px + "+left+"% - "+Math.round(left*0.56)+"px);width:calc("+w+"% - "+Math.round(w*0.56)+"px - 12px)";
     if(!b.done&&!b.fx)st2+=";background:var(--"+(b.tint||"other")+")";
     var meta=b.done?("done "+MDAY.hm(b.at)):(b.fx?fxLabel(b.fx):MDAY.hm(b.s)+"\u2013"+MDAY.hm(b.s+b.d));
+    st2+=";animation-delay:"+Math.min(160,i*26)+"ms";
     g+='<div class="'+cls+'" data-i="'+i+'" style="'+st2+'"><span class="ct">'+esc(b.title)+'</span>'+(hh>=44?'<span class="cm">'+meta+'</span>':'')+'</div>';
   });
   if(daySel===0){
@@ -1163,10 +1259,14 @@ function rDay(){
     if(nw>=wake&&nw<=sleep)g+='<div class="nowc" id="nowc" style="top:'+Math.round((nw-wake)*PXM)+'px"></div>';
   }
   g+='</div></div>';
-  var html=g;
+  var ins=(daySel===0&&!past)?insight(S,Date.now()):null;
+  var html=ins?('<button class="obs'+(ins.soft?" soft":"")+'" id="obs"><span class="oi"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3z"/><path d="M10 20h4"/></svg></span><span class="ot">'+esc(ins.text)+'</span></button>'):"";
+  html+=g;
   if(!all.length)html+='<div class="empt">'+(past?"Nothing logged this day.":"Nothing on this day yet. Tap the calendar, or the + button.")+'</div>';
   html+='<div class="runs"><button id="wk1">Starts '+MDAY.hm(wake)+'</button><button id="sl1">Ends '+MDAY.hm(sleep)+'</button></div>';
   $("view").innerHTML=html;
+  if(slideDir){var cw=$("calwrap");if(cw){cw.classList.add(slideDir==="l"?"in-l":"in-r");}slideDir="";}
+  if(ins&&$("obs"))$("obs").onclick=function(){toast(ins.why,true);};
   if(!past)$("fab").classList.remove("hidden");else $("fab").classList.add("hidden");
 
   var ordered=layout(all);
@@ -1222,10 +1322,10 @@ function wireDrag(el,b,ts){
   function end(){
     clearTimeout(timer);
     if(live&&el._m!=null&&el._m!==b.s){
-      el._moved=true;
+      el._moved=true;el.classList.remove("grab");el.classList.add("drop");
       var out=MDAY.place(dayAll(ts).own.filter(function(o){return o.id!==b.id;}),{id:b.id,title:b.title,s:el._m,d:b.d,tint:b.tint,task:b.task});
       var mvd=out.moved||[];
-      saveDay(ts,out);
+      setTimeout(function(){saveDay(ts,out);},180);
       if(mvd.length)toast(mvd.length===1?(mvd[0].title+" moved to "+MDAY.hm(mvd[0].s)):(mvd.length+" moved down"));
     }
     cleanup();
@@ -1240,6 +1340,13 @@ function wireDrag(el,b,ts){
   el.addEventListener("touchstart",begin,{passive:true});
   el.addEventListener("mousedown",begin);
 }
+function goDay(next,dir){
+  var cw=$("calwrap");
+  slideDir=dir||(next>daySel?"l":"r");daySel=next;justRendered=true;
+  if(!cw||window.matchMedia("(prefers-reduced-motion: reduce)").matches){render();return;}
+  cw.classList.add(slideDir==="l"?"out-l":"out-r");
+  setTimeout(function(){render();},150);
+}
 function wireSwipe(el){
   if(!el)return;
   var x0=0,y0=0;
@@ -1247,7 +1354,7 @@ function wireSwipe(el){
   el.addEventListener("touchend",function(e){
     if(drag)return;
     var t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;
-    if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.8){daySel+=dx<0?1:-1;justRendered=true;render();}
+    if(Math.abs(dx)>64&&Math.abs(dx)>Math.abs(dy)*1.8)goDay(daySel+(dx<0?1:-1),dx<0?"l":"r");
   });
 }
 function sheetAdd(){
@@ -1293,7 +1400,7 @@ function monthGrid(mts){
   }
   h+='</div><div class="cta"><button class="btn" id="mtd">Today</button></div>';
   var el=sheet(h);
-  el.querySelectorAll(".md").forEach(function(b){b.onclick=function(){daySel=+b.dataset.o;justRendered=true;closeSheet();view="day";render();};});
+  el.querySelectorAll(".md").forEach(function(b){b.onclick=function(){var n=+b.dataset.o,dr=n>daySel?"l":"r";closeSheet();view="day";goDay(n,dr);};});
   el.querySelectorAll(".mnav button").forEach(function(b){b.onclick=function(){monthGrid(new Date(y,mo+(+b.dataset.d),1).getTime());};});
   $("mtd").onclick=function(){daySel=0;justRendered=false;closeSheet();view="day";render();};
 }
