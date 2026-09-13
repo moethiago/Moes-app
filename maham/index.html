@@ -245,7 +245,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.3.2", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="2.4", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -987,6 +987,23 @@ function dayBlocks(st,ts){
   return (st.day.tpl[String(w)]||[]).map(function(b){return {id:b.id,title:b.title,s:b.s,d:b.d,tint:b.tint};});
 }
 function nowMin(){var d=new Date();return d.getHours()*60+d.getMinutes();}
+var FX=null;
+function fxCache(){try{var c=JSON.parse(localStorage.getItem("maham_fx")||"null");if(c&&c.items)FX=c;}catch(e){}}
+function fxLoad(){
+  fetch("fixtures.json?v="+BUILD_ID,{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){
+    if(!j||!j.items)return;
+    FX=j;try{localStorage.setItem("maham_fx",JSON.stringify(j));}catch(e){}
+    if(view==="day"&&!sheetEl)try{render();}catch(e){}
+  }).catch(function(){});
+}
+function fxFor(ts){
+  if(!FX||!FX.items)return [];
+  var k=MDAY.dkey(ts);
+  return FX.items.filter(function(x){return x.d===k;}).map(function(x,i){
+    return {id:"fx|"+k+"|"+i,title:x.t,s:x.s,d:x.dur,tint:x.tint,fx:x.k||"fx"};
+  });
+}
+function fxLabel(k){return k==="f1"?"F1":k==="bayern"?"Bayern":"fixture";}
 
 /* ================= intelligence ================= */
 function suppressed(t){var d=t.dismissed||[];if(!d.length)return false;var last=d[d.length-1],streak=d.filter(function(x){return Date.now()-x<60*DAY;}).length;return Date.now()-last<Math.max(1,(t.cycle||7)*.5*streak)*DAY;}
@@ -1066,40 +1083,41 @@ function trayTasks(bl){
 }
 function dayFrom(ts){return dayOff===0?Math.max(S.day.wake,nowMin()):S.day.wake;}
 function fillGaps(ts){
-  var bl=dayBlocks(S,ts);
+  var bl=dayBlocks(S,ts),occ=bl.concat(fxFor(ts));
   var items=trayTasks(bl).map(function(t){return {id:"t|"+t.id,title:t.title,d:taskDur(t),tint:tintOf(t),task:t.id};});
   if(!items.length){toast("Nothing waiting");return;}
-  var r=MDAY.fill(bl,S.day.wake,S.day.sleep,items,dayFrom(ts));
+  var r=MDAY.fill(occ,S.day.wake,S.day.sleep,items,dayFrom(ts));
   if(!r.placed.length){toast("No room left");return;}
-  saveDay(ts,r.blocks);toast("Placed "+r.placed.length+(r.placed.length<items.length?" — "+(items.length-r.placed.length)+" didn\u2019t fit":""));
+  saveDay(ts,r.blocks.filter(function(b){return !b.fx;}));toast("Placed "+r.placed.length+(r.placed.length<items.length?" — "+(items.length-r.placed.length)+" didn\u2019t fit":""));
 }
 function placeTask(t,ts){
   var bl=dayBlocks(S,ts),d=taskDur(t);
-  var s=MDAY.firstFit(bl,S.day.wake,S.day.sleep,d,dayFrom(ts));
+  var s=MDAY.firstFit(bl.concat(fxFor(ts)),S.day.wake,S.day.sleep,d,dayFrom(ts));
   if(s==null){toast("No gap that fits "+MDAY.dur(d));return;}
   bl.push({id:"t|"+t.id,title:t.title,s:s,d:d,tint:tintOf(t),task:t.id});
   saveDay(ts,bl);toast("At "+MDAY.hm(s));
 }
 function rDay(){
   var ts=dayStart()+dayOff*DAY,wd=new Date(ts).getDay();
-  var bl=dayBlocks(S,ts),wake=S.day.wake,sleep=S.day.sleep;
+  var bl=dayBlocks(S,ts),fx=fxFor(ts),all=MDAY.sortB(bl.concat(fx));
+  var wake=S.day.wake,sleep=S.day.sleep;
   var pr=MDAY.prayers(ts,LAT,LON,TZ);
-  var free=MDAY.freeAfter(bl,wake,sleep,dayFrom(ts));
+  var free=MDAY.freeAfter(all,wake,sleep,dayFrom(ts));
   var acts=[
     {icon:"\uFF0B",label:"Add a block",fn:function(){sheetBlock(null,ts);}},
     {icon:"\u2699",label:"Save as my usual "+DAYSF[wd],fn:function(){sheetUsual(ts,wd,bl);}},
     {icon:"\u26A1",go:true,label:"Fill the gaps",fn:function(){fillGaps(ts);}}
   ];
   var h=hd(dayOff?DAYSF[wd]:"Today",
-    "<b>"+MDAY.dur(free)+"</b> free"+(dayOff?"":" left")+" \u00b7 "+bl.length+" on the day",acts);
+    "<b>"+MDAY.dur(free)+"</b> free"+(dayOff?"":" left")+" \u00b7 "+all.length+" on the day",acts);
   var sw=document.createElement("div");sw.className="dsw";
   sw.innerHTML='<button data-o="0"'+(dayOff===0?' class="on"':'')+'>Today</button><button data-o="1"'+(dayOff===1?' class="on"':'')+'>Tomorrow</button>';
   h.appendChild(sw);
   sw.querySelectorAll("button").forEach(function(b){b.onclick=function(){dayOff=+b.dataset.o;render();};});
 
   var items=[];
-  bl.forEach(function(b){items.push({s:b.s,r:1,k:"b",b:b});});
-  MDAY.gaps(bl,wake,sleep,15).forEach(function(g){items.push({s:g.s,r:1,k:"g",g:g});});
+  all.forEach(function(b){items.push({s:b.s,r:1,k:"b",b:b});});
+  MDAY.gaps(all,wake,sleep,15).forEach(function(g){items.push({s:g.s,r:1,k:"g",g:g});});
   [["Fajr",pr.fajr],["Dhuhr",pr.dhuhr],["Asr",pr.asr],["Maghrib",pr.maghrib],["Isha",pr.isha]].forEach(function(a){
     if(a[1]!=null&&a[1]>=wake-45&&a[1]<=sleep)items.push({s:a[1],r:0,k:"a",n:a[0]});
   });
@@ -1107,15 +1125,15 @@ function rDay(){
   items.sort(function(x,y){return x.s-y.s||x.r-y.r;});
 
   var html='<div class="day">';
-  if(!bl.length)html+='<div class="card muted" style="margin-bottom:10px">Nothing on '+(dayOff?"tomorrow":"today")+" yet. Tap \uFF0B to add a block, arrange the day, then \u2699 to make it your usual "+DAYSF[wd]+".</div>";
+  if(!all.length)html+='<div class="card muted" style="margin-bottom:10px">Nothing on '+(dayOff?"tomorrow":"today")+" yet. Tap \uFF0B to add a block, arrange the day, then \u2699 to make it your usual "+DAYSF[wd]+".</div>";
   items.forEach(function(it,i){
     if(it.k==="a")html+='<div class="anch"><span class="tm">'+MDAY.hm(it.s)+'</span><span class="ln"></span><span class="nm">'+it.n+'</span></div>';
     else if(it.k==="n")html+='<div class="nowl"><span class="tm">'+MDAY.hm(it.s)+'</span><span class="ln"></span><span class="nm">now</span></div>';
     else if(it.k==="g")html+='<div class="trow"><span class="tm">'+MDAY.hm(it.s)+'</span><button class="gapb" data-g="'+i+'">Open \u00b7 '+MDAY.dur(it.g.d)+'<div style="font-size:12px;color:var(--dimmer);margin-top:1px">tap to put something here</div></button></div>';
-    else html+='<div class="trow"><span class="tm">'+MDAY.hm(it.s)+'</span><button class="blk" data-b="'+i+'" style="background:var(--'+(it.b.tint||"other")+')"><div class="bt">'+esc(it.b.title)+'</div><div class="bs">'+MDAY.dur(it.b.d)+" \u00b7 "+(it.b.task?"task":"routine")+'</div></button></div>';
+    else html+='<div class="trow"><span class="tm">'+MDAY.hm(it.s)+'</span><button class="blk" data-b="'+i+'" style="background:var(--'+(it.b.tint||"other")+')"><div class="bt">'+esc(it.b.title)+'</div><div class="bs">'+MDAY.dur(it.b.d)+" \u00b7 "+(it.b.fx?fxLabel(it.b.fx):(it.b.task?"task":"routine"))+'</div></button></div>';
   });
   html+='</div>';
-  var tray=trayTasks(bl),gp=MDAY.gaps(bl,wake,sleep,5),big=0;
+  var tray=trayTasks(bl),gp=MDAY.gaps(all,wake,sleep,5),big=0;
   gp.forEach(function(g){var s=Math.max(g.s,dayFrom(ts)),e=g.s+g.d;if(e-s>big)big=e-s;});
   if(tray.length){
     html+='<div class="sec" style="margin-top:16px"><h2>Tasks waiting</h2><div class="tray" id="tray">';
@@ -1129,7 +1147,11 @@ function rDay(){
   $("view").innerHTML=html;
 
   $("view").querySelectorAll(".blk").forEach(function(el){
-    el.onclick=function(){sheetBlock(items[+el.dataset.b].b,ts);};
+    el.onclick=function(){
+      var b=items[+el.dataset.b].b;
+      if(b.fx){toast(b.title+" \u00b7 "+MDAY.hm(b.s)+"\u2013"+MDAY.hm(b.s+b.d),true);return;}
+      sheetBlock(b,ts);
+    };
   });
   $("view").querySelectorAll(".gapb").forEach(function(el){
     el.onclick=function(){var g=items[+el.dataset.g].g;sheetBlock({id:"b|"+uid(),title:"",s:g.s,d:Math.min(60,g.d),tint:"other"},ts,true);};
@@ -1165,7 +1187,9 @@ function sheetBlock(b,ts,isNew){
     var bl=dayBlocks(S,ts).filter(function(o){return o.id!==nb.id;});
     bl=MDAY.place(bl,{id:nb.id,title:title,s:s,d:d,tint:nb.tint||"other",task:nb.task});
     var mvd=bl.moved||[];
+    var clash=MDAY.overlaps(fxFor(ts),{id:nb.id,s:s,d:d});
     closeSheet();saveDay(ts,bl);
+    if(clash)toast("That lands on "+clash.title,true);
     if(mvd.length)toast(mvd.length===1?(mvd[0].title+" moved to "+MDAY.hm(mvd[0].s)):(mvd.length+" blocks moved down"));
   };
   if($("rm"))$("rm").onclick=function(){
@@ -1751,6 +1775,7 @@ function start(){
   $("gate").classList.add("hidden");$("app").classList.remove("hidden");$("tabs").classList.remove("hidden");
   document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){view=b.dataset.v;window.scrollTo(0,0);render();};});
   render();flush();
+  try{fxCache();fxLoad();}catch(e){console.error(e);}
   try{micButton();promoteDue();}catch(e){console.error(e);}
   setInterval(poll,6000);setInterval(function(){checkUpdate(false);},5*60000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden){flush();poll();}});
