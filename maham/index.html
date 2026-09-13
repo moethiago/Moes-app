@@ -272,7 +272,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="4.0", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="4.0.1", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -293,6 +293,7 @@ var CATS=[
 var CATALOG_V=4;
 var DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 var DAYS1=["S","M","T","W","T","F","S"];
+var DAYSF=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 var BLOCKS=[{id:"early",name:"Early",em:"🌅",from:4,to:8},{id:"morning",name:"Morning",em:"☀️",from:8,to:12},{id:"midday",name:"Midday",em:"🍽️",from:12,to:15},{id:"afternoon",name:"Afternoon",em:"🌤️",from:15,to:18},{id:"evening",name:"Evening",em:"🌆",from:18,to:21},{id:"night",name:"Night",em:"🌙",from:21,to:28}];
 function blockOf(id){for(var i=0;i<BLOCKS.length;i++)if(BLOCKS[i].id===id)return BLOCKS[i];return {id:"any",name:"Any time",em:"•",from:0,to:24};}
