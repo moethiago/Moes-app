@@ -3,46 +3,28 @@
 import fs from 'node:fs';
 const src = fs.readFileSync('maham/index.html', 'utf8');
 const cut = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b); if (i < 0 || j < 0) throw new Error('anchor missing: ' + a.slice(0, 40)); return src.slice(i, j); };
-const code = 'var DAY=86400000;var S=null;\n'
-  + cut('var LAT=24.7136', '/* ================= intelligence ================= */')
+const code = 'var DAY=86400000;var S=null;var DAYS1=["S","M","T","W","T","F","S"];var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];\n'
+  + cut('var MDAY=(function(){', '/* ================= intelligence ================= */')
   + '\n' + cut('function apply(st,op){', '\nfunction cacheLocal')
-  + '\n' + cut('/* ---- day ---- */', 'function sheetJump(')
+  + '\n' + cut('/* ---- day ---- */', 'function durOpts(')
   + '\nfunction tintOf(t){return (t&&t.cat)||"other";}'
   + '\nfunction dayStart(ts){var d=new Date(ts||Date.now());d.setHours(0,0,0,0);return d.getTime();}'
-  + '\nfunction esc(x){return String(x);}function uid(){return "u";}'
-  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply,doneBlocks:doneBlocks,layout:layout,dayAll:dayAll,taskDur:taskDur,setS:function(x){S=x;},setSel:function(n){daySel=n;}};';
-const { MDAY, dayInit, dayBlocks, defTpl, apply, doneBlocks, layout, dayAll, taskDur, setS, setSel } = new Function(code)();
+  + '\nfunction esc(x){return String(x);}function uid(){return "u";}function toast(){}function op(){}'
+  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply,doneBlocks:doneBlocks,layout:layout,dayAll:dayAll,taskDur:taskDur,statusLine:statusLine,dayWord:dayWord,MONTHS:MONTHS,setS:function(x){S=x;},setSel:function(n){daySel=n;}};';
+const { MDAY, dayInit, dayBlocks, defTpl, apply, doneBlocks, layout, dayAll, taskDur, statusLine, dayWord, MONTHS, setS, setSel } = new Function(code)();
 
 let pass = 0, fail = 0; const F = [];
 const ck = (n, c, x) => { if (c) pass++; else { fail++; F.push(n + (x ? ' — ' + x : '')); } };
 const st0 = () => dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] });
 
-// 1. prayer times vs published Umm al-Qura rows for Riyadh
-const TRUTH = {
-  '2026-06-01': { fajr: '03:34', shuruq: '05:04', dhuhr: '11:51', asr: '15:13', maghrib: '18:38', isha: '20:08' },
-  '2026-06-05': { fajr: '03:33', shuruq: '05:04', dhuhr: '11:51', asr: '15:14', maghrib: '18:39', isha: '20:09' },
-  '2026-06-08': { fajr: '03:33', shuruq: '05:03', dhuhr: '11:52', asr: '15:14', maghrib: '18:41', isha: '20:11' },
-};
-for (const [d, t] of Object.entries(TRUTH)) {
-  const p = MDAY.prayers(new Date(d + 'T12:00:00+03:00').getTime(), 24.7136, 46.6753, 3);
-  for (const k of Object.keys(t)) {
-    const got = MDAY.hm(p[k]), a = got.split(':'), b = t[k].split(':');
-    const diff = Math.abs((+a[0] * 60 + +a[1]) - (+b[0] * 60 + +b[1]));
-    ck(`prayer ${d} ${k}`, diff <= 1, `got ${got} want ${t[k]}`);
-  }
-}
-// 2. prayer times stay sane across the whole year, every day, in order
-let bad = 0, isha90 = 0;
-for (let i = 0; i < 365; i++) {
-  const ts = new Date('2026-01-01T12:00:00+03:00').getTime() + i * 86400000;
-  const p = MDAY.prayers(ts, 24.7136, 46.6753, 3);
-  const seq = [p.fajr, p.shuruq, p.dhuhr, p.asr, p.maghrib, p.isha];
-  if (seq.some(v => v == null || v < 0 || v > 1440 + 90)) bad++;
-  for (let k = 1; k < seq.length; k++) if (seq[k] <= seq[k - 1]) bad++;
-  if (p.isha - p.maghrib !== 90) isha90++;
-}
-ck('365 days ordered and in range', bad === 0, bad + ' violations');
-ck('365 days isha = maghrib + 90', isha90 === 0, isha90 + ' off');
+// 1. no prayer anything, anywhere in the app
+const page = fs.readFileSync('maham/index.html', 'utf8');
+// the only surviving mention is the capture parser, which listens for "after maghrib" if he says it — it never displays anything
+const dayView = page.slice(page.indexOf('/* ---- day ---- */'), page.indexOf('function durOpts('));
+ck('no prayer names anywhere in the day view', !/fajr|dhuhr|asr|maghrib|isha|shuruq/i.test(dayView));
+ck('prayers only survive in the capture parser', (page.match(/maghrib/gi) || []).length === 2);
+ck('no prayer maths left behind', !/prayers\(|asrTime|sunPos|LAT=/.test(page));
+ck('no prayer styles left behind', !/\.pray/.test(page));
 
 // 3. gaps / free / fit
 const bl = [{ id: 'a', title: 'Work', s: 480, d: 540 }, { id: 'b', title: 'Fam', s: 1170, d: 90 }];
@@ -203,13 +185,37 @@ ck('a past day is built from the log, not the template', past.all.length === 2 &
 setSel(0);
 
 // 16. overlapping blocks sit side by side instead of hiding each other
-const lay = layout([{ id: '1', s: 600, d: 120 }, { id: '2', s: 660, d: 60 }, { id: '3', s: 900, d: 30 }], 360);
+const lay = layout([{ id: '1', s: 600, d: 120 }, { id: '2', s: 660, d: 60 }, { id: '3', s: 900, d: 30 }]);
 ck('overlapping blocks get their own columns', lay.find(b => b.id === '1')._c !== lay.find(b => b.id === '2')._c);
 ck('overlapping blocks share the width', lay.find(b => b.id === '1')._n === 2);
 ck('a block on its own takes the full width', lay.find(b => b.id === '3')._n === 1);
 ck('layout keeps every block', lay.length === 3);
-const lay2 = layout([{ id: 'a', s: 600, d: 60 }, { id: 'b', s: 660, d: 60 }], 360);
+const lay2 = layout([{ id: 'a', s: 600, d: 60 }, { id: 'b', s: 660, d: 60 }]);
 ck('touching blocks are not treated as overlapping', lay2.every(b => b._n === 1));
+
+console.log('');
+
+// 17. the line at the top of the day, in plain words
+const dayOf = h => { const x = new Date(); x.setHours(h, 0, 0, 0); return x.getTime(); };
+const stS = dayInit({ tasks: { a: { id: 'a', title: 'Call bank', dur: 30 } }, lanes: { today: [], week: [], later: [] }, log: [] });
+setS(stS); setSel(0);
+stS.day.ov[MDAY.dkey(Date.now())] = [{ id: 'b1', title: 'Dentist', s: 1380 - 60, d: 60 }];
+const line = statusLine(Date.now(), dayAll(Date.now()).all, []);
+ck('the status line leads with free time', /free/.test(line), line);
+ck('the status line names what is next', /next: Dentist/.test(line), line);
+ck('no prayer wording in the status line', !/Maghrib|Fajr|Isha/.test(line), line);
+stS.day.ov[MDAY.dkey(Date.now())] = [];
+ck('an empty day says so', /nothing on the day/.test(statusLine(Date.now(), [], [])));
+setSel(-3);
+ck('a past day reports what was logged', /done/.test(statusLine(Date.now() - 3 * 86400000, [], [{ d: 45 }, { d: 30 }])));
+ck('a past day with nothing says nothing logged', /nothing logged/.test(statusLine(Date.now() - 3 * 86400000, [], [])));
+setSel(0);
+// 18. the words for a day
+ck('today is called today', dayWord(Date.now()) === 'Today');
+ck('tomorrow is named', dayWord(Date.now() + 86400000) === 'Tomorrow');
+ck('yesterday is named', dayWord(Date.now() - 86400000) === 'Yesterday');
+ck('any other day has no nickname', dayWord(Date.now() + 5 * 86400000) === '');
+ck('months are spelled out', MONTHS.length === 12 && MONTHS[8] === 'September');
 
 console.log('');
 
