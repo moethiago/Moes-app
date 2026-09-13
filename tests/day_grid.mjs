@@ -300,6 +300,52 @@ ck('it survives a browser with no matchMedia', src2.includes('window.matchMedia&
 
 console.log('');
 
+// 22. block geometry — nothing clipped, nothing off the canvas (the 13 Sep screenshot)
+const geo = (blocks, wake = 360, sleep = 1380, PX = 0.95) => {
+  const H = Math.round((sleep - wake) * PX);
+  return layout(blocks).map(b => {
+    let top = Math.round((Math.max(b.s, wake) - wake) * PX);
+    let hh = Math.max(30, Math.round(Math.min(b.d, Math.max(15, sleep - Math.max(b.s, wake))) * PX) - 4);
+    if (top + hh > H) hh = Math.max(30, H - top);
+    if (top > H - 30) top = H - 30;
+    return { id: b.id, top, hh, bottom: top + hh, cols: b._n, col: b._c, H };
+  });
+};
+const lateBarber = [{ id: 'barber', title: 'Barber', s: 1399, d: 30, done: true }, { id: 'race', title: 'Race', s: 960, d: 120 }];
+const g1 = geo(lateBarber);
+ck('a block finished after bedtime stays on the canvas', g1.every(b => b.bottom <= b.H), JSON.stringify(g1));
+ck('and is still tall enough to read', g1.every(b => b.hh >= 30));
+const tiny = geo([{ id: 'p', title: 'Pharmacy', s: 800, d: 30, done: true }]);
+ck('a 30-minute item is at least 30px tall', tiny[0].hh >= 30, tiny[0].hh);
+ck('short blocks are marked compact so the text is not clipped',
+  fs.readFileSync('maham/index.html', 'utf8').includes('(hh<46?" sm":"")') && fs.readFileSync('maham/index.html', 'utf8').includes('.cb.sm'));
+const two = geo([{ id: 'a', s: 960, d: 120 }, { id: 'b', s: 1000, d: 60 }]);
+ck('two overlapping blocks split the row', two.every(b => b.cols === 2) && two[0].col !== two[1].col);
+const pageSrc = fs.readFileSync('maham/index.html', 'utf8');
+ck('column widths are computed from the inner width, not the full width',
+  pageSrc.includes('width:calc((100% - 68px)/') && pageSrc.includes('left:calc(56px + (100% - 68px)*'));
+
+// 23. what is finished does not eat the day
+const busyState = dayInit({ tasks: { a: { id: 'a', title: 'Pharmacy' } }, lanes: { today: [], week: [], later: [] },
+  log: [{ lid: 'x', id: 'a', title: 'Pharmacy', ts: (() => { const d = new Date(); d.setHours(13, 44, 0, 0); return d.getTime(); })() }] });
+busyState.day.ov[MDAY.dkey(Date.now())] = [{ id: 'w', title: 'Work', s: 480, d: 120 }];
+setS(busyState); setSel(0);
+const DA = dayAll(Date.now());
+ck('finished items still show on the day', DA.all.some(b => b.done));
+ck('but they are not counted as busy', !DA.busy.some(b => b.done), JSON.stringify(DA.busy.map(b => b.title)));
+ck('free time ignores what is already done',
+  MDAY.freeAfter(DA.busy, 360, 1380, 700) > MDAY.freeAfter(DA.all, 360, 1380, 700));
+ck('auto-fill measures against busy, not done', pageSrc.includes('MDAY.fill(D.busy,') && pageSrc.includes('MDAY.firstFit(D.busy,'));
+
+// 24. the end of the day reads like a sentence, not "0m free left"
+const nightState = dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] });
+setS(nightState);
+const realNow = Date.now();
+ck('after bedtime it says the day is done, not 0m free',
+  pageSrc.includes('nowMin()>=S.day.sleep') && pageSrc.includes('that is the day'));
+
+console.log('');
+
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (F.length) { console.log('\nFAILURES:'); F.forEach(x => console.log(' - ' + x)); }
 process.exit(fail ? 1 : 0);
