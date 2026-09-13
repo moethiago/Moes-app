@@ -109,6 +109,54 @@ ck('cascade never drops the last block', p3.some(b => b.id === 'fm'));
 
 console.log('');
 
+// 12. the fixtures file: F1 sessions + Bayern games, converted to Riyadh time
+const FX = JSON.parse(fs.readFileSync('maham/fixtures.json', 'utf8'));
+ck('fixtures file has items', Array.isArray(FX.items) && FX.items.length > 40, FX.items.length + ' items');
+ck('fixtures are stamped Riyadh', FX.tz === 'Asia/Riyadh');
+const shape = FX.items.filter(x => !/^\d{4}-\d{2}-\d{2}$/.test(x.d) || typeof x.s !== 'number' || x.s < 0 || x.s > 1439 || !x.dur || x.dur < 30 || x.dur > 180 || !x.t || !x.k);
+ck('every fixture has a valid date, time and length', shape.length === 0, JSON.stringify(shape.slice(0, 2)));
+ck('no fixture is in the past', FX.items.every(x => x.d >= '2026-09-13'), FX.items.filter(x => x.d < '2026-09-13').length + ' stale');
+const sorted = FX.items.slice().sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : a.s - b.s);
+ck('fixtures are in order', JSON.stringify(sorted) === JSON.stringify(FX.items));
+const dup = new Set(); let dups = 0;
+FX.items.forEach(x => { const k = x.d + x.s + x.t; if (dup.has(k)) dups++; dup.add(k); });
+ck('no duplicate fixtures', dups === 0, dups);
+// conversions checked against the source UTC times
+const at = (d, t) => FX.items.some(x => x.d === d && MDAY.hm(x.s) === MDAY.hm(t));
+ck('Baku race 11:00Z lands 14:00 Riyadh', at('2026-09-26', 840));
+ck('Sepang race 07:00Z lands 10:00 Riyadh', at('2026-10-04', 600));
+ck('Singapore sprint 09:00Z lands 12:00 Riyadh', at('2026-10-10', 720));
+ck('Vegas race 04:00Z lands 07:00 Riyadh', at('2026-11-22', 420));
+ck('Bayern v Union 18:30Z lands 21:30 Riyadh', at('2026-09-18', 1290));
+// every remaining GP has a race and a qualifying; the sprint weekend has all four
+const f1 = FX.items.filter(x => x.k === 'f1');
+const gps = [...new Set(f1.map(x => x.t.replace(/ — .*/, '')))];
+ck('10 grands prix remain', gps.length === 10, gps.length + ': ' + gps.join(', '));
+ck('every GP has a race', gps.every(g => f1.some(x => x.t === g + ' — race')));
+// the Spanish GP weekend is already underway — its qualifying was yesterday, so only future weekends carry one
+const future = gps.filter(g => { const r = f1.find(x => x.t === g + ' — race'); return r && r.d > '2026-09-13'; });
+ck('every GP still to come has a qualifying', future.every(g => f1.some(x => x.t === g + ' — qualifying')), future.filter(g => !f1.some(x => x.t === g + ' — qualifying')).join(','));
+ck('only the in-progress weekend lacks one', gps.length - future.length === 1);
+const sprintGps = gps.filter(g => f1.some(x => x.t === g + ' — sprint'));
+ck('the one sprint weekend left is Singapore', sprintGps.length === 1 && /Singapore/.test(sprintGps[0]), sprintGps.join(','));
+ck('the sprint weekend has a sprint qualifying too', f1.some(x => x.t === sprintGps[0] + ' — sprint qualifying'));
+ck('sprint sessions come before the race', f1.filter(x => /Singapore/.test(x.t)).map(x => x.t.split('— ')[1]).join('|') === 'sprint qualifying|sprint|qualifying|race');
+// Bayern
+const by = FX.items.filter(x => x.k === 'bayern');
+ck('a full Bayern league season is loaded', by.length >= 30, by.length + ' games');
+ck('every Bayern game names an opponent', by.every(x => /^Bayern (v|away to) \S/.test(x.t)), by.filter(x => !/^Bayern (v|away to) \S/.test(x.t)).map(x => x.t).join(','));
+ck('no Bayern game is 2 hours off a half hour', by.every(x => x.s % 15 === 0));
+// 13. auto-fill never schedules over a fixture
+const race = { id: 'fx|r', title: 'F1 race', s: 960, d: 120, fx: 'f1' };
+const own = [{ id: 'wk', title: 'Work', s: 480, d: 300 }];
+const r2 = MDAY.fill(own.concat([race]), 360, 1380, [{ id: 't|a', title: 'Errand', d: 90, task: 'a' }], 780);
+ck('a task placed around the race', r2.placed.length === 1);
+ck('the task does not overlap the race', !r2.placed.some(b => b.s < race.s + race.d && race.s < b.s + b.d), JSON.stringify(r2.placed));
+ck('fixtures are never written back to state', r2.blocks.filter(b => !b.fx).every(b => b.id !== 'fx|r'));
+ck('free time counts a fixture as busy', MDAY.freeAfter(own.concat([race]), 360, 1380, 780) < MDAY.freeAfter(own, 360, 1380, 780));
+
+console.log('');
+
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (F.length) { console.log('\nFAILURES:'); F.forEach(x => console.log(' - ' + x)); }
 process.exit(fail ? 1 : 0);
