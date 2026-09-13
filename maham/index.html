@@ -245,7 +245,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.3.1", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="2.3.2", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -1164,9 +1164,9 @@ function sheetBlock(b,ts,isNew){
     var s=mv($("bs").value);
     var bl=dayBlocks(S,ts).filter(function(o){return o.id!==nb.id;});
     bl=MDAY.place(bl,{id:nb.id,title:title,s:s,d:d,tint:nb.tint||"other",task:nb.task});
-    var mv=bl.moved||[];
+    var mvd=bl.moved||[];
     closeSheet();saveDay(ts,bl);
-    if(mv.length)toast(mv.length===1?(mv[0].title+" moved to "+MDAY.hm(mv[0].s)):(mv.length+" blocks moved down"));
+    if(mvd.length)toast(mvd.length===1?(mvd[0].title+" moved to "+MDAY.hm(mvd[0].s)):(mvd.length+" blocks moved down"));
   };
   if($("rm"))$("rm").onclick=function(){
     var bl=dayBlocks(S,ts).filter(function(o){return o.id!==nb.id;});
