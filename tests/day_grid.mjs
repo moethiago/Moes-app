@@ -3,11 +3,15 @@
 import fs from 'node:fs';
 const src = fs.readFileSync('maham/index.html', 'utf8');
 const cut = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b); if (i < 0 || j < 0) throw new Error('anchor missing: ' + a.slice(0, 40)); return src.slice(i, j); };
-const code = 'var DAY=86400000;\n'
+const code = 'var DAY=86400000;var S=null;\n'
   + cut('var LAT=24.7136', '/* ================= intelligence ================= */')
   + '\n' + cut('function apply(st,op){', '\nfunction cacheLocal')
-  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply};';
-const { MDAY, dayInit, dayBlocks, defTpl, apply } = new Function(code)();
+  + '\n' + cut('/* ---- day ---- */', 'function sheetJump(')
+  + '\nfunction tintOf(t){return (t&&t.cat)||"other";}'
+  + '\nfunction dayStart(ts){var d=new Date(ts||Date.now());d.setHours(0,0,0,0);return d.getTime();}'
+  + '\nfunction esc(x){return String(x);}function uid(){return "u";}'
+  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply,doneBlocks:doneBlocks,layout:layout,dayAll:dayAll,taskDur:taskDur,setS:function(x){S=x;},setSel:function(n){daySel=n;}};';
+const { MDAY, dayInit, dayBlocks, defTpl, apply, doneBlocks, layout, dayAll, taskDur, setS, setSel } = new Function(code)();
 
 let pass = 0, fail = 0; const F = [];
 const ck = (n, c, x) => { if (c) pass++; else { fail++; F.push(n + (x ? ' — ' + x : '')); } };
@@ -66,11 +70,11 @@ ck('place keeps every block', moved2.length === 3);
 const st = st0();
 const sun = new Date('2026-09-13T09:00:00+03:00').getTime(); // Sunday
 const fri = new Date('2026-09-18T09:00:00+03:00').getTime(); // Friday
-ck('weekday has a starting shape', dayBlocks(st, sun).length > 0);
+ck('no placeholder routine on a weekday', dayBlocks(st, sun).length === 0);
 ck('friday starts empty', dayBlocks(st, fri).length === 0);
 apply(st, { t: 'day.set', p: { date: MDAY.dkey(sun), blocks: [{ id: 'z', title: 'Gym', s: 1080, d: 60 }] }, ts: Date.now() });
 ck('override wins for that date', dayBlocks(st, sun).length === 1 && dayBlocks(st, sun)[0].title === 'Gym');
-ck('override does not leak to next week', dayBlocks(st, sun + 7 * 86400000).length > 1);
+ck('override does not leak to next week', dayBlocks(st, sun + 7 * 86400000).length === 0);
 apply(st, { t: 'day.tpl', p: { w: '5', blocks: [{ id: 'q', title: 'Farm', s: 420, d: 180 }] }, ts: Date.now() });
 ck('template applies to every friday', dayBlocks(st, fri)[0].title === 'Farm' && dayBlocks(st, fri + 7 * 86400000)[0].title === 'Farm');
 apply(st, { t: 'day.hours', p: { wake: 300, sleep: 1400 }, ts: Date.now() });
@@ -154,6 +158,58 @@ ck('a task placed around the race', r2.placed.length === 1);
 ck('the task does not overlap the race', !r2.placed.some(b => b.s < race.s + race.d && race.s < b.s + b.d), JSON.stringify(r2.placed));
 ck('fixtures are never written back to state', r2.blocks.filter(b => !b.fx).every(b => b.id !== 'fx|r'));
 ck('free time counts a fixture as busy', MDAY.freeAfter(own.concat([race]), 360, 1380, 780) < MDAY.freeAfter(own, 360, 1380, 780));
+
+console.log('');
+
+// 14. nothing is invented: the calendar starts empty
+const t0 = defTpl();
+ck('every weekday template starts empty', Object.keys(t0).length === 7 && Object.values(t0).every(v => v.length === 0));
+const dirty = { tasks: {}, lanes: { today: [], week: [], later: [] }, log: [], day: {
+  tpl: { '0': [{ id: '0|w:wk', title: 'Work', s: 480, d: 540 }, { id: 'mine', title: 'Gym', s: 1080, d: 60 }], '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] },
+  ov: { [MDAY.dkey(Date.now() + 86400000)]: [{ id: '1|w:cm', title: 'Drive to office', s: 440, d: 40 }, { id: 'k', title: 'Dentist', s: 600, d: 60 }] }, wake: 360, sleep: 1380 } };
+dayInit(dirty);
+ck('old placeholders are swept out of the template', dirty.day.tpl['0'].length === 1 && dirty.day.tpl['0'][0].id === 'mine');
+ck('old placeholders are swept out of saved days', dirty.day.ov[MDAY.dkey(Date.now() + 86400000)].length === 1);
+ck('his own blocks survive the sweep', dirty.day.ov[MDAY.dkey(Date.now() + 86400000)][0].title === 'Dentist');
+const oldKey = MDAY.dkey(Date.now() - 30 * 86400000);
+const keeper = { tasks: {}, lanes: { today: [], week: [], later: [] }, log: [], day: { tpl: defTpl(), ov: { [oldKey]: [{ id: 'x', title: 'Trip', s: 600, d: 120 }] }, wake: 360, sleep: 1380 } };
+dayInit(keeper);
+ck('a day from last month is still there to look at', !!keeper.day.ov[oldKey]);
+
+// 15. tapping done writes itself onto the day it happened
+const now = Date.now();
+const yest = now - 86400000;
+const withLog = dayInit({
+  tasks: { a: { id: 'a', title: 'Call bank', cat: 'money', dur: 45 }, b: { id: 'b', title: 'Farm water', cat: 'farm' } },
+  lanes: { today: [], week: [], later: [] },
+  log: [{ lid: 'l1', id: 'a', title: 'Call bank', ts: new Date(new Date(yest).setHours(14, 30, 0, 0)).getTime() },
+        { lid: 'l2', id: 'b', title: 'Farm water', ts: new Date(new Date(yest).setHours(9, 0, 0, 0)).getTime() },
+        { lid: 'l3', id: 'a', title: 'Call bank', ts: new Date(new Date(now).setHours(11, 0, 0, 0)).getTime() }] });
+setS(withLog);
+const dbY = doneBlocks(yest);
+ck("yesterday shows what was finished then", dbY.length === 2, JSON.stringify(dbY.map(b => b.title)));
+ck('a done block ends at the moment it was ticked', dbY.find(b => b.title === 'Call bank').at === 870);
+ck('a done block is as long as the task takes', dbY.find(b => b.title === 'Call bank').d === 45);
+ck('a task with no length gets the default', dbY.find(b => b.title === 'Farm water').d === 30);
+ck('a done block starts before it ends', dbY.every(b => b.s === b.at - b.d));
+ck('done blocks are flagged as done', dbY.every(b => b.done === true));
+ck("today's completion does not appear on yesterday", !dbY.some(b => b.at === 660));
+ck('today shows its own completion', doneBlocks(now).length === 1 && doneBlocks(now)[0].at === 660);
+ck('a day with nothing finished shows nothing', doneBlocks(now - 9 * 86400000).length === 0);
+// history is readable even when the day had no plan saved
+setSel(-1);
+const past = dayAll(yest);
+ck('a past day is built from the log, not the template', past.all.length === 2 && past.own.length === 0);
+setSel(0);
+
+// 16. overlapping blocks sit side by side instead of hiding each other
+const lay = layout([{ id: '1', s: 600, d: 120 }, { id: '2', s: 660, d: 60 }, { id: '3', s: 900, d: 30 }], 360);
+ck('overlapping blocks get their own columns', lay.find(b => b.id === '1')._c !== lay.find(b => b.id === '2')._c);
+ck('overlapping blocks share the width', lay.find(b => b.id === '1')._n === 2);
+ck('a block on its own takes the full width', lay.find(b => b.id === '3')._n === 1);
+ck('layout keeps every block', lay.length === 3);
+const lay2 = layout([{ id: 'a', s: 600, d: 60 }, { id: 'b', s: 660, d: 60 }], 360);
+ck('touching blocks are not treated as overlapping', lay2.every(b => b._n === 1));
 
 console.log('');
 
