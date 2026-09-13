@@ -178,21 +178,31 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .toast button{margin-inline-start:14px;color:#8FE0B4;font-weight:700;font-size:13.5px;pointer-events:auto}
 .net{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:50%;transform:translateX(50%);background:var(--soon-soft);color:var(--soon);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;z-index:60}
 
-.day{padding:2px 0 6px}
-.trow{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px}
-.trow .tm{flex:0 0 42px;font-size:11px;color:var(--dimmer);padding-top:11px;font-variant-numeric:tabular-nums}
-.blk{flex:1;border-radius:14px;padding:10px 12px;text-align:start}
-.blk .bt{font-size:14.5px;font-weight:500;color:var(--ink)}
-.blk .bs{font-size:12px;color:var(--dim);margin-top:1px}
-.anch{display:flex;align-items:center;gap:8px;margin:7px 0}
-.anch .ln{flex:1;border-top:1px dashed var(--line)}
-.anch .nm{font-size:11px;color:var(--dimmer)}
-.anch .tm{flex:0 0 42px;font-size:11px;color:var(--dimmer);font-variant-numeric:tabular-nums}
-.gapb{flex:1;border:1px dashed var(--line);border-radius:14px;padding:10px 12px;color:var(--dim);font-size:13.5px;text-align:start;background:transparent}
-.nowl{display:flex;align-items:center;gap:8px;margin:9px 0}
-.nowl .ln{flex:1;border-top:2px solid var(--late)}
-.nowl .nm{font-size:11px;color:var(--late);font-weight:600}
-.nowl .tm{flex:0 0 42px;font-size:11px;color:var(--late);font-weight:600;font-variant-numeric:tabular-nums}
+.dsub{font-size:13px;color:var(--dimmer);font-weight:500;margin-inline-start:8px}
+.wkstrip{display:flex;align-items:center;gap:2px;margin-top:12px}
+.wkstrip .nav{flex:0 0 24px;color:var(--dim);font-size:19px;padding:6px 0}
+.dcell{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0 5px;border-radius:12px}
+.dcell .dn{font-size:10px;color:var(--dimmer);font-weight:600}
+.dcell .dd{font-size:15px;font-weight:600;color:var(--ink)}
+.dcell .dot{width:4px;height:4px;border-radius:50%;background:var(--go)}
+.dcell .dot.off{background:transparent}
+.dcell.td .dd{color:var(--late)}
+.dcell.on{background:var(--ink)}
+.dcell.on .dd,.dcell.on .dn,.dcell.on .dd{color:#fff}
+.dcell.on .dot{background:#fff}
+.cal{position:relative;margin-top:14px;background:var(--sf);border-radius:18px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden}
+.hr{position:absolute;left:0;right:0;border-top:1px solid var(--line)}
+.hr span{position:absolute;top:-7px;left:7px;font-size:10px;color:var(--dimmer);background:var(--sf);padding:0 2px;font-variant-numeric:tabular-nums}
+.pray{position:absolute;left:46px;right:8px;border-top:1px dashed #CDD3DF}
+.pray span{position:absolute;top:-8px;right:0;font-size:10px;color:var(--dimmer);background:var(--sf);padding:0 4px}
+.cb{position:absolute;border-radius:10px;padding:5px 8px;text-align:start;overflow:hidden;display:flex;flex-direction:column;gap:1px;background:var(--other)}
+.cb .ct{font-size:12.5px;font-weight:500;color:var(--ink);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cb .cm{font-size:10.5px;color:var(--dim)}
+.cb.dn{background:var(--go-soft);border-inline-start:3px solid var(--go)}
+.cb.dn .ct{color:var(--go)}
+.cb.fx{background:var(--bg);border-inline-start:3px solid var(--ink)}
+.nowc{position:absolute;left:40px;right:0;border-top:2px solid var(--late);z-index:2}
+.nowc:before{content:"";position:absolute;left:-4px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--late)}
 .tray{display:flex;flex-wrap:wrap;gap:6px}
 .tray button{background:var(--sf);border-radius:999px;padding:9px 13px;font-size:13px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
 .tray button.no{opacity:.4}
@@ -245,7 +255,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.4", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="3.0", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -957,17 +967,8 @@ var MDAY=(function(){
   }
   return {dkey:dkey,prayers:prayers,gaps:gaps,freeAfter:freeAfter,firstFit:firstFit,fill:fill,place:place,overlaps:overlaps,sortB:sortB,hm:hm,dur:dur,julian:julian};
 })();
-var TPL0={
-  "0":[{id:"w:cm",title:"Drive to office",s:440,d:40,tint:"car"},{id:"w:wk",title:"Work",s:480,d:540,tint:"work"},{id:"w:fm",title:"Family time",s:1170,d:90,tint:"fam"}],
-  "5":[],"6":[]
-};
-function defTpl(){
-  var t={};
-  for(var i=0;i<7;i++){
-    t[String(i)]=(i>=0&&i<=4)?TPL0["0"].map(function(b){return {id:i+"|"+b.id,title:b.title,s:b.s,d:b.d,tint:b.tint};}):[];
-  }
-  return t;
-}
+function defTpl(){var t={};for(var i=0;i<7;i++)t[String(i)]=[];return t;}
+function seeded(b){return /^[0-6]\|w:(cm|wk|fm)$/.test(b&&b.id);}
 function dayInit(st){
   if(!st.day)st.day={tpl:defTpl(),ov:{},wake:360,sleep:1380};
   var d=st.day;
@@ -976,8 +977,13 @@ function dayInit(st){
   if(!d.ov)d.ov={};
   if(d.wake==null)d.wake=360;
   if(d.sleep==null)d.sleep=1380;
-  var keep=MDAY.dkey(Date.now()-2*DAY);
-  Object.keys(d.ov).forEach(function(k){if(k<keep)delete d.ov[k];});
+  for(var w=0;w<7;w++){var kk=String(w);d.tpl[kk]=(d.tpl[kk]||[]).filter(function(b){return !seeded(b);});}
+  var keep=MDAY.dkey(Date.now()-400*DAY);
+  Object.keys(d.ov).forEach(function(k){
+    if(k<keep){delete d.ov[k];return;}
+    d.ov[k]=(d.ov[k]||[]).filter(function(b){return !seeded(b);});
+    if(!d.ov[k].length&&k<MDAY.dkey(Date.now()))delete d.ov[k];
+  });
   return st;
 }
 function dayBlocks(st,ts){
@@ -1074,94 +1080,168 @@ function hd(title,sub,acts){
 }
 
 /* ---- day ---- */
-var dayOff=0;
+var daySel=0,PXM=0.7;
+function dayTs(){return dayStart()+daySel*DAY;}
+function isPast(){return daySel<0;}
 function saveDay(ts,blocks){op("day.set",{date:MDAY.dkey(ts),blocks:MDAY.sortB(blocks)});}
-function taskDur(t){return t.dur||30;}
+function taskDur(t){return (t&&t.dur)||30;}
 function trayTasks(bl){
   var used={};bl.forEach(function(b){if(b.task)used[b.task]=1;});
   return S.lanes.today.filter(function(id){return !used[id]&&S.tasks[id];}).map(function(id){return S.tasks[id];});
 }
-function dayFrom(ts){return dayOff===0?Math.max(S.day.wake,nowMin()):S.day.wake;}
+function dayFrom(ts){return daySel===0?Math.max(S.day.wake,nowMin()):S.day.wake;}
+function doneBlocks(ts){
+  var k=MDAY.dkey(ts),out=[];
+  (S.log||[]).forEach(function(e){
+    if(MDAY.dkey(e.ts)!==k)return;
+    var t=S.tasks[e.id],d=taskDur(t),x=new Date(e.ts),end=x.getHours()*60+x.getMinutes();
+    out.push({id:"dn|"+e.lid,title:e.title||"Done",s:Math.max(0,end-d),d:d,tint:t?tintOf(t):"other",done:true,at:end});
+  });
+  return out;
+}
+function dayAll(ts){
+  var own=isPast()?(S.day.ov[MDAY.dkey(ts)]||[]):dayBlocks(S,ts);
+  return {own:own,all:MDAY.sortB(own.concat(fxFor(ts)).concat(doneBlocks(ts)))};
+}
 function fillGaps(ts){
-  var bl=dayBlocks(S,ts),occ=bl.concat(fxFor(ts));
+  var D=dayAll(ts),bl=D.own;
   var items=trayTasks(bl).map(function(t){return {id:"t|"+t.id,title:t.title,d:taskDur(t),tint:tintOf(t),task:t.id};});
   if(!items.length){toast("Nothing waiting");return;}
-  var r=MDAY.fill(occ,S.day.wake,S.day.sleep,items,dayFrom(ts));
+  var r=MDAY.fill(D.all,S.day.wake,S.day.sleep,items,dayFrom(ts));
   if(!r.placed.length){toast("No room left");return;}
-  saveDay(ts,r.blocks.filter(function(b){return !b.fx;}));toast("Placed "+r.placed.length+(r.placed.length<items.length?" — "+(items.length-r.placed.length)+" didn\u2019t fit":""));
+  saveDay(ts,r.blocks.filter(function(b){return !b.fx&&!b.done;}));
+  toast("Placed "+r.placed.length);
 }
 function placeTask(t,ts){
-  var bl=dayBlocks(S,ts),d=taskDur(t);
-  var s=MDAY.firstFit(bl.concat(fxFor(ts)),S.day.wake,S.day.sleep,d,dayFrom(ts));
+  var D=dayAll(ts),d=taskDur(t);
+  var s=MDAY.firstFit(D.all,S.day.wake,S.day.sleep,d,dayFrom(ts));
   if(s==null){toast("No gap that fits "+MDAY.dur(d));return;}
+  var bl=D.own.slice();
   bl.push({id:"t|"+t.id,title:t.title,s:s,d:d,tint:tintOf(t),task:t.id});
   saveDay(ts,bl);toast("At "+MDAY.hm(s));
 }
+function layout(bl,wake){
+  var l=MDAY.sortB(bl),cl=[],cur=[],end=-1;
+  l.forEach(function(b){
+    if(cur.length&&b.s>=end){cl.push(cur);cur=[];end=-1;}
+    cur.push(b);end=Math.max(end,b.s+b.d);
+  });
+  if(cur.length)cl.push(cur);
+  var out=[];
+  cl.forEach(function(g){
+    var cols=[];
+    g.forEach(function(b){
+      var i=0;while(cols[i]&&cols[i]>b.s)i++;
+      cols[i]=b.s+b.d;b._c=i;
+    });
+    g.forEach(function(b){b._n=cols.length;out.push(b);});
+  });
+  return out;
+}
 function rDay(){
-  var ts=dayStart()+dayOff*DAY,wd=new Date(ts).getDay();
-  var bl=dayBlocks(S,ts),fx=fxFor(ts),all=MDAY.sortB(bl.concat(fx));
-  var wake=S.day.wake,sleep=S.day.sleep;
+  var ts=dayTs(),wd=new Date(ts).getDay(),past=isPast();
+  var D=dayAll(ts),bl=D.own,all=D.all,wake=S.day.wake,sleep=S.day.sleep;
   var pr=MDAY.prayers(ts,LAT,LON,TZ);
+  var dn=all.filter(function(b){return b.done;});
   var free=MDAY.freeAfter(all,wake,sleep,dayFrom(ts));
-  var acts=[
-    {icon:"\uFF0B",label:"Add a block",fn:function(){sheetBlock(null,ts);}},
-    {icon:"\u2699",label:"Save as my usual "+DAYSF[wd],fn:function(){sheetUsual(ts,wd,bl);}},
-    {icon:"\u26A1",go:true,label:"Fill the gaps",fn:function(){fillGaps(ts);}}
-  ];
-  var h=hd(dayOff?DAYSF[wd]:"Today",
-    "<b>"+MDAY.dur(free)+"</b> free"+(dayOff?"":" left")+" \u00b7 "+all.length+" on the day",acts);
-  var sw=document.createElement("div");sw.className="dsw";
-  sw.innerHTML='<button data-o="0"'+(dayOff===0?' class="on"':'')+'>Today</button><button data-o="1"'+(dayOff===1?' class="on"':'')+'>Tomorrow</button>';
-  h.appendChild(sw);
-  sw.querySelectorAll("button").forEach(function(b){b.onclick=function(){dayOff=+b.dataset.o;render();};});
+  var logged=dn.reduce(function(a,b){return a+b.d;},0);
+  var acts=[];
+  if(!past)acts.push({icon:"\uFF0B",label:"Add a block",fn:function(){sheetBlock(null,ts);}});
+  acts.push({icon:"\u{1F4C5}",label:"Jump to a date",fn:function(){sheetJump();}});
+  if(!past){
+    acts.push({icon:"\u2699",label:"Save as my usual "+DAYSF[wd],fn:function(){sheetUsual(ts,wd,bl);}});
+    acts.push({icon:"\u26A1",go:true,label:"Fill the gaps",fn:function(){fillGaps(ts);}});
+  }
+  var title=daySel===0?"Today":daySel===1?"Tomorrow":daySel===-1?"Yesterday":DAYSF[wd];
+  var sub=past
+    ? (dn.length?"<b>"+dn.length+"</b> done \u00b7 "+MDAY.dur(logged)+" logged":"nothing logged")
+    : "<b>"+MDAY.dur(free)+"</b> free"+(daySel===0?" left":"")+(dn.length?" \u00b7 "+dn.length+" done":"");
+  var h=hd(title+'<span class="dsub">'+dstr(ts)+'</span>',sub,acts);
 
-  var items=[];
-  all.forEach(function(b){items.push({s:b.s,r:1,k:"b",b:b});});
-  MDAY.gaps(all,wake,sleep,15).forEach(function(g){items.push({s:g.s,r:1,k:"g",g:g});});
-  [["Fajr",pr.fajr],["Dhuhr",pr.dhuhr],["Asr",pr.asr],["Maghrib",pr.maghrib],["Isha",pr.isha]].forEach(function(a){
-    if(a[1]!=null&&a[1]>=wake-45&&a[1]<=sleep)items.push({s:a[1],r:0,k:"a",n:a[0]});
-  });
-  if(dayOff===0){var nw=nowMin();if(nw>=wake&&nw<=sleep)items.push({s:nw,r:2,k:"n"});}
-  items.sort(function(x,y){return x.s-y.s||x.r-y.r;});
+  var wk=document.createElement("div");wk.className="wkstrip";
+  var base=ts-((new Date(ts).getDay())*DAY);
+  var inner='<button class="nav" data-j="-7">\u2039</button>';
+  for(var i=0;i<7;i++){
+    var t2=base+i*DAY,k=MDAY.dkey(t2),sel=k===MDAY.dkey(ts),td=k===MDAY.dkey(Date.now());
+    var has=(S.log||[]).some(function(e){return MDAY.dkey(e.ts)===k;});
+    inner+='<button class="dcell'+(sel?" on":"")+(td?" td":"")+'" data-o="'+Math.round((t2-dayStart())/DAY)+'"><span class="dn">'+DAYS1[i]+'</span><span class="dd">'+new Date(t2).getDate()+'</span><span class="dot'+(has?"":" off")+'"></span></button>';
+  }
+  inner+='<button class="nav" data-j="7">\u203A</button>';
+  wk.innerHTML=inner;h.appendChild(wk);
+  wk.querySelectorAll(".dcell").forEach(function(b){b.onclick=function(){daySel=+b.dataset.o;render();};});
+  wk.querySelectorAll(".nav").forEach(function(b){b.onclick=function(){daySel+=+b.dataset.j;render();};});
 
-  var html='<div class="day">';
-  if(!all.length)html+='<div class="card muted" style="margin-bottom:10px">Nothing on '+(dayOff?"tomorrow":"today")+" yet. Tap \uFF0B to add a block, arrange the day, then \u2699 to make it your usual "+DAYSF[wd]+".</div>";
-  items.forEach(function(it,i){
-    if(it.k==="a")html+='<div class="anch"><span class="tm">'+MDAY.hm(it.s)+'</span><span class="ln"></span><span class="nm">'+it.n+'</span></div>';
-    else if(it.k==="n")html+='<div class="nowl"><span class="tm">'+MDAY.hm(it.s)+'</span><span class="ln"></span><span class="nm">now</span></div>';
-    else if(it.k==="g")html+='<div class="trow"><span class="tm">'+MDAY.hm(it.s)+'</span><button class="gapb" data-g="'+i+'">Open \u00b7 '+MDAY.dur(it.g.d)+'<div style="font-size:12px;color:var(--dimmer);margin-top:1px">tap to put something here</div></button></div>';
-    else html+='<div class="trow"><span class="tm">'+MDAY.hm(it.s)+'</span><button class="blk" data-b="'+i+'" style="background:var(--'+(it.b.tint||"other")+')"><div class="bt">'+esc(it.b.title)+'</div><div class="bs">'+MDAY.dur(it.b.d)+" \u00b7 "+(it.b.fx?fxLabel(it.b.fx):(it.b.task?"task":"routine"))+'</div></button></div>';
+  var H=Math.round((sleep-wake)*PXM);
+  var g='<div class="cal" id="cal" style="height:'+H+'px">';
+  for(var m=Math.ceil(wake/60)*60;m<=sleep;m+=60){
+    g+='<div class="hr" style="top:'+Math.round((m-wake)*PXM)+'px"><span>'+MDAY.hm(m)+'</span></div>';
+  }
+  [["Fajr",pr.fajr],["Shuruq",pr.shuruq],["Dhuhr",pr.dhuhr],["Asr",pr.asr],["Maghrib",pr.maghrib],["Isha",pr.isha]].forEach(function(a){
+    if(a[1]==null||a[1]<wake||a[1]>sleep)return;
+    g+='<div class="pray" style="top:'+Math.round((a[1]-wake)*PXM)+'px"><span>'+a[0]+'</span></div>';
   });
-  html+='</div>';
-  var tray=trayTasks(bl),gp=MDAY.gaps(all,wake,sleep,5),big=0;
-  gp.forEach(function(g){var s=Math.max(g.s,dayFrom(ts)),e=g.s+g.d;if(e-s>big)big=e-s;});
+  layout(all,wake).forEach(function(b,i){
+    var top=Math.round((Math.max(b.s,wake)-wake)*PXM),hh=Math.max(20,Math.round(b.d*PXM)-3);
+    var w=100/(b._n||1),left=(b._c||0)*w;
+    var cls="cb"+(b.done?" dn":"")+(b.fx?" fx":"");
+    var st2="top:"+top+"px;height:"+hh+"px;left:calc(46px + "+left+"% - "+Math.round(left*0.46)+"px);width:calc("+w+"% - "+Math.round(w*0.46)+"px - 4px)";
+    if(!b.done&&!b.fx)st2+=";background:var(--"+(b.tint||"other")+")";
+    var meta=b.done?("done "+MDAY.hm(b.at)):(b.fx?fxLabel(b.fx):MDAY.hm(b.s)+"\u2013"+MDAY.hm(b.s+b.d));
+    g+='<button class="'+cls+'" data-i="'+i+'" style="'+st2+'"><span class="ct">'+esc(b.title)+'</span>'+(hh>=38?'<span class="cm">'+meta+'</span>':'')+'</button>';
+  });
+  if(daySel===0){
+    var nw=nowMin();
+    if(nw>=wake&&nw<=sleep)g+='<div class="nowc" style="top:'+Math.round((nw-wake)*PXM)+'px"></div>';
+  }
+  g+='</div>';
+  var html=g;
+  if(!all.length)html+='<div class="card muted" style="margin-top:12px">'+(past?"Nothing logged this day.":"Empty day. Tap anywhere on the calendar to add a block \u2014 arrange it once, then \u2699 makes it your usual "+DAYSF[wd]+".")+'</div>';
+  var tray=past?[]:trayTasks(bl),gp=MDAY.gaps(all,wake,sleep,5),big=0;
+  gp.forEach(function(x){var s2=Math.max(x.s,dayFrom(ts)),e=x.s+x.d;if(e-s2>big)big=e-s2;});
   if(tray.length){
-    html+='<div class="sec" style="margin-top:16px"><h2>Tasks waiting</h2><div class="tray" id="tray">';
+    html+='<div class="sec" style="margin-top:18px"><h2>Waiting <span style="font-weight:400">tap to drop into the day</span></h2><div class="tray" id="tray">';
     tray.forEach(function(t){
-      var d=taskDur(t),no=d>big;
-      html+='<button data-t="'+esc(t.id)+'"'+(no?' class="no"':'')+'>'+esc(t.title)+' \u00b7 '+MDAY.dur(d)+'</button>';
+      html+='<button data-t="'+esc(t.id)+'"'+(taskDur(t)>big?' class="no"':'')+'>'+esc(t.title)+' \u00b7 '+MDAY.dur(taskDur(t))+'</button>';
     });
     html+='</div></div>';
   }
-  html+='<div class="sec" style="margin-top:16px"><h2>Day runs</h2><div class="dsw"><button id="wk">Wake '+MDAY.hm(wake)+'</button><button id="sl">Sleep '+MDAY.hm(sleep)+'</button></div></div>';
+  html+='<div class="sec" style="margin-top:18px"><h2>Day runs</h2><div class="dsw"><button id="wk1">Wake '+MDAY.hm(wake)+'</button><button id="sl1">Sleep '+MDAY.hm(sleep)+'</button></div></div>';
   $("view").innerHTML=html;
-
-  $("view").querySelectorAll(".blk").forEach(function(el){
-    el.onclick=function(){
-      var b=items[+el.dataset.b].b;
+  var ordered=layout(all,wake);
+  $("view").querySelectorAll(".cb").forEach(function(el){
+    el.onclick=function(ev){
+      ev.stopPropagation();
+      var b=ordered[+el.dataset.i];
+      if(b.done){toast(b.title+" \u00b7 finished "+MDAY.hm(b.at),true);return;}
       if(b.fx){toast(b.title+" \u00b7 "+MDAY.hm(b.s)+"\u2013"+MDAY.hm(b.s+b.d),true);return;}
+      if(past){toast("That day is done \u2014 nothing to change",true);return;}
       sheetBlock(b,ts);
     };
   });
-  $("view").querySelectorAll(".gapb").forEach(function(el){
-    el.onclick=function(){var g=items[+el.dataset.g].g;sheetBlock({id:"b|"+uid(),title:"",s:g.s,d:Math.min(60,g.d),tint:"other"},ts,true);};
-  });
+  if(!past)$("cal").onclick=function(ev){
+    if(ev.target.closest(".cb"))return;
+    var r=$("cal").getBoundingClientRect(),y=ev.clientY-r.top;
+    var m2=Math.round((wake+y/PXM)/15)*15;
+    sheetBlock({id:"b|"+uid(),title:"",s:Math.max(wake,Math.min(sleep-30,m2)),d:60,tint:"other"},ts,true);
+  };
   $("view").querySelectorAll("#tray button").forEach(function(el){
-    el.onclick=function(){var t=S.tasks[el.dataset.t];if(!t)return;sheetTaskSlot(t,ts);};
+    el.onclick=function(){var t=S.tasks[el.dataset.t];if(t)sheetTaskSlot(t,ts);};
   });
-  $("wk").onclick=function(){sheetHours(ts,"wake");};
-  $("sl").onclick=function(){sheetHours(ts,"sleep");};
+  $("wk1").onclick=function(){sheetHours(ts,"wake");};
+  $("sl1").onclick=function(){sheetHours(ts,"sleep");};
 }
+function sheetJump(){
+  var cur=new Date(dayTs()),v=cur.getFullYear()+"-"+("0"+(cur.getMonth()+1)).slice(-2)+"-"+("0"+cur.getDate()).slice(-2);
+  sheet('<h3>Go to a day</h3><div class="fld"><input type="date" id="jd" value="'+v+'" style="font-size:17px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--sf);width:100%"></div>'+
+    '<div class="cta"><button class="btn" id="ok">Go</button><button class="btn soft" id="td" style="flex:0 0 auto">Today</button></div>');
+  $("ok").onclick=function(){
+    var p=String($("jd").value||"").split("-");
+    if(p.length===3){var d=new Date(+p[0],+p[1]-1,+p[2]);d.setHours(0,0,0,0);daySel=Math.round((d.getTime()-dayStart())/DAY);}
+    closeSheet();render();
+  };
+  $("td").onclick=function(){daySel=0;closeSheet();render();};
+}
+
 function durOpts(id,cur,fn){
   var box=$(id);if(!box)return;
   [15,30,45,60,90,120,180,300,540].forEach(function(m){
