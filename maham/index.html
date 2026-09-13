@@ -245,7 +245,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.3", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="2.3.1", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -932,13 +932,18 @@ var MDAY=(function(){
     return null;
   }
   function place(bl,b){
-    var out=bl.filter(function(o){return o.id!==b.id;});
-    out.push(b);
-    out=sortB(out);
+    var end=b.s+b.d;
+    var others=sortB(bl.filter(function(o){return o.id!==b.id;}));
+    var moved=[];
+    others.forEach(function(o){
+      if(o.s<end&&b.s<o.s+o.d){o.s=end;end=o.s+o.d;moved.push(o);}
+    });
+    var out=sortB(others.concat([b]));
     for(var i=1;i<out.length;i++){
       var p=out[i-1],c=out[i];
-      if(c.s<p.s+p.d)c.s=p.s+p.d;
+      if(c.s<p.s+p.d&&c.id!==b.id){c.s=p.s+p.d;if(moved.indexOf(c)<0)moved.push(c);}
     }
+    out.moved=moved;
     return out;
   }
   function hm(m){
@@ -1159,7 +1164,9 @@ function sheetBlock(b,ts,isNew){
     var s=mv($("bs").value);
     var bl=dayBlocks(S,ts).filter(function(o){return o.id!==nb.id;});
     bl=MDAY.place(bl,{id:nb.id,title:title,s:s,d:d,tint:nb.tint||"other",task:nb.task});
+    var mv=bl.moved||[];
     closeSheet();saveDay(ts,bl);
+    if(mv.length)toast(mv.length===1?(mv[0].title+" moved to "+MDAY.hm(mv[0].s)):(mv.length+" blocks moved down"));
   };
   if($("rm"))$("rm").onclick=function(){
     var bl=dayBlocks(S,ts).filter(function(o){return o.id!==nb.id;});
