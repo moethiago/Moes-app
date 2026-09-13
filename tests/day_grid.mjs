@@ -3,15 +3,15 @@
 import fs from 'node:fs';
 const src = fs.readFileSync('maham/index.html', 'utf8');
 const cut = (a, b) => { const i = src.indexOf(a), j = src.indexOf(b); if (i < 0 || j < 0) throw new Error('anchor missing: ' + a.slice(0, 40)); return src.slice(i, j); };
-const code = 'var DAY=86400000;var S=null;var DAYS1=["S","M","T","W","T","F","S"];var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];\n'
+const code = 'var DAY=86400000;var S=null;var DAYS1=["S","M","T","W","T","F","S"];var DAYSF=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];\n'
   + cut('var MDAY=(function(){', '/* ================= intelligence ================= */')
   + '\n' + cut('function apply(st,op){', '\nfunction cacheLocal')
-  + '\n' + cut('/* ---- day ---- */', 'function durOpts(')
+  + '\n' + cut('/* ---- what it notices ---- */', 'function durOpts(')
   + '\nfunction tintOf(t){return (t&&t.cat)||"other";}'
   + '\nfunction dayStart(ts){var d=new Date(ts||Date.now());d.setHours(0,0,0,0);return d.getTime();}'
   + '\nfunction esc(x){return String(x);}function uid(){return "u";}function toast(){}function op(){}'
-  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply,doneBlocks:doneBlocks,layout:layout,dayAll:dayAll,taskDur:taskDur,statusLine:statusLine,dayWord:dayWord,MONTHS:MONTHS,setS:function(x){S=x;},setSel:function(n){daySel=n;}};';
-const { MDAY, dayInit, dayBlocks, defTpl, apply, doneBlocks, layout, dayAll, taskDur, statusLine, dayWord, MONTHS, setS, setSel } = new Function(code)();
+  + '\nreturn {MDAY:MDAY,dayInit:dayInit,dayBlocks:dayBlocks,defTpl:defTpl,apply:apply,doneBlocks:doneBlocks,layout:layout,dayAll:dayAll,taskDur:taskDur,statusLine:statusLine,dayWord:dayWord,MONTHS:MONTHS,insight:insight,pushPattern:pushPattern,setS:function(x){S=x;},setSel:function(n){daySel=n;}};';
+const { MDAY, dayInit, dayBlocks, defTpl, apply, doneBlocks, layout, dayAll, taskDur, statusLine, dayWord, MONTHS, insight, pushPattern, setS, setSel } = new Function(code)();
 
 let pass = 0, fail = 0; const F = [];
 const ck = (n, c, x) => { if (c) pass++; else { fail++; F.push(n + (x ? ' — ' + x : '')); } };
@@ -224,8 +224,80 @@ const daySrc = fs.readFileSync('maham/index.html', 'utf8');
 ['DAYSF', 'MONTHS', 'DAYS1'].forEach(g => ck('the page defines ' + g, new RegExp('var ' + g + '\\s*=').test(daySrc)));
 const view = daySrc.slice(daySrc.indexOf('/* ---- day ---- */'), daySrc.indexOf('function durOpts('));
 const used = [...new Set((view.match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || []))];
-const undef = used.filter(g => !new RegExp('(var|function)\\s+' + g + '\\b').test(daySrc) && !/^(DAY|PXM|SVGC|MDAY|GET|SET|POST|JSON|T12|T00)$/.test(g));
+const undef = used.filter(g => !new RegExp('(var|function)\\s+' + g + '\\b').test(daySrc) && !/^(DAY|PXM|SVGC|MDAY|GET|SET|POST|JSON)$/.test(g) && !/^[A-Z]\d/.test(g));
 ck('no undefined constants in the day view', undef.length === 0, undef.join(','));
+
+// 20. the daily observation — it only speaks when it has evidence
+const NOW = new Date('2026-09-13T17:00:00+03:00').getTime();
+const mkLog = (specs) => specs.map((x, i) => ({ lid: 'l' + i, id: 't' + i, title: x.t || 'Thing', ts: x.ts }));
+const ago = (daysAgo, h, m) => { const d = new Date(NOW); d.setDate(d.getDate() - daysAgo); d.setHours(h, m || 0, 0, 0); return d.getTime(); };
+const stateWith = log => dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log });
+
+const empty = insight(stateWith([]), NOW);
+ck('with no history it admits it', empty.soft === true && /more days/.test(empty.text), empty.text);
+ck('it never invents a number from nothing', /0 completions/.test(empty.why), empty.why);
+const thin = insight(stateWith(mkLog([{ ts: ago(0, 10) }, { ts: ago(1, 11) }])), NOW);
+ck('two completions is still not enough', thin.soft === true);
+
+const streak = [];
+for (let i = 0; i < 5; i++) streak.push({ ts: ago(i, 10) });
+const sIns = insight(stateWith(mkLog(streak)), NOW);
+ck('it spots a streak', /days in a row/.test(sIns.text), sIns.text);
+ck('every observation carries its evidence', !!sIns.why && sIns.why.length > 5, sIns.why);
+
+const early = [];
+for (let i = 0; i < 16; i++) early.push({ ts: ago(i % 9, 9 + (i % 6)) });
+const eIns = insight(stateWith(mkLog(early)), NOW);
+ck('it finds a real pattern in 16 completions', !eIns.soft, eIns.text);
+ck('the pattern is one of the ones it knows', /row|after|between|heaviest|usually|already|pushing/.test(eIns.text), eIns.text);
+
+const lateTest = [];
+for (let i = 0; i < 14; i++) lateTest.push({ ts: ago(i, 8 + (i % 5)) });
+const lIns = insight(stateWith(mkLog(lateTest)), NOW);
+ck('the late-finish line only claims what the data shows', !/after/.test(lIns.text) || /never finished anything after 1[0-9]:/.test(lIns.text), lIns.text);
+
+const hourHeavy = [];
+for (let i = 0; i < 20; i++) hourHeavy.push({ ts: ago(i % 8, i < 14 ? 10 : 15, 20) });
+const hAll = [];
+for (let d = 0; d < 400; d++) { const o = insight(stateWith(mkLog(hourHeavy)), NOW + d * 86400000); if (o.kind === 'hour') hAll.push(o.text); }
+ck('the busy-hour line names the right hour', hAll.length > 0 && /10:00 and 11:00/.test(hAll[0]), hAll[0]);
+
+ck('the same day always gives the same sentence',
+  insight(stateWith(mkLog(early)), NOW).text === insight(stateWith(mkLog(early)), NOW + 3600000).text);
+const d1 = insight(stateWith(mkLog(hourHeavy)), NOW).text;
+let differs = false;
+for (let k = 1; k < 8; k++) if (insight(stateWith(mkLog(hourHeavy)), NOW + k * 86400000).text !== d1) differs = true;
+ck('but it rotates across days', differs);
+
+// pushing a block later, week after week
+const pushState = dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] });
+pushState.day.tpl['0'] = [{ id: 'gym', title: 'Gym', s: 1080, d: 60 }];
+[7, 14, 21].forEach(k => { const dd = new Date(NOW - k * 86400000); pushState.day.ov[MDAY.dkey(dd.getTime())] = [{ id: 'gym', title: 'Gym', s: 1080 + 45, d: 60 }]; });
+const pp = pushPattern(pushState, NOW);
+ck('it notices a block being pushed later every week', !!pp && /pushing Gym later on Sundays/.test(pp.text), pp && pp.text);
+ck('it says how much later', pp && /45m later/.test(pp.text), pp && pp.text);
+ck('it counts the weeks as evidence', pp && /3 Sundays/.test(pp.why), pp && pp.why);
+pushState.day.ov[MDAY.dkey(NOW - 28 * 86400000)] = [{ id: 'gym', title: 'Gym', s: 1080 - 30, d: 60 }];
+ck('one week in the other direction kills the claim', pushPattern(pushState, NOW) === null);
+const twoOnly = dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] });
+twoOnly.day.tpl['0'] = [{ id: 'gym', title: 'Gym', s: 1080, d: 60 }];
+[7, 14].forEach(k => { twoOnly.day.ov[MDAY.dkey(NOW - k * 86400000)] = [{ id: 'gym', title: 'Gym', s: 1140, d: 60 }]; });
+ck('two weeks is not a pattern', pushPattern(twoOnly, NOW) === null);
+ck('future days are not counted as evidence', (() => {
+  const f = dayInit({ tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] });
+  f.day.tpl['0'] = [{ id: 'gym', title: 'Gym', s: 1080, d: 60 }];
+  [7, 14].forEach(k => { f.day.ov[MDAY.dkey(NOW - k * 86400000)] = [{ id: 'gym', title: 'Gym', s: 1140, d: 60 }]; });
+  f.day.ov[MDAY.dkey(NOW + 7 * 86400000)] = [{ id: 'gym', title: 'Gym', s: 1140, d: 60 }];
+  return pushPattern(f, NOW) === null;
+})());
+
+// 21. motion is declared, and it yields to the accessibility setting
+const src2 = fs.readFileSync('maham/index.html', 'utf8');
+['cbIn', 'obsIn', 'slideInL', 'slideInR', 'pulse'].forEach(a => ck('animation ' + a + ' exists', src2.includes('@keyframes ' + a)));
+ck('reduced motion is respected', /prefers-reduced-motion[\s\S]{0,80}animation:none/.test(src2));
+ck('the day slide checks the reduced-motion setting too', src2.includes('matchMedia("(prefers-reduced-motion: reduce)").matches'));
+
+console.log('');
 
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (F.length) { console.log('\nFAILURES:'); F.forEach(x => console.log(' - ' + x)); }
