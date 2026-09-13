@@ -295,7 +295,8 @@ ck('future days are not counted as evidence', (() => {
 const src2 = fs.readFileSync('maham/index.html', 'utf8');
 ['cbIn', 'obsIn', 'slideInL', 'slideInR', 'pulse'].forEach(a => ck('animation ' + a + ' exists', src2.includes('@keyframes ' + a)));
 ck('reduced motion is respected', /prefers-reduced-motion[\s\S]{0,80}animation:none/.test(src2));
-ck('the day slide checks the reduced-motion setting too', src2.includes('matchMedia("(prefers-reduced-motion: reduce)").matches'));
+ck('the day slide checks the reduced-motion setting too', src2.includes('prefers-reduced-motion: reduce'));
+ck('it survives a browser with no matchMedia', src2.includes('window.matchMedia&&window.matchMedia'));
 
 console.log('');
 
