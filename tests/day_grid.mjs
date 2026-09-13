@@ -219,6 +219,14 @@ ck('months are spelled out', MONTHS.length === 12 && MONTHS[8] === 'September');
 
 console.log('');
 
+// 19. every global the day view reads is actually defined in the page
+const daySrc = fs.readFileSync('maham/index.html', 'utf8');
+['DAYSF', 'MONTHS', 'DAYS1'].forEach(g => ck('the page defines ' + g, new RegExp('var ' + g + '\\s*=').test(daySrc)));
+const view = daySrc.slice(daySrc.indexOf('/* ---- day ---- */'), daySrc.indexOf('function durOpts('));
+const used = [...new Set((view.match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || []))];
+const undef = used.filter(g => !new RegExp('(var|function)\\s+' + g + '\\b').test(daySrc) && !/^(DAY|PXM|SVGC|MDAY|GET|SET|POST|JSON|T12|T00)$/.test(g));
+ck('no undefined constants in the day view', undef.length === 0, undef.join(','));
+
 console.log(`\nPASS ${pass}  FAIL ${fail}`);
 if (F.length) { console.log('\nFAILURES:'); F.forEach(x => console.log(' - ' + x)); }
 process.exit(fail ? 1 : 0);
