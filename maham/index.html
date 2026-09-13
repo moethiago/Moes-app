@@ -295,7 +295,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="5.0", BUILD=BUILD_ID+" · 13 Sep 2026";
+var BUILD_ID="5.0.1", BUILD=BUILD_ID+" · 13 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -1343,7 +1343,8 @@ function wireDrag(el,b,ts){
 function goDay(next,dir){
   var cw=$("calwrap");
   slideDir=dir||(next>daySel?"l":"r");daySel=next;justRendered=true;
-  if(!cw||window.matchMedia("(prefers-reduced-motion: reduce)").matches){render();return;}
+  var rm=!!(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  if(!cw||rm){render();return;}
   cw.classList.add(slideDir==="l"?"out-l":"out-r");
   setTimeout(function(){render();},150);
 }
