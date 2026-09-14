@@ -3,13 +3,22 @@
 import { pathToFileURL } from 'node:url'; import { resolve as _r } from 'node:path';
 process.env.KV_REST_API_URL="https://kv.mock"; process.env.KV_REST_API_TOKEN="t";
 process.env.DEPLOY_SECRET="moes-deploy-2026"; process.env.ANTHROPIC_API_KEY="a";
-const store=new Map(); let REPLY=null, SYS="";
+const store=new Map(); let REPLY=null, SYS="", HITS=[];
 globalThis.fetch=async(url,opts={})=>{
   const u=String(url);
   if(u.startsWith("https://kv.mock")){const [op,k,v]=JSON.parse(opts.body);let result=null;
     if(op==="GET")result=store.has(k)?store.get(k):null;else if(op==="SET"){store.set(k,v);result="OK";}
     return new Response(JSON.stringify({result}),{status:200});}
-  if(u.includes("api.anthropic.com")){const b=JSON.parse(opts.body||"{}");SYS=String(b.system||"");
+  if(u.includes("api.groq.com")){HITS.push("groq");
+    if(u.includes("/models"))return new Response(JSON.stringify({data:[{id:"whisper-large-v3"},{id:"llama-3.3-70b-versatile"}]}),{status:200});
+    const b=JSON.parse(opts.body||"{}");SYS=String((b.messages||[])[0]&&(b.messages[0].content)||"");
+    if(REPLY==="groqdown")return new Response(JSON.stringify({error:{message:"down"}}),{status:500});
+    return new Response(JSON.stringify({choices:[{message:{content:typeof REPLY==="string"?REPLY:JSON.stringify({actions:REPLY})}}]}),{status:200});}
+  if(u.includes("generativelanguage.googleapis.com")){HITS.push("gemini");
+    if(u.includes("/models?"))return new Response(JSON.stringify({models:[{name:"models/gemini-flash-latest"}]}),{status:200});
+    const b=JSON.parse(opts.body||"{}");SYS=String(((b.systemInstruction||{}).parts||[])[0]&&b.systemInstruction.parts[0].text||"");
+    return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify({actions:REPLY})}]}}]}),{status:200});}
+  if(u.includes("api.anthropic.com")){HITS.push("claude");const b=JSON.parse(opts.body||"{}");SYS=String(b.system||"");
     return new Response(JSON.stringify({content:[{type:"text",text:typeof REPLY==="string"?REPLY:JSON.stringify(REPLY)}],usage:{input_tokens:5,output_tokens:5}}),{status:200});}
   return new Response("{}",{status:200});
 };
@@ -76,6 +85,20 @@ check("bad pin blocked",(await call({action:"taskvoice",pin:"0000",text:"hi"})).
 const before=store.get("maqadi:state");
 await fire([{op:"add",title:"z",lane:"today"}]);
 check("never writes app state",store.get("maqadi:state")===before);
+
+/* free first: Groq is used and neither paid engine is touched */
+process.env.GROQ_API_KEY="g"; process.env.GEMINI_API_KEY="gm";
+const mod2=await import(pathToFileURL(_r(process.cwd(),"./api/health-check.js")).href+"?free=1");
+const call2=(body)=>new Promise((res)=>{const r={code:200,setHeader(){},status(c){this.code=c;return this;},json(j){res({code:this.code,j});},end(){res({code:this.code,j:null});}};mod2.default({method:"POST",query:{},body,headers:{}},r);});
+HITS=[];REPLY=[{op:"add",title:"Free path",lane:"today"}];
+r=await call2({action:"taskvoice",pin:"2026",text:"add a thing",tasks:TASKS,today:"Sunday"});
+check("free: Groq answered",r.code===200&&r.j.engine==="groq",JSON.stringify({c:r.code,e:r.j&&r.j.engine}));
+check("free: the action came through",r.j.actions.length===1&&r.j.actions[0].title==="Free path");
+check("free: Claude was never called",HITS.indexOf("claude")<0,HITS.join(","));
+check("free: Groq still gets his task list",/t1 \u2014 Call the bank/.test(SYS));
+HITS=[];REPLY="groqdown";
+r=await call2({action:"taskvoice",pin:"2026",text:"x",tasks:TASKS,today:"Sunday"});
+check("free: Groq down falls to Gemini, not to Claude",HITS.indexOf("gemini")>=0&&HITS.indexOf("claude")<0,HITS.join(","));
 
 console.log(`PASS ${pass}  FAIL ${fail}`);
 if(fail){console.log("FAILED:\n - "+F.join("\n - "));process.exit(1);}
