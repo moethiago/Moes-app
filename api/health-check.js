@@ -449,6 +449,58 @@ function solveReceipt({ lines, candidates, total, pieces }) {
   };
 }
 
+/* Free-tier chat helpers. Model names go stale, so ask each provider what it has
+   right now and pick a current general-purpose one. */
+let _groqModel = null;
+async function groqChat(system, user) {
+  const key = process.env.GROQ_API_KEY;
+  if (!_groqModel) {
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { Authorization: "Bearer " + key } });
+      const j = await r.json();
+      const names = (j.data || []).map((m) => String(m.id || ""))
+        .filter((n) => !/whisper|guard|tts|vision|embed/i.test(n));
+      _groqModel = names.find((n) => /llama.*70b|llama-3\.[0-9]/i.test(n)) || names.find((n) => /llama|mixtral|gemma/i.test(n)) || names[0];
+    } catch {}
+    if (!_groqModel) _groqModel = "llama-3.3-70b-versatile";
+  }
+  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST", headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: _groqModel, temperature: 0, max_tokens: 2000,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: system + "\n\nReturn a JSON object of the form {\"actions\":[ ... ]}." }, { role: "user", content: user }] }),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error("groq: " + (j.error && j.error.message ? j.error.message : r.status));
+  return j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : "";
+}
+let _gemModel = null;
+async function geminiChat(system, user) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!_gemModel) {
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": key } });
+      const j = await r.json();
+      const names = (j.models || []).map((m) => String(m.name || "").replace(/^models\//, ""))
+        .filter((n) => /flash/.test(n) && !/lite|image|tts|live|audio|embedding|8b|preview|exp/.test(n)).sort().reverse();
+      _gemModel = names[0];
+    } catch {}
+    if (!_gemModel) _gemModel = "gemini-flash-latest";
+  }
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + _gemModel + ":generateContent", {
+    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ parts: [{ text: user }] }],
+      generationConfig: { temperature: 0, responseMimeType: "application/json" },
+    }),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error("gemini: " + JSON.stringify(j).slice(0, 160));
+  const parts = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
+  return parts ? parts.map((x) => x.text || "").join("") : "";
+}
+
 /* ---------------- reader key, stored server-side ----------------
    He pastes an OpenAI key once in the app; it is kept in his own Upstash, never in
    localStorage and never returned to the browser. A key in a GitHub Pages frontend
@@ -791,7 +843,7 @@ async function maqadiHandler(req, res) {
     // sentence into a list of ACTIONS against the tasks he already has, which the app
     // then shows him before anything is applied.
     if (action === "taskvoice") {
-      if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
+      if (!ANTHROPIC_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(500).json({ error: "no engine configured" });
       const text = String(body.text || "").trim().slice(0, 2000);
       if (!text) return res.status(400).json({ error: "no text" });
       const tasks = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, 200);
@@ -819,8 +871,22 @@ Rules:
 
 HIS TASKS (id — title — lane — routine):
 ${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched || "off"}`).join("\n") || "(none)"}`;
-      let out = null;
-      try { out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 2000, system, messages: [{ role: "user", content: text }] }))); } catch (e) { out = null; }
+      // Free engines first. Groq and Gemini both have free tiers that cover a few
+      // spoken sentences a day many times over; Claude is only a last resort so the
+      // feature still works if both are missing or down.
+      let out = null, engine = "";
+      for (const step of ["groq", "gemini", "claude"]) {
+        if (out) break;
+        try {
+          if (step === "groq" && process.env.GROQ_API_KEY) {
+            out = parseJSON(await groqChat(system, text)); engine = "groq";
+          } else if (step === "gemini" && process.env.GEMINI_API_KEY) {
+            out = parseJSON(await geminiChat(system, text)); engine = "gemini";
+          } else if (step === "claude" && ANTHROPIC_KEY) {
+            out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 2000, system, messages: [{ role: "user", content: text }] }))); engine = "claude";
+          }
+        } catch (e) { out = null; }
+      }
       const arr = Array.isArray(out) ? out : (out && Array.isArray(out.actions) ? out.actions : []);
       const ids = new Set(tasks.map((t) => t.id));
       const LANES = ["today", "week", "later"], BLOCKS = ["early", "midday", "afternoon", "evening", "night", "any"];
@@ -846,7 +912,7 @@ ${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched
         clean.push({ op, id, title, lane: op === "add" ? (lane || "today") : lane, block, dueDays, dur, every: a.every || null, days });
       }
       await bump("taskvoice", 1);
-      return res.status(200).json({ actions: clean, heard: text });
+      return res.status(200).json({ actions: clean, heard: text, engine });
     }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
