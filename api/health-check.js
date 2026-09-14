@@ -63,7 +63,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
-const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset", "setkey", "keystatus", "transcribe"];
+const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset", "setkey", "keystatus", "transcribe", "taskvoice"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
@@ -785,6 +785,68 @@ async function maqadiHandler(req, res) {
         }
       }
       return res.status(502).json({ error: lastErr || "transcription failed" });
+    }
+    // Spoken sentences are not always "add a task": they finish things, move them,
+    // and set routines. The local regex parser only ever added. This turns one spoken
+    // sentence into a list of ACTIONS against the tasks he already has, which the app
+    // then shows him before anything is applied.
+    if (action === "taskvoice") {
+      if (!ANTHROPIC_KEY) return res.status(500).json({ error: "anthropic env missing" });
+      const text = String(body.text || "").trim().slice(0, 2000);
+      if (!text) return res.status(400).json({ error: "no text" });
+      const tasks = (Array.isArray(body.tasks) ? body.tasks : []).slice(0, 200);
+      const today = String(body.today || "").slice(0, 40);
+      const system = `You turn one spoken sentence into actions on a personal to-do app. Return ONLY a JSON array, no prose, no markdown.
+
+Today is ${today}. The person may speak Arabic, English, or both. Understand meaning, not keywords.
+
+Each action is one of:
+{"op":"add","title":"<short imperative title in the language he used>","lane":"today"|"week"|"later","block":"early"|"midday"|"afternoon"|"evening"|"night"|"any"|null,"dueDays":<0 for today, 1 for tomorrow, n days ahead, or null>,"dur":<minutes|null>}
+{"op":"done","id":"<id of an existing task he says he finished>"}
+{"op":"move","id":"<existing id>","lane":"today"|"week"|"later"}
+{"op":"remove","id":"<existing id he wants dropped>"}
+{"op":"routine","id":"<existing id>"|null,"title":"<title if it is a new task>","every":"daily"|"weekly","days":[0..6 Sunday=0],"block":"early"|"midday"|"afternoon"|"evening"|"night"|"any"}
+{"op":"unroutine","id":"<existing id>"}
+{"op":"schedule","id":"<existing id>"|null,"title":"<title if new>","dueDays":<n>,"block":"<block>"|null,"dur":<minutes|null>}
+
+Rules:
+- Use an existing task's id whenever he is clearly talking about one of his tasks, even if he says it differently. Match on meaning.
+- One sentence can contain several actions. "خلصت البنك وذكرني أغسل السيارة بكرة" is a done and an add.
+- "every Sunday", "كل أحد", "كل يوم" mean a routine, not a one-off task.
+- A time of day maps to a block: fajr/الفجر=early, dhuhr/الظهر=midday, asr/العصر=afternoon, maghrib/المغرب=evening, isha/العشاء=night. Morning=early, noon=midday, afternoon=afternoon, evening=evening, night=night.
+- If he gives no lane and no day, use "today" for an add.
+- If you cannot tell what he means, leave it out. Returning fewer actions is correct; inventing one is not.
+
+HIS TASKS (id — title — lane — routine):
+${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched || "off"}`).join("\n") || "(none)"}`;
+      let out = null;
+      try { out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 2000, system, messages: [{ role: "user", content: text }] }))); } catch (e) { out = null; }
+      const arr = Array.isArray(out) ? out : (out && Array.isArray(out.actions) ? out.actions : []);
+      const ids = new Set(tasks.map((t) => t.id));
+      const LANES = ["today", "week", "later"], BLOCKS = ["early", "midday", "afternoon", "evening", "night", "any"];
+      const clean = [];
+      for (const a of arr.slice(0, 30)) {
+        if (!a || !a.op) continue;
+        const op = String(a.op);
+        const id = a.id && ids.has(a.id) ? a.id : null;
+        const title = a.title ? String(a.title).trim().slice(0, 80) : "";
+        const lane = LANES.indexOf(a.lane) >= 0 ? a.lane : null;
+        const block = BLOCKS.indexOf(a.block) >= 0 ? a.block : null;
+        const dueDays = Number.isFinite(Number(a.dueDays)) && Number(a.dueDays) >= 0 && Number(a.dueDays) <= 365 ? Number(a.dueDays) : null;
+        const dur = Number(a.dur) > 0 && Number(a.dur) <= 600 ? Number(a.dur) : null;
+        const days = Array.isArray(a.days) ? a.days.map(Number).filter((d) => d >= 0 && d <= 6) : [];
+        // an action on an existing task is meaningless without a real id
+        if (["done", "move", "remove", "unroutine"].indexOf(op) >= 0 && !id) continue;
+        if (op === "add" && !title) continue;
+        if (op === "routine" && !id && !title) continue;
+        if (op === "schedule" && !id && !title) continue;
+        if (op === "routine" && a.every !== "daily" && a.every !== "weekly") continue;
+        if (op === "routine" && a.every === "weekly" && !days.length) continue;
+        if (["add", "done", "move", "remove", "routine", "unroutine", "schedule"].indexOf(op) < 0) continue;
+        clean.push({ op, id, title, lane: op === "add" ? (lane || "today") : lane, block, dueDays, dur, every: a.every || null, days });
+      }
+      await bump("taskvoice", 1);
+      return res.status(200).json({ actions: clean, heard: text });
     }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
