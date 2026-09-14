@@ -106,5 +106,18 @@ check("no lines: no crash", solveReceipt({ lines: [], candidates: CANDS, total: 
 check("no candidates: everything is new, nothing asked", solveReceipt({ lines: clean, candidates: [], total: 16, pieces: 3 }).doubts === 0);
 check("name scoring ignores size and brand noise", nameScore("قشطة المراعي لايت 100 جرام", "قشطة المراعي") > 0.5);
 
+/* branded vs generic: the thing he was actually buying must win, or it stays in the cart */
+r = solveReceipt({ lines: [L("حليب نادك طازج كامل الدسم 800 مل", 6, 1, 6)],
+  candidates: [C("gen","حليب (كامل الدسم)",6,false), C("brand","حليب نادك",6,true)], total: 6, pieces: 1 });
+check("branded cart item beats the generic catalogue entry", r.lines[0].itemId === "brand", JSON.stringify(r.lines[0]));
+check("and it is resolved, not asked about", !r.lines[0].doubt);
+r = solveReceipt({ lines: [L("حليب نادك طازج كامل الدسم 800 مل", 6, 1, 6)],
+  candidates: [C("gen","حليب (كامل الدسم)",6,true), C("brand","حليب نادك",6,false)], total: 6, pieces: 1 });
+check("when only the generic is in the cart, it is used", r.lines[0].itemId === "gen", JSON.stringify(r.lines[0]));
+r = solveReceipt({ lines: [L("حليب المراعي كامل الدسم", 6, 1, 6), L("حليب نادك طازج", 6, 1, 6)],
+  candidates: [C("m","حليب المراعي",6,true), C("n","حليب نادك",6,true)], total: 12, pieces: 2 });
+check("two branded milks stay distinct", r.lines[0].itemId === "m" && r.lines[1].itemId === "n", JSON.stringify(r.lines.map((x) => x.itemId)));
+check("parentheses in a catalogue name do not break matching", nameScore("حليب نادك طازج كامل الدسم 800 مل", "حليب (كامل الدسم)") >= 0.9, String(nameScore("حليب نادك طازج كامل الدسم 800 مل", "حليب (كامل الدسم)")));
+
 console.log(`PASS ${pass}  FAIL ${fail}`);
 if (fail) { console.log("FAILED:\n - " + F.join("\n - ")); process.exit(1); }
