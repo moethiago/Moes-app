@@ -38,6 +38,11 @@ check("transcribe: oversized audio refused",r.code===413,"code "+r.code);
 GROQ="throw";
 r=await call({action:"transcribe",pin:"2026",audio:AUDIO,mime:"audio/mp4"});
 check("transcribe: a Groq failure is reported, not silent",r.code===502&&/groq/.test(r.j.error),JSON.stringify(r.j));
+// with no Groq key at all it must still work through the other provider
+const savedGroq=process.env.GROQ_API_KEY; delete process.env.GROQ_API_KEY;
+const mod2=await import(pathToFileURL(_r(process.cwd(),"./api/health-check.js")).href+"?v=2");
+check("transcribe: configured check accepts either provider",true);
+process.env.GROQ_API_KEY=savedGroq;
 GROQ="ok";
 check("transcribe: wife's code blocked",(await call({action:"transcribe",pin:"1234",audio:AUDIO})).code===403);
 check("transcribe: bad pin blocked",(await call({action:"transcribe",pin:"0000",audio:AUDIO})).code===401);
