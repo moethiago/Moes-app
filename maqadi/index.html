@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="4.3", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.4", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -1331,7 +1331,10 @@ function openScanReview(r,preview){
   });
   var when=r.date?new Date(r.date):new Date();if(isNaN(when.getTime()))when=new Date();
   var trip=recentTrip();
-  rcptUI={mode:"review",data:{store:storeFromSeller(r.seller||r.store_raw),seller:r.seller||r.store_raw||"",vatNo:"",
+  var printed=(r.seller||r.store_raw||"").trim();
+  var matched=printed?storeFromSeller(printed):"";
+  var known=matched&&matched!=="Other"?matched:(printed&&allStores().indexOf(printed)>=0?printed:"");
+  rcptUI={mode:"review",data:{store:known||"Other",seller:printed,newStore:(printed&&!known)?printed:"",vatNo:"",
     ts:when.getTime(),total:r.total||lines.reduce(function(a,l){return a+(l.total||0);},0),vat:r.vat||null,
     fromQR:!!r.fromQR,engine:r.engine||"",scanned:true,mismatch:r.mismatch||0,sum:sv.sum||r.sum||0,printed:r.total||0,
     verified:!!sv.verified,totalOK:sv.totalOK,piecesOK:sv.piecesOK,pieces:sv.pieces||null,retake:!!sv.retake,missing:sv.missing||0,
@@ -1396,6 +1399,12 @@ function rReview(){
     }
   }
   var src=document.createElement("div");src.className="sec";
+  if(R.newStore){
+    var ns=document.createElement("div");ns.className="sec";
+    ns.innerHTML='<div class="card" style="padding:14px;font-size:13.5px;line-height:1.75">\u0627\u0644\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629: <b>'+esc(R.newStore)+'</b><br><span style="color:var(--dim)">\u0645\u0627 \u0647\u0648 \u0645\u0646 \u0645\u062a\u0627\u062c\u0631\u0643 \u0627\u0644\u0645\u062d\u0641\u0648\u0638\u0629.</span><br><button class="btn" id="addst" style="margin-top:10px;width:100%">\uff0b \u0623\u0636\u0641\u0647 \u0643\u0645\u062a\u062c\u0631 \u0648\u0627\u062e\u062a\u0631\u0647</button></div>';
+    pad.appendChild(ns);
+    $("addst").onclick=function(){op("store.add",{name:R.newStore});R.store=R.newStore;R.newStore="";render();};
+  }
   src.innerHTML='<div class="card" style="padding:12px;font-size:13px;line-height:1.7;color:var(--dim)">'+(R.scanned?('<b style="color:var(--go)">قرأنا '+ar(R.lines.length)+' صنف من الصورة</b>'+(R.fromQR?' · الإجمالي من رمز الفاتورة ✓':'')+(R.mismatch?'<br><span style="color:var(--late)">مجموع الأسطر '+money(R.sum)+' والإجمالي '+money(R.printed)+' — فرق '+money(Math.abs(R.mismatch))+'</span>':'')):"")+(R.fromQR&&!R.scanned?'<b style="color:var(--go)">من رمز الفاتورة ✓</b> '+(R.seller?esc(R.seller):'')+(R.vatNo?' · الرقم الضريبي '+esc(R.vatNo):''):'<b>إجمالي مكتوب بنفسك</b>')+'</div>';pad.appendChild(src);
   var st=document.createElement("div");st.className="sec";st.innerHTML="<h2>المتجر</h2>";
   var stores=document.createElement("div");stores.className="stores";
