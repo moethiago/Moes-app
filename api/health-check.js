@@ -501,6 +501,203 @@ async function geminiChat(system, user) {
   return parts ? parts.map((x) => x.text || "").join("") : "";
 }
 
+/* ---------------- MCP: manage Maham's tasks from a Claude chat ----------------
+   Folded into this function rather than given its own file, because the project is at
+   its serverless function limit. Reached at:
+       POST /api/health-check?mcp=<secret>
+   Streamable HTTP, stateless — no sessions, one server per request, which is what a
+   serverless deployment can actually honour. The secret in the query string is the
+   whole auth: there is no OAuth here, so the URL is the credential and is treated as
+   one (never logged, never echoed back). */
+const MCP_PROTOCOL = "2025-06-18";
+function mcpErr(id, code, message) { return { jsonrpc: "2.0", id: id ?? null, error: { code, message } }; }
+function mcpOk(id, result) { return { jsonrpc: "2.0", id: id ?? null, result }; }
+function mcpText(s) { return { content: [{ type: "text", text: s }] }; }
+const MAHAM_LANES = ["today", "week", "later"];
+const MAHAM_BLOCKS = ["early", "midday", "afternoon", "evening", "night", "any"];
+
+async function mahamRead() {
+  const raw = await kv(["GET", "maham:state"]);
+  const j = raw ? JSON.parse(raw) : { v: 0, state: null };
+  const st = j.state || { tasks: {}, lanes: { today: [], week: [], later: [] }, log: [] };
+  st.tasks = st.tasks || {};
+  st.lanes = st.lanes || {};
+  MAHAM_LANES.forEach((l) => { st.lanes[l] = st.lanes[l] || []; });
+  st.log = st.log || [];
+  return { v: j.v || 0, st };
+}
+async function mahamWrite(v, st) {
+  // compare-and-set: never clobber a change the phone made between read and write
+  const raw = await kv(["GET", "maham:state"]);
+  const cur = raw ? JSON.parse(raw) : { v: 0, state: null };
+  if (Number(cur.v || 0) !== Number(v)) throw new Error("the app changed something at the same time — ask again");
+  await kv(["SET", "maham:state", JSON.stringify({ v: v + 1, state: st, ts: Date.now() })]);
+  return v + 1;
+}
+function mahamWhere(st, id) {
+  for (const l of MAHAM_LANES) { const n = st.lanes[l].indexOf(id); if (n >= 0) return { lane: l, index: n }; }
+  return null;
+}
+function mahamFind(st, q) {
+  const want = normAr(q);
+  if (st.tasks[q]) return q;
+  let best = null, bs = 0;
+  for (const id of Object.keys(st.tasks)) {
+    const t = normAr(st.tasks[id].title || "");
+    if (!t) continue;
+    let s = 0;
+    if (t === want) s = 1;
+    else if (t.indexOf(want) >= 0 || want.indexOf(t) >= 0) s = 0.8;
+    else {
+      const a = t.split(" ").filter(Boolean), b = want.split(" ").filter(Boolean);
+      if (a.length && b.length) { let h = 0; a.forEach((w) => { if (b.indexOf(w) >= 0) h++; }); s = h / Math.max(a.length, b.length); }
+    }
+    if (s > bs) { bs = s; best = id; }
+  }
+  return bs >= 0.5 ? best : null;
+}
+function mahamLine(st, id) {
+  const t = st.tasks[id], w = mahamWhere(st, id);
+  const sc = t.sched && t.sched.type && t.sched.type !== "off" ? t.sched : null;
+  const days = sc && sc.type === "weekly" ? (sc.days || []).map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join("/") : "";
+  return [
+    t.title,
+    w ? "[" + w.lane + "]" : "[not on a lane]",
+    sc ? "(" + (sc.type === "daily" ? "every day" : "every " + days) + (sc.block && sc.block !== "any" ? ", " + sc.block : "") + ")" : "",
+    t.due ? "due " + new Date(t.due).toDateString() : "",
+    t.durMin ? t.durMin + "m" : "",
+  ].filter(Boolean).join(" · ") + "  —  id: " + id;
+}
+const MCP_TOOLS = [
+  { name: "list_tasks", title: "List tasks",
+    description: "List Moaath's tasks from the Maham app, optionally filtered to one lane (today, week, later) or to routines only. Use before changing anything so you refer to the right task.",
+    annotations: { title: "List tasks", readOnlyHint: true },
+    inputSchema: { type: "object", properties: { lane: { type: "string", enum: MAHAM_LANES }, routinesOnly: { type: "boolean" } } } },
+  { name: "add_task", title: "Add a task",
+    description: "Add a new task to Maham. Use when Moaath wants something on his list. dueInDays 0 means today, 1 tomorrow.",
+    annotations: { title: "Add a task" },
+    inputSchema: { type: "object", required: ["title"], properties: {
+      title: { type: "string" }, lane: { type: "string", enum: MAHAM_LANES }, dueInDays: { type: "number" },
+      block: { type: "string", enum: MAHAM_BLOCKS }, minutes: { type: "number" } } } },
+  { name: "complete_task", title: "Mark a task done",
+    description: "Mark an existing Maham task as done. Accepts the task id or its title.",
+    annotations: { title: "Mark a task done" },
+    inputSchema: { type: "object", required: ["task"], properties: { task: { type: "string" } } } },
+  { name: "move_task", title: "Move a task to another lane",
+    description: "Move an existing Maham task between today, week and later.",
+    annotations: { title: "Move a task" },
+    inputSchema: { type: "object", required: ["task", "lane"], properties: { task: { type: "string" }, lane: { type: "string", enum: MAHAM_LANES } } } },
+  { name: "set_routine", title: "Make a task repeat",
+    description: "Turn a Maham task into a repeating routine (daily, or weekly on given days), or switch the repeat off with every='off'. days uses 0 for Sunday.",
+    annotations: { title: "Set a routine" },
+    inputSchema: { type: "object", required: ["task", "every"], properties: {
+      task: { type: "string" }, every: { type: "string", enum: ["daily", "weekly", "off"] },
+      days: { type: "array", items: { type: "number" } }, block: { type: "string", enum: MAHAM_BLOCKS } } } },
+  { name: "remove_task", title: "Delete a task",
+    description: "Delete a task from Maham entirely. This cannot be undone, so confirm with Moaath first.",
+    annotations: { title: "Delete a task", destructiveHint: true },
+    inputSchema: { type: "object", required: ["task"], properties: { task: { type: "string" } } } },
+];
+async function mcpCall(name, args) {
+  const a = args || {};
+  const { v, st } = await mahamRead();
+  if (name === "list_tasks") {
+    let ids = a.lane ? (st.lanes[a.lane] || []).slice() : Object.keys(st.tasks);
+    if (a.routinesOnly) ids = ids.filter((id) => st.tasks[id] && st.tasks[id].sched && st.tasks[id].sched.type && st.tasks[id].sched.type !== "off");
+    ids = ids.filter((id) => st.tasks[id]);
+    if (!ids.length) return mcpText("No tasks" + (a.lane ? " in " + a.lane : "") + ".");
+    return mcpText(ids.slice(0, 200).map((id) => "- " + mahamLine(st, id)).join("\n"));
+  }
+  if (name === "add_task") {
+    const title = String(a.title || "").trim().slice(0, 120);
+    if (!title) return mcpText("A title is needed.");
+    const id = "t:" + title + ":" + Math.random().toString(36).slice(2, 5);
+    const t = { id, title, em: "📌", ctx: "", note: "", sched: { type: "off" }, cycle: 0, cycle0: 0,
+      doneAt: [], learned: 0, dismissed: [], moves: 0, custom: true, viaChat: true, placedAt: Date.now() };
+    if (Number.isFinite(Number(a.dueInDays))) { const d = new Date(); d.setHours(0, 0, 0, 0); t.due = d.getTime() + Number(a.dueInDays) * 86400000; }
+    if (MAHAM_BLOCKS.indexOf(a.block) >= 0 && a.block !== "any") t.dueBlock = a.block;
+    if (Number(a.minutes) > 0) t.durMin = Number(a.minutes);
+    st.tasks[id] = t;
+    const lane = MAHAM_LANES.indexOf(a.lane) >= 0 ? a.lane : (Number(a.dueInDays) > 0 ? "week" : "today");
+    st.lanes[lane].push(id);
+    await mahamWrite(v, st);
+    return mcpText("Added: " + mahamLine(st, id));
+  }
+  const id = mahamFind(st, String(a.task || ""));
+  if (!id) return mcpText("No task matches \"" + String(a.task || "") + "\". Use list_tasks to see what is there.");
+  const title = st.tasks[id].title;
+  if (name === "complete_task") {
+    const w = mahamWhere(st, id);
+    if (w) st.lanes[w.lane].splice(w.index, 1);
+    st.tasks[id].doneAt = (st.tasks[id].doneAt || []).concat([Date.now()]).slice(-30);
+    st.log = [{ lid: "l" + Math.random().toString(36).slice(2, 8), id, title, em: st.tasks[id].em || "📌",
+      moves: st.tasks[id].moves || 0, ts: Date.now(), lane: w ? w.lane : null }].concat(st.log).slice(0, 400);
+    await mahamWrite(v, st);
+    return mcpText("Done: " + title);
+  }
+  if (name === "move_task") {
+    if (MAHAM_LANES.indexOf(a.lane) < 0) return mcpText("Lane must be today, week or later.");
+    const w = mahamWhere(st, id);
+    if (w) st.lanes[w.lane].splice(w.index, 1);
+    st.lanes[a.lane].unshift(id);
+    st.tasks[id].moves = (st.tasks[id].moves || 0) + 1;
+    await mahamWrite(v, st);
+    return mcpText("Moved " + title + " to " + a.lane + ".");
+  }
+  if (name === "set_routine") {
+    const block = MAHAM_BLOCKS.indexOf(a.block) >= 0 ? a.block : "any";
+    if (a.every === "off") st.tasks[id].sched = { type: "off" };
+    else if (a.every === "daily") st.tasks[id].sched = { type: "daily", block };
+    else {
+      const days = (Array.isArray(a.days) ? a.days : []).map(Number).filter((d) => d >= 0 && d <= 6);
+      if (!days.length) return mcpText("A weekly routine needs days, 0 for Sunday.");
+      st.tasks[id].sched = { type: "weekly", days, block };
+    }
+    await mahamWrite(v, st);
+    return mcpText((a.every === "off" ? "Routine off for " : "Routine set for ") + title + ". " + mahamLine(st, id));
+  }
+  if (name === "remove_task") {
+    const w = mahamWhere(st, id);
+    if (w) st.lanes[w.lane].splice(w.index, 1);
+    delete st.tasks[id];
+    await mahamWrite(v, st);
+    return mcpText("Deleted: " + title);
+  }
+  return mcpText("Unknown tool.");
+}
+async function mcpHandler(req, res, body) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "content-type, mcp-protocol-version, mcp-session-id, accept");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method === "GET") return res.status(405).json({ error: "POST only" });
+  const msgs = Array.isArray(body) ? body : [body];
+  const out = [];
+  for (const m of msgs) {
+    const id = m && m.id;
+    const method = m && m.method;
+    if (!method) continue;
+    if (method === "initialize") {
+      out.push(mcpOk(id, { protocolVersion: MCP_PROTOCOL, capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: "maham", title: "Maham tasks", version: "1.0.0" } }));
+    } else if (method === "tools/list") {
+      out.push(mcpOk(id, { tools: MCP_TOOLS }));
+    } else if (method === "tools/call") {
+      const p = m.params || {};
+      try { out.push(mcpOk(id, await mcpCall(p.name, p.arguments))); }
+      catch (e) { out.push(mcpOk(id, { content: [{ type: "text", text: String(e.message || e) }], isError: true })); }
+    } else if (method === "ping") {
+      out.push(mcpOk(id, {}));
+    } else if (String(method).indexOf("notifications/") === 0) {
+      // notifications carry no id and expect no reply
+    } else if (id != null) {
+      out.push(mcpErr(id, -32601, "method not found: " + method));
+    }
+  }
+  if (!out.length) return res.status(202).end();
+  return res.status(200).json(out.length === 1 ? out[0] : out);
+}
+
 /* ---------------- reader key, stored server-side ----------------
    He pastes an OpenAI key once in the app; it is kept in his own Upstash, never in
    localStorage and never returned to the browser. A key in a GitHub Pages frontend
@@ -1058,6 +1255,13 @@ async function wainHandler(req, res) {
 export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
+  // A Claude chat reaching in to manage tasks: /api/health-check?mcp=<secret>
+  const mcpKey = (req.query && req.query.mcp) || "";
+  if (mcpKey) {
+    const want = process.env.MCP_SECRET || process.env.DEPLOY_SECRET || "";
+    if (!want || String(mcpKey) !== String(want)) return res.status(401).json({ error: "bad mcp key" });
+    return mcpHandler(req, res, req.body || {});
+  }
   if (req.query && req.query.app === 'wain') return wainHandler(req, res);
   if (req.method === 'POST' || req.method === 'OPTIONS' || (req.query && req.query.app === 'maqadi')) {
     return maqadiHandler(req, res);
