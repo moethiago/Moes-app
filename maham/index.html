@@ -223,7 +223,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.3", BUILD=BUILD_ID+" · 12 Sep 2026";
+var BUILD_ID="2.4", BUILD=BUILD_ID+" · 12 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -595,7 +595,7 @@ function voiceRecord(){
           var r=await call({action:"transcribe",audio:String(fr.result).split(",")[1],mime:m,
             prompt:"A short spoken to-do list for today."},45000);
           closeSheet();
-          if(r&&r.text)voiceReview(r.text); else voiceType("");
+          if(r&&r.text)voiceSmart(r.text); else voiceType("");
         }catch(e){closeSheet();voiceType("");}
       };
       fr.onerror=function(){closeSheet();voiceType("");};
@@ -620,7 +620,7 @@ function voiceLive(SR){
   function finish(){
     if(done)return;done=true;try{rec&&rec.stop();}catch(e){}
     if(!heard.trim()){closeSheet();voiceType("");return;}
-    voiceReview(heard);
+    voiceSmart(heard);
   }
   $("vGo").onclick=finish;
   $("vKb").onclick=function(){done=true;try{rec&&rec.stop();}catch(e){}closeSheet();voiceType(heard);};
@@ -642,8 +642,87 @@ function voiceType(prefill){
     '<textarea id="vIn" rows="5" placeholder="Three things today — clear the inbox, the bank and a car wash. Tomorrow visit the farm and check the irrigation. Dentist on the 20th." style="width:100%;background:var(--bg);border:0;border-radius:12px;padding:12px 14px;font-size:16.5px;line-height:1.45;outline:none;resize:none">'+esc(prefill||"")+'</textarea>'+
     '<div class="cta"><button class="btn" id="vGo">Sort it out</button></div>');
   var ta=$("vIn");
-  $("vGo").onclick=function(){var v=ta.value.trim();if(!v){ta.focus();return;}voiceReview(v);};
+  $("vGo").onclick=function(){var v=ta.value.trim();if(!v){ta.focus();return;}voiceSmart(v);};
   setTimeout(function(){try{ta.focus();}catch(e){}},80);
+}
+/* One spoken sentence can finish a task, move one, set a routine and add two more.
+   The local parser only ever added, so everything else was lost. Ask the backend what
+   he meant, show it as a list he can untick, and apply nothing until he taps Do it.
+   If the call fails, fall through to the old add-only parser rather than losing it. */
+async function voiceSmart(text){
+  var sh=sheet('<h3>Working it out\u2026</h3><div class="muted" style="margin:-8px 0 14px">'+esc(text)+'</div><div style="text-align:center;padding:10px"><span class="spin"></span></div>');
+  try{
+    var list=[];
+    Object.keys(S.tasks).forEach(function(id){
+      var t=S.tasks[id],w=where(S,id);
+      list.push({id:id,title:t.title,lane:w?w.lane:"",sched:hasSched(t)?(t.sched.type||"off"):"off"});
+    });
+    var r=await call({action:"taskvoice",text:text,tasks:list.slice(0,200),today:new Date().toDateString()},30000);
+    closeSheet();
+    if(!r||!r.actions||!r.actions.length){voiceReview(text);return;}
+    voiceActions(r.actions,text);
+  }catch(e){closeSheet();voiceReview(text);}
+}
+function actionWords(a){
+  var t=a.id&&S.tasks[a.id]?S.tasks[a.id].title:a.title;
+  var when=a.dueDays===0?" today":(a.dueDays===1?" tomorrow":(a.dueDays>1?" in "+a.dueDays+" days":""));
+  var blk=a.block&&a.block!=="any"?" \u00b7 "+a.block:"";
+  if(a.op==="done")return["Finished",esc(t)];
+  if(a.op==="remove")return["Drop",esc(t)];
+  if(a.op==="move")return["Move to "+(a.lane||"today"),esc(t)];
+  if(a.op==="unroutine")return["Stop the routine",esc(t)];
+  if(a.op==="routine"){
+    var d=(a.days||[]).map(function(n){return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][n];}).join(", ");
+    return["Every "+(a.every==="daily"?"day":d)+blk,esc(t)];
+  }
+  if(a.op==="schedule")return["Schedule"+when+blk,esc(t)];
+  return["Add to "+(a.lane||"today")+when+blk+(a.dur?" \u00b7 "+a.dur+"m":""),esc(t)];
+}
+function voiceActions(actions,text){
+  var on=actions.map(function(){return true;});
+  function draw(){
+    var rows=actions.map(function(a,i){
+      var w=actionWords(a);
+      return '<button class="vact" data-i="'+i+'" style="display:flex;gap:10px;align-items:flex-start;width:100%;text-align:start;padding:12px 14px;border:none;background:'+(on[i]?"var(--card)":"transparent")+';border-radius:12px;margin-bottom:8px;opacity:'+(on[i]?"1":".45")+'">'
+        +'<span style="font-size:17px">'+(on[i]?"\u2713":"\u25cb")+'</span>'
+        +'<span><b style="display:block;font-size:15px">'+w[1]+'</b><small class="muted">'+w[0]+'</small></span></button>';
+    }).join("");
+    sheet('<h3>This is what I heard</h3><div class="muted" style="margin:-8px 0 12px">\u201c'+esc(text)+'\u201d</div>'
+      +'<div id="vacts">'+rows+'</div>'
+      +'<div class="cta" style="margin-top:6px"><button class="btn" id="vDo">Do it</button></div>'
+      +'<button class="link" id="vEdit" style="display:block;margin:12px auto 0">Type it instead</button>');
+    Array.prototype.forEach.call(document.querySelectorAll(".vact"),function(b){
+      b.onclick=function(){var i=+b.dataset.i;on[i]=!on[i];draw();};
+    });
+    $("vDo").onclick=function(){applyActions(actions.filter(function(a,i){return on[i];}));};
+    $("vEdit").onclick=function(){closeSheet();voiceType(text);};
+  }
+  draw();
+}
+function applyActions(list){
+  var n=0;
+  list.forEach(function(a){
+    var id=a.id;
+    if(a.op==="done"&&id){op("done",{id:id,lid:uid()});n++;return;}
+    if(a.op==="remove"&&id){op("remove",{id:id});n++;return;}
+    if(a.op==="move"&&id){op("move",{id:id,lane:a.lane||"today",index:0});n++;return;}
+    if(a.op==="unroutine"&&id){op("task.update",{id:id,patch:{sched:{type:"off"}}});n++;return;}
+    if(!id&&(a.op==="routine"||a.op==="schedule"||a.op==="add")&&a.title){
+      id="t:"+a.title+":"+uid().slice(-3);
+      op("task.add",{task:{id:id,title:a.title,em:"\ud83d\udccc",ctx:guessCtx(a.title),note:"",sched:{type:"off"},cycle:0,cycle0:0,doneAt:[],learned:0,dismissed:[],moves:0,custom:true,voice:true}});
+    }
+    if(!id)return;
+    var patch={};
+    if(a.dueDays!=null){var d=new Date();d.setHours(0,0,0,0);patch.due=d.getTime()+a.dueDays*86400000;}
+    if(a.block&&a.block!=="any")patch.dueBlock=a.block;
+    if(a.dur)patch.durMin=a.dur;
+    if(a.op==="routine")patch.sched=a.every==="daily"?{type:"daily",block:a.block||"any"}:{type:"weekly",days:a.days||[],block:a.block||"any"};
+    if(Object.keys(patch).length)op("task.update",{id:id,patch:patch});
+    if(a.op!=="routine"&&!where(S,id))op("add",{id:id,lane:a.lane||(a.dueDays>0?"week":"today")});
+    n++;
+  });
+  closeSheet();view="list";render();
+  toast(n+(n===1?" change made":" changes made"),true);
 }
 function voiceReview(text){
   var cat=Object.keys(S.tasks).map(function(id){return S.tasks[id];});
