@@ -223,7 +223,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="3.0", BUILD=BUILD_ID+" · 12 Sep 2026";
+var BUILD_ID="3.1", BUILD=BUILD_ID+" · 12 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -254,6 +254,19 @@ function dueOn(t,date){
   if(sc.type==="daily")return true;
   if(sc.type==="weekly")return (sc.days||[]).indexOf(d.getDay())>=0;
   if(sc.type==="monthly")return d.getDate()===(sc.dom||1);
+  if(sc.type==="interval"){
+    var n=Math.max(1,Math.round(sc.n||1));
+    var day=new Date(d);day.setHours(0,0,0,0);
+    var last=(t.doneAt||[]).length?Math.max.apply(null,t.doneAt):0;
+    if(!last){
+      // never done: due from the day the routine was set, then every n days
+      var from=new Date(sc.from||t.placedAt||Date.now());from.setHours(0,0,0,0);
+      if(day.getTime()<from.getTime())return false;
+      return Math.round((day.getTime()-from.getTime())/DAY)%n===0;
+    }
+    var ld=new Date(last);ld.setHours(0,0,0,0);
+    return Math.round((day.getTime()-ld.getTime())/DAY)>=n;
+  }
   return false;
 }
 function routinesFor(date){
@@ -273,6 +286,7 @@ function schedText(t){
   if(sc.type==="daily")w="Every day";
   else if(sc.type==="weekly"){var ds=(sc.days||[]).slice().sort();w=ds.length===7?"Every day":(ds.length===5&&ds.join()==="0,1,2,3,4"?"Sun–Thu":ds.map(function(i){return DAYS[i];}).join(", "));}
   else if(sc.type==="monthly")w="Day "+(sc.dom||1)+" monthly";
+  else if(sc.type==="interval"){var nn=Math.max(1,Math.round(sc.n||1));w=nn===1?"Every day":"Every "+nn+" days";}
   var b=sc.block&&sc.block!=="any"?blockOf(sc.block).name.toLowerCase():"";
   return w+(sc.time?" at "+sc.time:(b?" · "+b:""));
 }
