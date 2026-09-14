@@ -563,7 +563,7 @@ function mahamLine(st, id) {
   return [
     t.title,
     w ? "[" + w.lane + "]" : "[not on a lane]",
-    sc ? "(" + (sc.type === "daily" ? "every day" : "every " + days) + (sc.block && sc.block !== "any" ? ", " + sc.block : "") + ")" : "",
+    sc ? "(" + (sc.type === "daily" ? "every day" : sc.type === "interval" ? "every " + (sc.n || 1) + " days" : "every " + days) + (sc.block && sc.block !== "any" ? ", " + sc.block : "") + ")" : "",
     t.due ? "due " + new Date(t.due).toDateString() : "",
     t.durMin ? t.durMin + "m" : "",
   ].filter(Boolean).join(" · ") + "  —  id: " + id;
@@ -588,11 +588,12 @@ const MCP_TOOLS = [
     annotations: { title: "Move a task" },
     inputSchema: { type: "object", required: ["task", "lane"], properties: { task: { type: "string" }, lane: { type: "string", enum: MAHAM_LANES } } } },
   { name: "set_routine", title: "Make a task repeat",
-    description: "Turn a Maham task into a repeating routine (daily, or weekly on given days), or switch the repeat off with every='off'. days uses 0 for Sunday.",
+    description: "Turn a Maham task into a repeating routine. every='daily', every='weekly' with days (0 is Sunday), every='interval' with everyDays for a true rolling gap such as every 3 days counted from when it was last done, or every='off' to stop it repeating.",
     annotations: { title: "Set a routine" },
     inputSchema: { type: "object", required: ["task", "every"], properties: {
-      task: { type: "string" }, every: { type: "string", enum: ["daily", "weekly", "off"] },
-      days: { type: "array", items: { type: "number" } }, block: { type: "string", enum: MAHAM_BLOCKS } } } },
+      task: { type: "string" }, every: { type: "string", enum: ["daily", "weekly", "interval", "off"] },
+      days: { type: "array", items: { type: "number" } }, everyDays: { type: "number" },
+      block: { type: "string", enum: MAHAM_BLOCKS } } } },
   { name: "remove_task", title: "Delete a task",
     description: "Delete a task from Maham entirely. This cannot be undone, so confirm with Moaath first.",
     annotations: { title: "Delete a task", destructiveHint: true },
@@ -648,6 +649,12 @@ async function mcpCall(name, args) {
     const block = MAHAM_BLOCKS.indexOf(a.block) >= 0 ? a.block : "any";
     if (a.every === "off") st.tasks[id].sched = { type: "off" };
     else if (a.every === "daily") st.tasks[id].sched = { type: "daily", block };
+    else if (a.every === "interval") {
+      const n = Math.round(Number(a.everyDays));
+      if (!(n >= 1 && n <= 365)) return mcpText("everyDays must be a whole number of days, 1 to 365.");
+      // counted from when it was last actually done, not from a fixed weekday
+      st.tasks[id].sched = { type: "interval", n, block, from: Date.now() };
+    }
     else {
       const days = (Array.isArray(a.days) ? a.days : []).map(Number).filter((d) => d >= 0 && d <= 6);
       if (!days.length) return mcpText("A weekly routine needs days, 0 for Sunday.");
