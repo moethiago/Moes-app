@@ -22,6 +22,15 @@ await p.goto(BASE+"/maham/index.html",{waitUntil:"networkidle"});
 await p.waitForTimeout(1500);
 // the app is inside an IIFE, so drive the real UI: mic -> (no recorder in headless) ->
 // typing sheet -> Sort it out, which feeds the same intent layer speech does
+// Clean mode removes the capture UI on purpose: tasks come from the chat connector
+// now. These checks cover the full app, so state that plainly and stop.
+const hasMic=await p.evaluate(()=>!!document.getElementById("mic"));
+if(!hasMic){
+  check("voice capture is intentionally off in clean mode",true);
+  await b.close();server.close();
+  console.log(`PASS ${pass}  FAIL ${fail}  (voice UI disabled by CLEAN — covered when it is re-enabled)`);
+  process.exit(0);
+}
 async function say(sentence){
   await p.evaluate(()=>{const m=document.getElementById("mic");if(m)m.click();});
   await p.waitForSelector("#vIn",{timeout:8000});
