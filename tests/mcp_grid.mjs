@@ -93,6 +93,21 @@ check("weekly routine set",state().tasks["t:b"].sched.type==="weekly"&&state().t
 check("routine reports back in words",/every Sun\/Wed/.test(textOf(r)),textOf(r));
 r=await call("set_routine",{task:"Water the plants",every:"weekly",days:[]});
 check("weekly with no days is refused",/needs days/.test(textOf(r)));
+// a true rolling gap, not a pair of fixed weekdays
+r=await call("set_routine",{task:"Water the plants",every:"interval",everyDays:3,block:"evening"});
+check("every-3-days accepted",state().tasks["t:b"].sched.type==="interval"&&state().tasks["t:b"].sched.n===3,JSON.stringify(state().tasks["t:b"].sched));
+check("interval reads back in words",/every 3 days/.test(textOf(r)),textOf(r));
+check("interval records when it started",!!state().tasks["t:b"].sched.from);
+r=await call("set_routine",{task:"Water the plants",every:"interval",everyDays:0});
+check("zero days refused",/whole number of days/.test(textOf(r)));
+r=await call("set_routine",{task:"Water the plants",every:"interval",everyDays:2.5});
+check("a fractional gap is rounded, not rejected outright",state().tasks["t:b"].sched.n===3||/whole number/.test(textOf(r)));
+r=await call("set_routine",{task:"Water the plants",every:"interval"});
+check("a missing gap is refused",/whole number of days/.test(textOf(r)));
+r=await call("set_routine",{task:"Water the plants",every:"interval",everyDays:400});
+check("an absurd gap is refused",/whole number of days/.test(textOf(r)));
+r=await call("set_routine",{task:"Water the plants",every:"weekly",days:[0,3],block:"evening"});
+
 r=await call("set_routine",{task:"Clear the inbox",every:"off"});
 check("a routine can be switched off",state().tasks["t:c"].sched.type==="off");
 
