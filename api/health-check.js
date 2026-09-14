@@ -874,7 +874,7 @@ ${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched
       // Free engines first. Groq and Gemini both have free tiers that cover a few
       // spoken sentences a day many times over; Claude is only a last resort so the
       // feature still works if both are missing or down.
-      let out = null, engine = "";
+      let out = null, engine = "", freeErr = [];
       for (const step of ["groq", "gemini", "claude"]) {
         if (out) break;
         try {
@@ -885,7 +885,7 @@ ${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched
           } else if (step === "claude" && ANTHROPIC_KEY) {
             out = parseJSON(textOf(await claude({ model: MODEL, max_tokens: 2000, system, messages: [{ role: "user", content: text }] }))); engine = "claude";
           }
-        } catch (e) { out = null; }
+        } catch (e) { out = null; freeErr.push(step + ": " + String(e.message || e).slice(0, 160)); }
       }
       const arr = Array.isArray(out) ? out : (out && Array.isArray(out.actions) ? out.actions : []);
       const ids = new Set(tasks.map((t) => t.id));
@@ -912,7 +912,7 @@ ${tasks.map((t) => `${t.id} — ${t.title} — ${t.lane || "none"} — ${t.sched
         clean.push({ op, id, title, lane: op === "add" ? (lane || "today") : lane, block, dueDays, dur, every: a.every || null, days });
       }
       await bump("taskvoice", 1);
-      return res.status(200).json({ actions: clean, heard: text, engine });
+      return res.status(200).json({ actions: clean, heard: text, engine, freeErr });
     }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
