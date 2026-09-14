@@ -223,7 +223,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.4", BUILD=BUILD_ID+" · 12 Sep 2026";
+var BUILD_ID="2.5", BUILD=BUILD_ID+" · 12 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -649,7 +649,77 @@ function voiceType(prefill){
    The local parser only ever added, so everything else was lost. Ask the backend what
    he meant, show it as a list he can untick, and apply nothing until he taps Do it.
    If the call fails, fall through to the old add-only parser rather than losing it. */
+/* Free, on the phone, no key and no network: work out the verbs locally. Only what
+   this cannot read is sent anywhere, and only if a free engine exists. */
+function localIntent(text){
+  var raw=String(text||""),out=[],rest=[];
+  var segs=raw.split(/[,،.;\n]|\bثم\b|\bو بعدين\b|\band then\b/i).map(function(x){return x.trim();}).filter(Boolean);
+  var DAYW={"الاحد":0,"الأحد":0,sunday:0,"الاثنين":1,monday:1,"الثلاثاء":2,tuesday:2,"الاربعاء":3,"الأربعاء":3,wednesday:3,
+            "الخميس":4,thursday:4,"الجمعه":5,"الجمعة":5,friday:5,"السبت":6,saturday:6};
+  var BLOCKW=[[/\bfajr\b|الفجر|صباح|morning/i,"early"],[/\bdhuhr\b|\bzuhr\b|الظهر|noon|midday/i,"midday"],
+              [/\basr\b|العصر|afternoon/i,"afternoon"],[/\bmaghrib\b|المغرب|evening|مساء/i,"evening"],
+              [/\bisha\b|العشاء|night|الليل/i,"night"]];
+  function blockOf(t){for(var i=0;i<BLOCKW.length;i++)if(BLOCKW[i][0].test(t))return BLOCKW[i][1];return null;}
+  function findTask(t){
+    var best=null,bs=0;
+    Object.keys(S.tasks).forEach(function(id){
+      var ti=S.tasks[id],a=MHV.toks?MHV.toks(ti.title):String(ti.title).toLowerCase().split(" ");
+      var b=MHV.toks?MHV.toks(t):String(t).toLowerCase().split(" ");
+      if(!a.length||!b.length)return;
+      var hit=0;a.forEach(function(w){if(b.indexOf(w)>=0)hit++;});
+      var sc=hit/a.length;
+      if(sc>bs&&sc>=0.5){bs=sc;best=id;}
+    });
+    return best;
+  }
+  segs.forEach(function(seg){
+    var b=blockOf(seg);
+    if(/\b(done|finished|completed)\b|خلصت|سويت|انتهيت/i.test(seg)){
+      var id=findTask(seg);if(id){out.push({op:"done",id:id,days:[]});return;}
+    }
+    if(/\b(delete|drop|remove|cancel)\b|احذف|الغ|شيل/i.test(seg)){
+      var id2=findTask(seg);if(id2){out.push({op:"remove",id:id2,days:[]});return;}
+    }
+    if(/\b(stop|end)\b.*\b(routine|repeat)\b|وقف.*(روتين|تكرار)|لا تكرر/i.test(seg)){
+      var id3=findTask(seg);if(id3){out.push({op:"unroutine",id:id3,days:[]});return;}
+    }
+    var every=/\bevery day\b|\bdaily\b|كل يوم|يوميا/i.test(seg)?"daily":null,days=[];
+    if(!every){
+      Object.keys(DAYW).forEach(function(k){
+        if(new RegExp("(every|كل)\\s*"+k,"i").test(seg)||new RegExp("كل\\s*"+k).test(seg)){every="weekly";if(days.indexOf(DAYW[k])<0)days.push(DAYW[k]);}
+      });
+    }
+    if(every){
+      var id4=findTask(seg);
+      out.push({op:"routine",id:id4,title:id4?"":seg.replace(/\b(every|كل)\b[^\s]*/gi,"").replace(/[0-9]/g,"").trim().slice(0,60),
+                every:every,days:days,block:b||"any"});
+      return;
+    }
+    if(/\b(push|move|defer|postpone)\b|اجل|أجل|حول/i.test(seg)){
+      var lane=/\blater\b|لاحقا|بعدين/i.test(seg)?"later":(/\bweek\b|الاسبوع|الأسبوع/i.test(seg)?"week":null);
+      var id5=findTask(seg);
+      if(id5&&lane){out.push({op:"move",id:id5,lane:lane,days:[]});return;}
+    }
+    rest.push(seg);
+  });
+  return {actions:out,rest:rest.join(". ")};
+}
 async function voiceSmart(text){
+  // read what we can for nothing, and only ask a service about the remainder
+  var loc={actions:[],rest:text};
+  try{loc=localIntent(text);}catch(e){}
+  if(loc.actions.length&&!loc.rest.trim()){voiceActions(loc.actions,text);return;}
+  if(loc.actions.length&&loc.rest.trim()){
+    var add=null;
+    try{add=MHV.parse?MHV.parse(loc.rest,Date.now(),S):null;}catch(e){}
+    if(add&&add.items&&add.items.length){
+      var extra=add.items.map(function(it){return {op:"add",id:it.matchId||null,title:it.title,lane:it.lane||"today",block:it.block||null,dueDays:null,dur:it.dur||null,days:[]};});
+      voiceActions(loc.actions.concat(extra),text);return;
+    }
+  }
+  return voiceSmartRemote(text,loc.actions);
+}
+async function voiceSmartRemote(text,already){
   var sh=sheet('<h3>Working it out\u2026</h3><div class="muted" style="margin:-8px 0 14px">'+esc(text)+'</div><div style="text-align:center;padding:10px"><span class="spin"></span></div>');
   try{
     var list=[];
@@ -659,9 +729,10 @@ async function voiceSmart(text){
     });
     var r=await call({action:"taskvoice",text:text,tasks:list.slice(0,200),today:new Date().toDateString()},30000);
     closeSheet();
-    if(!r||!r.actions||!r.actions.length){voiceReview(text);return;}
-    voiceActions(r.actions,text);
-  }catch(e){closeSheet();voiceReview(text);}
+    var all=(already||[]).concat((r&&r.actions)||[]);
+    if(!all.length){voiceReview(text);return;}
+    voiceActions(all,text);
+  }catch(e){closeSheet();if(already&&already.length)voiceActions(already,text);else voiceReview(text);}
 }
 function actionWords(a){
   var t=a.id&&S.tasks[a.id]?S.tasks[a.id].title:a.title;
