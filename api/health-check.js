@@ -744,8 +744,8 @@ async function maqadiHandler(req, res) {
     // records audio instead and has it transcribed here — the same free Groq Whisper
     // path Moe's Thoughts already uses.
     if (action === "transcribe") {
-      const key = process.env.GROQ_API_KEY;
-      if (!key) return res.status(500).json({ error: "transcription not configured" });
+      const key = process.env.GROQ_API_KEY, gem = process.env.GEMINI_API_KEY;
+      if (!key && !gem) return res.status(500).json({ error: "transcription not configured" });
       const b64 = String(body.audio || "");
       if (!b64) return res.status(400).json({ error: "no audio" });
       const buf = Buffer.from(b64, "base64");
@@ -753,19 +753,38 @@ async function maqadiHandler(req, res) {
       if (buf.length > 20 * 1024 * 1024) return res.status(413).json({ error: "too long" });
       const mime = String(body.mime || "audio/mp4");
       const ext = /webm/.test(mime) ? "webm" : (/ogg/.test(mime) ? "ogg" : (/wav/.test(mime) ? "wav" : "m4a"));
-      const fd = new FormData();
-      fd.append("file", new Blob([buf], { type: mime }), "note." + ext);
-      fd.append("model", "whisper-large-v3-turbo");
-      fd.append("response_format", "json");
-      fd.append("temperature", "0");
-      if (body.language) fd.append("language", String(body.language).slice(0, 5));
-      if (body.prompt) fd.append("prompt", String(body.prompt).slice(0, 400));
-      const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-        method: "POST", headers: { Authorization: "Bearer " + key }, body: fd,
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) return res.status(502).json({ error: "groq: " + (j.error && j.error.message ? j.error.message : r.status) });
-      return res.status(200).json({ text: String(j.text || "").trim(), engine: "groq" });
+      let lastErr = "";
+      if (key) {
+        const fd = new FormData();
+        fd.append("file", new Blob([buf], { type: mime }), "note." + ext);
+        fd.append("model", "whisper-large-v3-turbo");
+        fd.append("response_format", "json");
+        fd.append("temperature", "0");
+        if (body.language) fd.append("language", String(body.language).slice(0, 5));
+        if (body.prompt) fd.append("prompt", String(body.prompt).slice(0, 400));
+        const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST", headers: { Authorization: "Bearer " + key }, body: fd,
+        });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && String(j.text || "").trim()) return res.status(200).json({ text: String(j.text).trim(), engine: "groq" });
+        lastErr = "groq: " + (j.error && j.error.message ? j.error.message : r.status);
+      }
+      // whichever key this project actually has — Thoughts uses the same pair
+      if (gem) {
+        const mt = /mp4|m4a|aac/.test(mime) ? "video/mp4" : mime;
+        for (const model of [process.env.THOUGHTS_GEMINI_MODEL, "gemini-flash-latest"].filter(Boolean)) {
+          const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent", {
+            method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": gem },
+            body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: mt, data: b64 } }, { text: "Transcribe this recording word for word. Return only the words spoken." }] }] }),
+          });
+          const j = await r.json().catch(() => ({}));
+          const text = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts
+            ? j.candidates[0].content.parts.map((x) => x.text || "").join("") : "";
+          if (r.ok && text.trim()) return res.status(200).json({ text: text.trim(), engine: model });
+          lastErr = "gemini: " + JSON.stringify(j).slice(0, 160);
+        }
+      }
+      return res.status(502).json({ error: lastErr || "transcription failed" });
     }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
