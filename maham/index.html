@@ -223,7 +223,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <script>
 (function(){
 "use strict";
-var BUILD_ID="2.5", BUILD=BUILD_ID+" · 12 Sep 2026";
+var BUILD_ID="3.0", BUILD=BUILD_ID+" · 12 Sep 2026";
 var API="https://moes-app-two.vercel.app/api/health-check";
 var DAY=86400000;
 var LANES=[{id:"today",name:"Today",c:"#D64545"},{id:"week",name:"This week",c:"#C98A12"},{id:"later",name:"Later",c:"#9AA1AD"}];
@@ -314,7 +314,8 @@ var SEED={
 
 
 /* ================= state ================= */
-var S=null,V=0,PIN="",view="pick",histOpen=false,pruning=false,showAll=false,justRendered=false,ctxFilter="",query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
+var CLEAN=true;
+var S=null,V=0,PIN="",view=CLEAN?"list":"pick",histOpen=false,pruning=false,showAll=false,justRendered=false,ctxFilter="",query="",online=navigator.onLine,pending=[],saving=false,sheetEl=null,doneOpen=false;
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
@@ -1070,7 +1071,7 @@ function render(){
   var n=S.lanes.today.length,b=$("bList");
   if(b){if(n>0){b.textContent=ar(n);b.classList.remove("hidden");}else b.classList.add("hidden");}
   document.querySelectorAll(".tabs button").forEach(function(x){x.classList.toggle("on",x.dataset.v===view);});
-  if(view==="pick")rPick();else if(view==="list")rList();else if(view==="rout")rRout();else rDone();
+  if(CLEAN)rList();else if(view==="pick")rPick();else if(view==="list")rList();else if(view==="rout")rRout();else rDone();
 }
 function hd(title,sub,acts){
   var h=$("hd");h.innerHTML='<span class="ver">v'+BUILD_ID+'</span><div class="t"><div><h1>'+title+'</h1><div class="sub">'+sub+'</div></div><div class="act" id="hdact"></div></div>';
@@ -1204,10 +1205,12 @@ function deleteTask(t){
 /* ---- list ---- */
 function rList(){
   var n=total();
-  hd("Tasks",n?"<b>"+S.lanes.today.length+"/"+TODAY_CAP+"</b> today · "+n+" in total":"Nothing yet — capture something",n?[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]);
+
+  if(CLEAN)hd("Tasks",S.lanes.today.length?S.lanes.today.length+" today":"Nothing on today");
+  else hd("Tasks",n?"<b>"+S.lanes.today.length+"/"+TODAY_CAP+"</b> today · "+n+" in total":"Nothing yet — capture something",n?[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]:[{icon:"+",go:true,label:"New task",fn:function(){sheetTask(null,"");}}]);
   var v=$("view");v.innerHTML="";
   var pad=document.createElement("div");pad.className="pad";pad.id="lanes";v.appendChild(pad);
-  var rts=routinesFor();
+  var rts=CLEAN?[]:routinesFor();
   if(rts.length){
     var done=rts.filter(doneToday).length;
     var sec=document.createElement("div");sec.className="sec";sec.style.marginTop="14px";
@@ -1230,13 +1233,13 @@ function rList(){
     var bar=document.createElement("div");bar.className="bar";bar.innerHTML='<span style="width:'+Math.round(done/rts.length*100)+'%"></span>';
     sec.appendChild(box);sec.appendChild(bar);pad.appendChild(sec);
   }
-  var lo=leftovers();
+  var lo=CLEAN?[]:leftovers();
   if(lo.length){
     var rv=document.createElement("div");rv.className="nag";rv.style.background="var(--go-soft)";
     rv.innerHTML='<b>'+lo.length+' left over from before today</b><div class="why" style="color:var(--go)">Clear them in 30 seconds</div><div class="acts"><button id="rvGo" style="flex:1 1 100%">Review them</button></div>';
     pad.appendChild(rv);$("rvGo").onclick=function(){reviewNext(lo,0);};
   }
-  var sk=stuck();
+  var sk=CLEAN?[]:stuck();
   if(sk.length&&!lo.length){
     var it=sk[0];
     var nag=document.createElement("div");nag.className="nag";
@@ -1247,14 +1250,14 @@ function rList(){
     $("nagDel").onclick=function(){deleteTask(it.t);};
   }
   var used={};LANES.forEach(function(L){S.lanes[L.id].forEach(function(id){var t=S.tasks[id];if(t)used[t.ctx||"any"]=(used[t.ctx||"any"]||0)+1;});});
-  if(n&&Object.keys(used).length>1){
+  if(!CLEAN&&n&&Object.keys(used).length>1){
     var ch=document.createElement("div");ch.className="chips";ch.style.padding="0";ch.style.margin="14px 0 0";
     var all=document.createElement("button");all.textContent="All";all.className=ctxFilter?"":"on";all.onclick=function(){ctxFilter="";render();};ch.appendChild(all);
     CTX.forEach(function(c){if(!used[c.id])return;var b=document.createElement("button");b.textContent=(c.id==="any"?"":c.em+" ")+c.name+" "+used[c.id];b.className=ctxFilter===c.id?"on":"";b.onclick=function(){ctxFilter=ctxFilter===c.id?"":c.id;render();};ch.appendChild(b);});
     pad.appendChild(ch);
   }
   if(!n){
-    var em=document.createElement("div");em.className="sec";em.innerHTML='<div class="card muted">Nothing on the list. Type what you need to do in Capture — it lands under Today, and you can drag it anywhere.</div>';pad.appendChild(em);
+    var em=document.createElement("div");em.className="sec";em.innerHTML='<div class="card muted">'+(CLEAN?"Nothing on the list yet.":"Nothing on the list. Type what you need to do in Capture — it lands under Today, and you can drag it anywhere.")+'</div>';pad.appendChild(em);
   } else {
     LANES.forEach(function(L){
       var box=document.createElement("div");box.className="lane";box.dataset.lane=L.id;
@@ -1266,7 +1269,7 @@ function rList(){
       box.appendChild(body);pad.appendChild(box);
     });
   }
-  var recent=(S.log||[]).filter(function(x){return Date.now()-x.ts<DAY;});
+  var recent=CLEAN?[]:(S.log||[]).filter(function(x){return Date.now()-x.ts<DAY;});
   if(recent.length){
     var s=document.createElement("div");s.className="sec";
     s.innerHTML='<h2><button id="dt">Done today ('+recent.length+') '+(doneOpen?"▴":"▾")+'</button></h2>';
@@ -1620,10 +1623,12 @@ function gate(err){
   setTimeout(function(){$("pin").focus();},80);
 }
 function start(){
-  $("gate").classList.add("hidden");$("app").classList.remove("hidden");$("tabs").classList.remove("hidden");
+  $("gate").classList.add("hidden");$("app").classList.remove("hidden");
+  if(CLEAN){view="list";document.body.classList.add("clean");}
+  else $("tabs").classList.remove("hidden");
   document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){view=b.dataset.v;window.scrollTo(0,0);render();};});
   render();flush();
-  try{micButton();promoteDue();}catch(e){console.error(e);}
+  try{if(!CLEAN)micButton();promoteDue();}catch(e){console.error(e);}
   setInterval(poll,6000);setInterval(function(){checkUpdate(false);},5*60000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden){flush();poll();}});
 }
