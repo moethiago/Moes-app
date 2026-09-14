@@ -229,6 +229,8 @@ Keep these physically associated.
 DO NOT invent or guess a product name.
 If the product name is unclear, return "UNCLEAR".
 
+Report the shop's name from the top of the receipt in "store_name" (exactly as printed). Then ignore the rest of the store block.
+
 Ignore:
 - VAT
 - subtotal
@@ -251,6 +253,7 @@ Return ONLY valid JSON:
     }
   ],
   "receipt_total_sar": 0.00,
+  "store_name": "...",
   "piece_count": 0,
   "layout_note": "..."
 }
@@ -295,7 +298,8 @@ function fromScanSchema(out, engine) {
   }
   const sum = lines.reduce((a, l) => a + (l.line_total || 0), 0);
   const tot = Number(out && !Array.isArray(out) ? (out.receipt_total_sar != null ? out.receipt_total_sar : out.total) : 0) || 0;
-  return { engine, store: "Other", store_raw: "", seller: "", date: null, total: tot || null, vat: null,
+  const shop = (out && !Array.isArray(out) && out.store_name) ? String(out.store_name).trim().slice(0, 60) : "";
+  return { engine, store: "Other", store_raw: shop, seller: shop, date: null, total: tot || null, vat: null,
     pieces: Number(out && !Array.isArray(out) ? out.piece_count : 0) || null, layout: (out && !Array.isArray(out) && out.layout_note) ? String(out.layout_note).slice(0, 300) : null,
     lines, sum: Math.round(sum * 100) / 100,
     unreadable: lines.filter((l) => l.confidence === "low").length,
@@ -312,7 +316,7 @@ function fromScanSchema(out, engine) {
    clerk. */
 const MAX_DOUBTS = 3;
 function arTokens(s) {
-  return normAr(s || "").split(" ").filter((t) => t.length > 1 &&
+  return normAr(s || "").replace(/[()\[\]\u060c,\-\u2013\u2014/*]+/g, " ").split(/\s+/).filter((t) => t.length > 1 &&
     ["الدسم","جرام","غرام","جم","مل","لتر","كيلو","كجم","علبه","كيس","باكيت","حبه","حبات","لايت","طازج","فاخر","انتاج","كبير","صغير","وسط"].indexOf(t) < 0);
 }
 /* OCR on thermal Arabic fails at the LETTER, not the word: كزبرة -> زيرة, نادك -> ناشك,
@@ -368,7 +372,7 @@ function solveReceipt({ lines, candidates, total, pieces }) {
       const ns = nameScore(l.name_ar, c.name);
       s += ns * 0.50;                                   // what the print suggests
       s += priceScore(unit, c.price) * 0.35;            // what he has paid here before
-      if (c.inCart) s += 0.15;                          // he said he was buying it
+      if (c.inCart) s += 0.28;                          // he said he was buying it
       if (l.candidate && normAr(l.candidate) === normAr(c.name)) s += 0.45; // the reader's own pick
       // a candidate the print gives no support for is a weak rival, not a real one:
       // otherwise any item with a similar price crowds out the correct match
@@ -384,7 +388,17 @@ function solveReceipt({ lines, candidates, total, pieces }) {
   const out = new Array(rows.length);
   for (const i of order) {
     const r = rows[i];
-    const free = r.scored.filter((x) => x.c.used < x.c.cap);
+    let free = r.scored.filter((x) => x.c.used < x.c.cap);
+    // "حليب نادك" in his cart and a generic "حليب" in the catalogue both fit the line.
+    // The one he was actually buying wins, or the generic absorbs the line and the
+    // branded item is left in the cart as if he never bought it.
+    if (free.length > 1) {
+      const near = free.filter((x) => free[0].s - x.s <= 0.12);
+      const carted = near.filter((x) => x.c.inCart);
+      if (near.length > 1 && carted.length === 1 && !free[0].c.inCart) {
+        free = [carted[0]].concat(free.filter((x) => x !== carted[0]));
+      }
+    }
     const best = free[0], second = free[1];
     const gap = best && second ? best.s - second.s : best ? best.s : 0;
     // a readable name that resembles nothing he buys is a new product, not a question:
