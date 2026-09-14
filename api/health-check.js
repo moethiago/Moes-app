@@ -63,7 +63,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PIN_FULL = (process.env.MAQADI_PIN || (process.env.DEPLOY_SECRET || "").slice(-4)).trim();
 const PIN_LITE = (process.env.MAQADI_PIN_HER || "1234").trim();
-const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset", "setkey", "keystatus"];
+const LITE_BLOCKED = ["receipt", "reconcile", "scan", "compare", "photoset", "setkey", "keystatus", "transcribe"];
 const MODEL = process.env.MAQADI_MODEL || "claude-haiku-4-5-20251001";              // price research: cheap model by default
 const MODEL_RECEIPT = process.env.MAQADI_MODEL_RECEIPT || "claude-sonnet-5";           // receipts: Sonnet. Haiku swaps single Arabic letters on thermal print (كزبرة->زيرة, قشطة->حلبة); Sonnet reads them. ~0.15 SAR/receipt. MODEL is the fallback.
 const BUDGET_SAR = Number(process.env.MAQADI_BUDGET_SAR || 15);                    // monthly cap on paid lookups
@@ -739,6 +739,33 @@ async function maqadiHandler(req, res) {
       if (!/^sk-[A-Za-z0-9_\-]{20,}$/.test(k)) return res.status(400).json({ error: "المفتاح لازم يبدأ ب sk- ويكون كامل" });
       await kv(["SET", KEY_STORE, k]);
       return res.status(200).json({ ok: true, hasKey: true, masked: maskKey(k) });
+    }
+    // iOS disables the browser's speech recognition inside an installed PWA, so Maham
+    // records audio instead and has it transcribed here — the same free Groq Whisper
+    // path Moe's Thoughts already uses.
+    if (action === "transcribe") {
+      const key = process.env.GROQ_API_KEY;
+      if (!key) return res.status(500).json({ error: "transcription not configured" });
+      const b64 = String(body.audio || "");
+      if (!b64) return res.status(400).json({ error: "no audio" });
+      const buf = Buffer.from(b64, "base64");
+      if (!buf.length) return res.status(400).json({ error: "no audio" });
+      if (buf.length > 20 * 1024 * 1024) return res.status(413).json({ error: "too long" });
+      const mime = String(body.mime || "audio/mp4");
+      const ext = /webm/.test(mime) ? "webm" : (/ogg/.test(mime) ? "ogg" : (/wav/.test(mime) ? "wav" : "m4a"));
+      const fd = new FormData();
+      fd.append("file", new Blob([buf], { type: mime }), "note." + ext);
+      fd.append("model", "whisper-large-v3-turbo");
+      fd.append("response_format", "json");
+      fd.append("temperature", "0");
+      if (body.language) fd.append("language", String(body.language).slice(0, 5));
+      if (body.prompt) fd.append("prompt", String(body.prompt).slice(0, 400));
+      const r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: "Bearer " + key }, body: fd,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return res.status(502).json({ error: "groq: " + (j.error && j.error.message ? j.error.message : r.status) });
+      return res.status(200).json({ text: String(j.text || "").trim(), engine: "groq" });
     }
     if (action === "scan") {
       const imgs = (Array.isArray(body.images) && body.images.length ? body.images : [body.image]).filter(Boolean);
