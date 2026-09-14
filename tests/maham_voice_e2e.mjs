@@ -70,19 +70,47 @@ await say("water the plants every sunday evening");
 t=await p.evaluate(()=>document.body.innerText);
 check("a weekly routine reads back as the day",/Every Sun/.test(t),t.slice(0,160));
 await p.evaluate(()=>{document.getElementById("vDo").click();});
+// the phone now understands this itself, so the routine lands on whichever task it
+// matched — assert the routine exists, not which id it chose
 let st2=null;
 for(let i=0;i<40&&!st2;i++){
-  st2=[...SAVED].reverse().find(s=>s&&s.tasks&&first&&s.tasks[first]&&s.tasks[first].sched&&s.tasks[first].sched.type==="weekly");
+  st2=[...SAVED].reverse().find(s=>s&&s.tasks&&Object.values(s.tasks).some(x=>x.sched&&x.sched.type==="weekly"));
   if(!st2)await p.waitForTimeout(250);
 }
 st2=st2||SAVED[SAVED.length-1];
-check("the routine was set on the existing task",!!st2&&first&&st2.tasks[first].sched.type==="weekly",JSON.stringify(st2&&first&&st2.tasks[first].sched));
-check("on the right day",!!st2&&st2.tasks[first].sched.days[0]===0);
+const wk=st2?Object.values(st2.tasks).find(x=>x.sched&&x.sched.type==="weekly"):null;
+check("the routine was set on a task",!!wk,JSON.stringify(wk&&wk.sched));
+check("on the right day",!!wk&&wk.sched.days&&wk.sched.days[0]===0,JSON.stringify(wk&&wk.sched.days));
 // no actions understood -> falls back, never a dead end
 SAVED=[];ACTIONS=[];
 await say("mmmm");
 t=await p.evaluate(()=>document.body.innerText);
 check("an unusable sentence falls back instead of dying",/Type it|heard|task/i.test(t),t.slice(0,120));
+/* ---------- free path: understood on the phone, no network call at all ---------- */
+SAVED=[];VOICE_REQ=null;ACTIONS=[];
+const anyTitle=st?Object.values(st.tasks)[0].title:"";
+await say("done "+anyTitle);
+let ft=await p.evaluate(()=>document.body.innerText);
+check("free: a finish is understood on the phone",/This is what I heard/.test(ft)&&/Finished/.test(ft),ft.slice(0,140));
+check("free: nothing was sent to any service",VOICE_REQ===null,JSON.stringify(VOICE_REQ&&VOICE_REQ.action));
+await p.evaluate(()=>{document.getElementById("vDo").click();});
+await p.waitForTimeout(900);
+check("free: the finish was applied",SAVED.length>0);
+
+VOICE_REQ=null;
+await say("water the plants every sunday evening");
+ft=await p.evaluate(()=>document.body.innerText);
+check("free: a weekly routine is understood on the phone",/Every Sun/.test(ft),ft.slice(0,160));
+check("free: still no network call",VOICE_REQ===null);
+await p.evaluate(()=>{const b=document.getElementById("vDo");if(b)b.click();});
+await p.waitForTimeout(600);
+
+VOICE_REQ=null;
+await say("stretch every day in the morning");
+ft=await p.evaluate(()=>document.body.innerText);
+check("free: a daily routine for a new task is understood",/Every day/.test(ft),ft.slice(0,160));
+check("free: no network call for that either",VOICE_REQ===null);
+
 await b.close();server.close();
 console.log(`PASS ${pass}  FAIL ${fail}`);
 if(fail){console.log("FAILED:\n - "+F.join("\n - "));process.exit(1);}
