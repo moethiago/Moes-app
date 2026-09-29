@@ -60,7 +60,11 @@ check("grocery data survives wain v=188 save", store.get("maqadi:state") === bef
 // Maqadi
 r = await call({ body: { action: "state", pin: "2026" } }); check("maqadi state v=188 items", r.j.v === 188 && r.j.state.items && r.j.role === "full");
 r = await call({ body: { action: "state", pin: "1234" } }); check("maqadi lite role", r.j.role === "lite" && r.j.usage === undefined);
-for (const a of ["receipt", "compare", "photoset"]) { r = await call({ body: { action: a, pin: "1234" } }); check(`maqadi lite blocked ${a} 403`, r.code === 403); }
+for (const a of ["receipt", "reconcile", "scan", "compare", "setkey", "keystatus", "taskstate", "tasksave"]) { r = await call({ body: { action: a, pin: "1234" } }); check(`maqadi lite blocked ${a} 403`, r.code === 403); }
+r = await call({ body: { action: "photoset", pin: "1234", id: "t:wife", data: "data:image/jpeg;base64,AAAA" } }); check("maqadi lite can set item photo", r.code === 200 && r.j.ok === true);
+r = await call({ body: { action: "photos", pin: "1234" } }); check("maqadi lite photo saved + readable", r.code === 200 && r.j.photos["t:wife"] === "data:image/jpeg;base64,AAAA");
+r = await call({ body: { action: "photoset", pin: "1234", id: "t:wife", data: null } }); r = await call({ body: { action: "photos", pin: "2026" } }); check("maqadi lite can remove item photo", r.code === 200 && !("t:wife" in r.j.photos));
+r = await call({ body: { action: "state", pin: "1234" } }); check("maqadi lite still sees no usage/money", r.j.usage === undefined);
 before = snap();
 r = await call({ body: { action: "save", pin: "1234", v: 188, state: { items: { a: 2 }, trips: [] } } });
 check("maqadi save 200 v=189", r.code === 200 && r.j.v === 189);
