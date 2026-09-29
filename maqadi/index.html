@@ -307,7 +307,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="4.4", BUILD=BUILD_ID+" · ١٢ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.5", BUILD=BUILD_ID+" · ٢٩ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -650,7 +650,7 @@ function tile(it){
   var m=nm.match(/^(.*?)\s*\((.*)\)\s*$/);if(m){nm=m[1];detail=m[2];}
   b.innerHTML=(st&&st!=="ok"&&!LITE()?'<span class="dot '+st+'"></span>':"")+'<div class="pic">'+pic+'</div><div class="nm">'+esc(nm)+(detail?'<small>'+esc(detail)+'</small>':"")+(it.usual&&!S.list[it.id]?'<span class="br">'+esc(it.usual)+'</span>':"")+'</div>'+(S.list[it.id]?'<div class="on"><i>✓</i>'+(S.list[it.id].brand?esc(S.list[it.id].brand):"في القائمة")+'</div>':"");
   var pressed=false,timer=null;
-  b.addEventListener("touchstart",function(){pressed=false;if(LITE())return;timer=setTimeout(function(){pressed=true;sheetItem(it);},520);},{passive:true});
+  b.addEventListener("touchstart",function(){pressed=false;timer=setTimeout(function(){pressed=true;sheetItem(it);},520);},{passive:true});
   b.addEventListener("touchend",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("touchmove",function(){clearTimeout(timer);},{passive:true});
   b.addEventListener("contextmenu",function(e){e.preventDefault();});
@@ -965,7 +965,7 @@ function rHome(){
   s4.appendChild(c4);pad.appendChild(s4);
 
   var f=document.createElement("div");f.className="muted";f.style.cssText="text-align:center;padding:26px 0 0;font-size:12px";
-  f.innerHTML='الإصدار '+BUILD+'<br>'+ar(Object.keys(S.items).length)+' صنف · '+ar(S.receipts.length)+' فاتورة<br>رمزك يفتح كل شي · رمز زوجتك يفتح «خلص» و«السلة» فقط<br><button class="link" id="logout">تغيير الرمز على هذا الجوال</button>';
+  f.innerHTML='الإصدار '+BUILD+'<br>'+ar(Object.keys(S.items).length)+' صنف · '+ar(S.receipts.length)+' فاتورة<br>رمزك يفتح كل شي · رمز زوجتك يفتح «خلص» و«السلة» — وتعدّل الأصناف وصورها بالضغط المطوّل<br><button class="link" id="logout">تغيير الرمز على هذا الجوال</button>';
   pad.appendChild(f);$("logout").onclick=function(){localStorage.removeItem("maqadi_pin");location.reload();};
 }
 
@@ -1012,8 +1012,8 @@ function sheetItem(it,presetName){
   var sh=sheet('<h3>'+(isNew?"صنف جديد":"تعديل الصنف")+'</h3>'+
     '<div class="fld"><label>الاسم'+(isNew?' <span style="font-weight:400;opacity:.7">— تقدر تكتب الكمية معه: بيض ٣٠</span>':'')+'</label><input id="fName" placeholder="مثال: حليب المراعي ٢ لتر" value="'+esc(draft.name)+'"></div>'+(isNew?'<div class="hint hidden" id="fHint"></div>':'')+
     '<div class="fld"><label>القسم</label><div class="cats" id="fCats"></div></div>'+
-    (LITE()?"":'<div class="fld"><label>الماركات <span style="font-weight:400;opacity:.7">— تظهر لزوجتك لما تضغط الصنف</span></label><div id="fBrands"></div><button class="link" id="fBrandAdd">＋ أضف ماركة</button></div>')+
-    (LITE()?"":'<div class="fld"><label>الصورة</label><div class="photo"><div class="pv" id="fPv"></div><div><button class="link" id="fPhoto">'+(draft.photo?"غيّر الصورة":"صوّر المنتج عشان تعرفه بسرعة")+'</button>'+(draft.photo?'<br><button class="link" id="fPhotoRm" style="color:var(--late)">احذف الصورة</button>':"")+'</div></div></div>')+
+    '<div class="fld"><label>الماركات'+(LITE()?'':' <span style="font-weight:400;opacity:.7">— تظهر لزوجتك لما تضغط الصنف</span>')+'</label><div id="fBrands"></div><button class="link" id="fBrandAdd">'+(LITE()?"＋ أضيفي ماركة":"＋ أضف ماركة")+'</button></div>'+
+    '<div class="fld"><label>الصورة</label><div class="photo"><div class="pv" id="fPv"></div><div><button class="link" id="fPhoto">'+(draft.photo?(LITE()?"غيّري الصورة":"غيّر الصورة"):(LITE()?"صوّري المنتج عشان تعرفينه بسرعة":"صوّر المنتج عشان تعرفه بسرعة"))+'</button>'+(draft.photo?'<br><button class="link" id="fPhotoRm" style="color:var(--late)">'+(LITE()?"احذفي الصورة":"احذف الصورة")+'</button>':"")+'</div></div></div>'+
     '<div class="cta"><button class="btn" id="fSave">'+(isNew?(LITE()?"أضيفيه للسلة":"أضفه وحطه في القائمة"):"احفظ")+'</button>'+(isNew?"":'<button class="btn red" id="fDel" style="flex:0 0 auto">احذف</button>')+'</div>');
   function pv(){var p=$("fPv");if(!p)return;p.innerHTML=draft.photo?'<img src="'+draft.photo+'">':(draft.em||cat(draft.cat).em);}
   function cats(){var c=$("fCats");c.innerHTML="";CATS.forEach(function(k){var b=document.createElement("button");b.textContent=k.em+" "+k.name;b.style.setProperty("--tint","var(--"+k.id+")");b.className=draft.cat===k.id?"on":"";b.onclick=function(){draft.cat=k.id;cats();pv();};c.appendChild(b);});}
@@ -1023,7 +1023,7 @@ function sheetItem(it,presetName){
   function useExisting(ex,qty,explicit){closeSheet();query="";if(S.list[ex.id]){var nq=explicit?Math.min(99,qty):Math.min(99,(S.list[ex.id].qty||1)+1);op("list.qty",{id:ex.id,qty:nq});toast("«"+ex.name+"» موجود بالقائمة — صار ×"+ar(nq));}else{op("list.add",{id:ex.id,qty:qty||1});toast("«"+ex.name+"» موجود عندكم — أضفناه للقائمة");}}
   function hint(){var h=$("fHint");if(!h)return;var pq=parseQty($("fName").value);var d=findDup(pq.name);if(!d.length){h.classList.add("hidden");h.innerHTML="";return;}h.classList.remove("hidden");h.innerHTML='<span>'+(d.length===1?"موجود عندكم:":"تقصد:")+'</span>';d.slice(0,4).forEach(function(ex){var b=document.createElement("button");b.textContent=(ex.em||"")+" "+ex.name+(S.list[ex.id]?" ✓":"");b.onclick=function(){useExisting(ex,pq.qty,pq.qty>1);};h.appendChild(b);});}
   if(isNew){$("fName").addEventListener("input",hint);hint();}
-  if($("fPhoto"))$("fPhoto").onclick=function(){$("tileIn").onchange=function(){var f=$("tileIn").files[0];$("tileIn").value="";if(!f)return;shrink(f,180,.72,function(url){draft.photo=url;pv();$("fPhoto").textContent="غيّر الصورة";});};$("tileIn").click();};
+  if($("fPhoto"))$("fPhoto").onclick=function(){$("tileIn").onchange=function(){var f=$("tileIn").files[0];$("tileIn").value="";if(!f)return;shrink(f,180,.72,function(url){draft.photo=url;pv();$("fPhoto").textContent=LITE()?"غيّري الصورة":"غيّر الصورة";});};$("tileIn").click();};
   if($("fPhotoRm"))$("fPhotoRm").onclick=function(){draft.photo=null;draft.photoRemoved=true;pv();};
   $("fSave").onclick=async function(){
     var raw=$("fName").value.trim();if(!raw){$("fName").focus();return;}
@@ -1033,12 +1033,12 @@ function sheetItem(it,presetName){
     if(isNew){op("item.add",{item:{id:id,name:name,cat:draft.cat,em:cat(draft.cat).em,cycle:14,cycle0:14,last:null,buys:[],prices:{},learned:0,custom:true,brands:draft.brands.length?draft.brands:seedBrands(name)}});op("list.add",{id:id,qty:pq.qty});}
     else op("item.update",{id:id,patch:{name:name,cat:draft.cat,em:it.em||cat(draft.cat).em,brands:draft.brands,usual:draft.brands.indexOf(it.usual)>=0?it.usual:null}});
     closeSheet();query="";render();
-    if(!LITE()&&draft.photo!==(it?(PHOTOS[it.id]||null):null)){
+    if(draft.photo!==(it?(PHOTOS[it.id]||null):null)){
       try{await call({action:"photoset",id:id,data:draft.photo||null});if(draft.photo)PHOTOS[id]=draft.photo;else delete PHOTOS[id];op("photo.bump");PHOTOS.__v=S.photoV;localStorage.setItem("maqadi_photos",JSON.stringify(PHOTOS));render();}catch(e){toast("الصورة ما اتحفظت");}
     }
     toast(isNew?"صار عندكم صنف جديد":"تم");
   };
-  if($("fDel"))$("fDel").onclick=function(){if(confirm("تحذف «"+it.name+"» من التطبيق؟")){op("item.remove",{id:it.id});closeSheet();}};
+  if($("fDel"))$("fDel").onclick=function(){if(confirm((LITE()?"تحذفين «":"تحذف «")+it.name+"» من التطبيق؟")){op("item.remove",{id:it.id});closeSheet();}};
   setTimeout(function(){if(isNew)$("fName").focus();},50);
 }
 function sheetBrand(it,onList){
@@ -1517,6 +1517,7 @@ function start(){
   $("gate").classList.add("hidden");$("app").classList.remove("hidden");$("tabs").classList.remove("hidden");
   buildTabs();
   render();flush();loadPhotos();
+  setTimeout(function(){try{if(LITE()&&!localStorage.getItem("maqadi_hint_edit")){localStorage.setItem("maqadi_hint_edit","1");toast("جديد: اضغطي مطوّل على أي صنف عشان تعدلينه أو تضيفين له صورة",true,{label:"تمام",fn:function(){}});}}catch(e){}},1500);
   setInterval(poll,5000);
   document.addEventListener("visibilitychange",function(){if(!document.hidden){flush();poll();}});
 }
