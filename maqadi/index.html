@@ -212,6 +212,8 @@ button{cursor:pointer;border:0;background:none;padding:0}
 <input type="file" id="camIn" accept="image/*" capture="environment" class="hidden">
 <input type="file" id="libIn" accept="image/*" multiple class="hidden">
 <input type="file" id="tileIn" accept="image/*" class="hidden">
+<input type="file" id="vidIn" accept="video/*" capture="environment" class="hidden">
+<input type="file" id="vidLib" accept="video/*" class="hidden">
 
 <script>
 (function(){
@@ -307,7 +309,7 @@ var FRUITS=["أفوكادو","موز","تفاح","برتقال","أناناس","
 /* =================================================================
    STATE
    ================================================================= */
-var BUILD_ID="4.5", BUILD=BUILD_ID+" · ٢٩ سبتمبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
+var BUILD_ID="4.6", BUILD=BUILD_ID+" · ١٢ أكتوبر ٢٠٢٦", homeQ="", tripOpen=null, priceBusy={}, refreshing=null, USAGE=null, COST={item:.5}, FRESH=21*DAY;
 var S=null, V=0, PHOTOS={}, PIN="", ROLE="full", view="out", filterCat="", catPage="", query="", online=navigator.onLine, pending=[], saving=false, cartOpen=false, sheetEl=null, rcptUI={mode:"idle"};
 function $(i){return document.getElementById(i);}
 function ar(n){return String(n).replace(/[0-9]/g,function(d){return "٠١٢٣٤٥٦٧٨٩"[+d];});}
@@ -682,7 +684,7 @@ function rTrip(){
   }
   var cta=document.createElement("div");cta.className="cta";
   var b1=document.createElement("button");b1.className="btn";b1.textContent=done.length?"تمت المقاضي ✓ ("+ar(done.length)+")":"تمت المقاضي ✓";b1.onclick=function(){finishTrip();};
-  var b2=document.createElement("button");b2.className="btn soft";b2.style.flex="0 0 auto";b2.textContent="📷 صوّر الفاتورة";b2.onclick=function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();};
+  var b2=document.createElement("button");b2.className="btn soft";b2.style.flex="0 0 auto";b2.textContent="🎥 صوّر الفاتورة";b2.onclick=function(){view="rcpt";rcptUI={mode:"idle"};render();$("vidIn").click();};
   cta.appendChild(b1);cta.appendChild(b2);pad.appendChild(cta);
   var note=document.createElement("div");note.className="muted";note.style.marginTop="10px";note.style.fontSize="12.5px";note.textContent=done.length?"يسجّل اللي أشّرت عليه كمشترى اليوم ويخلّي الباقي في القائمة.":"أشّر على اللي اشتريته وأنت في السوق، ثم اضغط «تمت المقاضي». لو ما أشّرت على شي بنسأل إذا تبي تسجّل القائمة كلها.";pad.appendChild(note);
   rLastTrip(pad,true);
@@ -694,7 +696,7 @@ function finishTrip(){
     var now=Date.now(),trip={id:uid(),ts:now,store:store,items:done.map(function(id){var l=S.list[id]||{};return {id:id,name:S.items[id].name,qty:l.qty||1,brand:l.brand||null};})};
     op("bought",{ids:done,store:store,ts:now});op("trip.add",{trip:trip});
     var left=Object.keys(S.list).length;
-    toast("سجّلنا "+ar(done.length)+" صنف"+(left?" · باقي "+ar(left)+" في القائمة":""),true,{label:"صوّر الفاتورة؟",fn:function(){view="rcpt";rcptUI={mode:"idle"};render();$("camIn").click();}});
+    toast("سجّلنا "+ar(done.length)+" صنف"+(left?" · باقي "+ar(left)+" في القائمة":""),true,{label:"صوّر الفاتورة؟",fn:function(){view="rcpt";rcptUI={mode:"idle"};render();$("vidIn").click();}});
     if(!left){view="out";}render();
   });
 }
@@ -756,6 +758,15 @@ function rSoonCard(pad){
 /* ---------- الفاتورة ---------- */
 function rRcpt(){
   var v=$("view");
+  if(rcptUI.mode==="reading"&&rcptUI.vid){
+    hd("الفاتورة","يقرأ الفيديو على جوالك — ببلاش");
+    var pc=rcptUI.of?Math.round(rcptUI.done/rcptUI.of*100):0;
+    v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px">'
+      +'<span class="spin"></span> <span class="muted">'+(rcptUI.of?'يقرأ '+ar(rcptUI.done)+' من '+ar(rcptUI.of):esc(rcptUI.msg||'يجهّز القارئ…'))+'</span>'
+      +'<div style="margin-top:14px;height:6px;border-radius:3px;background:var(--line,#ddd);overflow:hidden"><div style="height:100%;width:'+pc+'%;background:var(--go)"></div></div>'
+      +'<div class="muted" style="margin-top:12px;font-size:12.5px;line-height:1.7">نقرأ أرقام الأصناف والأسعار بس — خلّ التطبيق مفتوح لين يخلص.</div></div></div></div>';
+    return;
+  }
   if(rcptUI.mode==="reading"){
     hd("الفاتورة","يقرأ الفاتورة…");
     v.innerHTML='<div class="pad"><div class="sec"><div class="card" style="text-align:center;padding:30px">'
@@ -766,18 +777,19 @@ function rRcpt(){
   if(rcptUI.mode==="review")return rReview();
   if(rcptUI.mode==="result")return rResult(rcptUI.rid);
 
-  hd("الفاتورة","صورة واحدة وخلاص",[{icon:"📷",go:true,label:"صوّر",fn:function(){$("camIn").click();}}]);
+  hd("الفاتورة","فيديو واحد وخلاص",[{icon:"🎥",go:true,label:"صوّر",fn:function(){$("vidIn").click();}}]);
   v.innerHTML="";var pad=document.createElement("div");pad.className="pad";v.appendChild(pad);
   if(rcptUI.error){var eb=document.createElement("div");eb.className="sec";eb.innerHTML='<div class="card" style="border:1px solid var(--late);padding:12px;font-size:13.5px;line-height:1.7"><b style="color:var(--late)">ما قدرنا</b><br>'+esc(rcptUI.error)+'</div>';pad.appendChild(eb);}
   var dz=document.createElement("div");dz.className="sec";
   var rt=recentTrip();
-  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">\ud83d\udcf7</div><b>\u0635\u0648\u0651\u0631 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629</b>'
-    +'<p style="line-height:1.85">\u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u064a\u0642\u0631\u0623 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0648\u0627\u0644\u0623\u0633\u0639\u0627\u0631 \u0648\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a.<br>'
-    +'<b style="color:var(--ink)">\u0641\u0627\u062a\u0648\u0631\u0629 \u0637\u0648\u064a\u0644\u0629\u061f</b> \u0635\u0648\u0651\u0631\u0647\u0627 \u0639\u0644\u0649 \u0623\u062c\u0632\u0627\u0621 (\u0644\u063a\u0627\u064a\u0629 \u0664 \u0635\u0648\u0631)\u060c \u062b\u0645 \u0627\u062e\u062a\u0631\u0647\u0627 \u0643\u0644\u0651\u0647\u0627 \u0645\u0631\u0629 \u0648\u0627\u062d\u062f\u0629 \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648.<br>'
-    +'<span style="color:var(--dim)">\u0627\u0641\u0631\u062f\u0647\u0627 \u0639\u0644\u0649 \u0633\u0637\u062d \u0648\u062e\u0644\u0651 \u0627\u0644\u0636\u0648\u0621 \u0645\u0646 \u0627\u0644\u062c\u0646\u0628.</span></p>'
-    +'<button class="btn" id="dzgo" style="margin-top:6px">\ud83d\udcf7 \u0635\u0648\u0651\u0631 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629</button>'
-    +'<button class="btn soft" id="dzlib" style="margin-top:10px;width:100%">\ud83d\uddbc\ufe0f \u0645\u0646 \u0627\u0644\u0627\u0633\u062a\u0648\u062f\u064a\u0648 \u2014 \u0635\u0648\u0631\u0629 \u0623\u0648 \u0623\u0643\u062b\u0631</button>'
-    +'<button class="link" id="dzman" style="display:block;margin:12px auto 0">\u0623\u0648 \u0627\u0643\u062a\u0628 \u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a \u0628\u0646\u0641\u0633\u064a</button></div>';
+  dz.innerHTML='<div class="dz"><div class="cam" id="dzcam">🎥</div><b>صوّر الفاتورة فيديو</b>'
+    +'<p style="line-height:1.85">افردها على سطح، وقرّب الجوال لين الفاتورة تعبّي عرض الشاشة.<br>'
+    +'<b style="color:var(--ink)">ابدأ من فوق ونزّل ببطء لآخرها</b> — ١٠ إلى ١٥ ثانية، مهما كانت طويلة.<br>'
+    +'<span style="color:var(--dim)">نقرأ رقم الصنف والسعر من كل سطر على جوالك. ببلاش، بدون ذكاء اصطناعي.</span></p>'
+    +'<button class="btn" id="dzgo" style="margin-top:6px">🎥 صوّر فيديو</button>'
+    +'<button class="btn soft" id="dzlib" style="margin-top:10px;width:100%">🎞️ فيديو من الاستوديو</button>'
+    +'<button class="link" id="dzpho" style="display:block;margin:12px auto 0">صور بدل الفيديو (الطريقة القديمة)</button>'
+    +'<button class="link" id="dzman" style="display:block;margin:8px auto 0">أو اكتب الإجمالي بنفسك</button></div>';
   pad.appendChild(dz);
   var q=queuedScan();
   if(q){var qb=document.createElement("div");qb.className="sec";
@@ -787,7 +799,7 @@ function rRcpt(){
     $("qdel").onclick=function(){clearScanQ();render();};}
   var kb=document.createElement("button");kb.className="link";kb.style.cssText="display:block;margin:14px auto 0;font-size:12.5px";
   kb.textContent="محرّك القراءة";kb.onclick=function(){sheetReaderKey();};pad.appendChild(kb);
-  $("dzgo").onclick=function(){$("camIn").click();};$("dzcam").onclick=function(){$("camIn").click();};$("dzlib").onclick=function(){$("libIn").click();};$("dzman").onclick=function(){manualReceipt();};
+  $("dzgo").onclick=function(){$("vidIn").click();};$("dzcam").onclick=function(){$("vidIn").click();};$("dzlib").onclick=function(){$("vidLib").click();};$("dzpho").onclick=function(){$("camIn").click();};$("dzman").onclick=function(){manualReceipt();};
   if(S.receipts.length){
     var s=document.createElement("div");s.className="sec";s.innerHTML="<h2>الفواتير السابقة</h2>";
     var card=document.createElement("div");card.className="card";
@@ -1251,6 +1263,246 @@ async function flushScanQ(){
   try{await sendScan(q.slices,q.preview,true);}catch(e){rcptUI={mode:"idle",error:String(e.message||e)};render();}
 }
 window.addEventListener("online",function(){flushScanQ();});
+/* VSCAN-START — video receipt reading, numbers only, on the phone, no AI, no cost.
+   Every line on his receipts prints an item code next to its quantity and amount.
+   We read only those digits from many video frames, line the frames up on the codes,
+   vote each line across frames, and check the lines add up to the printed total. */
+var VS_MONEY=/(?:^|[^\d.,\/:-])(\d{1,5})[.,](\d{2})(?![\d])/g;
+var VS_CODE=/(?:^|[^\d.,\/:%-])(\d{4,14})(?![\d.,\/:%])/g;
+function vsDigits(s){
+  return String(s||"").replace(/[٠-٩]/g,function(d){return String(d.charCodeAt(0)-0x660);})
+    .replace(/[۰-۹]/g,function(d){return String(d.charCodeAt(0)-0x6F0);}).replace(/٫/g,".").replace(/(\d)[Oo]/g,"$10").replace(/[Oo](\d)/g,"0$1");
+}
+function vsTokens(line){
+  var s=" "+vsDigits(line)+" ",m,money=[],codes=[];
+  VS_MONEY.lastIndex=0;while((m=VS_MONEY.exec(s))){money.push(Math.round(Number(m[1]+"."+m[2])*100)/100);VS_MONEY.lastIndex=m.index+m[0].length;}
+  VS_CODE.lastIndex=0;while((m=VS_CODE.exec(s))){codes.push(m[1]);VS_CODE.lastIndex=m.index+m[0].length;}
+  return {money:money,codes:codes};
+}
+function vsEanOk(c){
+  if(!/^\d{13}$/.test(c)&&!/^\d{8}$/.test(c))return null;   // not a barcode format: no opinion
+  var d=c.split("").map(Number),chk=d.pop(),s=0;
+  d.reverse().forEach(function(x,i){s+=x*(i%2===0?3:1);});
+  return (10-s%10)%10===chk;
+}
+/* one frame's OCR lines -> item rows + the single-amount lines after them (totals, VAT) */
+function vsFrame(lines){
+  var T=lines.map(vsTokens),rows=[],used={},i;
+  for(i=0;i<T.length;i++){
+    var t=T[i];
+    if(t.codes.length&&t.money.length>=2){
+      var code=t.codes.slice().sort(function(a,b){return b.length-a.length;})[0];
+      rows.push({code:code,a:t.money[0],b:t.money[1],at:i});used[i]=1;
+    }
+  }
+  // layouts that print the code on its own line, with "amount qty" on the line next to it
+  for(i=0;i<T.length;i++){
+    if(used[i])continue;var t2=T[i];
+    if(t2.money.length===2&&!t2.codes.length){
+      var j=[i-1,i+1].find(function(k){return k>=0&&k<T.length&&!used[k]&&T[k].codes.length===1&&!T[k].money.length;});
+      if(j!=null){rows.push({code:T[j].codes[0],a:t2.money[0],b:t2.money[1],at:Math.min(i,j)});used[i]=used[j]=1;}
+    }
+  }
+  rows.sort(function(x,y){return x.at-y.at;});
+  var last=rows.length?rows[rows.length-1].at:Infinity,tail=[],vat=null,date=null;
+  T.forEach(function(t,k){
+    if(k>last&&t.money.length===1&&!t.codes.length)tail.push(t.money[0]);
+  });
+  lines.forEach(function(l){
+    var s=vsDigits(l),v=s.match(/(?:^|\D)(3\d{13}3)(?!\d)/);if(v)vat=v[1];
+    var d=s.match(/(20\d\d)[\/.-](\d{1,2})[\/.-](\d{1,2})/);if(d)date=d[1]+"-"+("0"+d[2]).slice(-2)+"-"+("0"+d[3]).slice(-2);
+  });
+  return {rows:rows,tail:tail,vat:vat,date:date};
+}
+function vsSame(r,slot){return slot.code[r.code]>0;}
+function vsTop(m,pref){
+  var ks=Object.keys(m);if(!ks.length)return null;
+  return ks.sort(function(a,b){return (m[b]-m[a])||((pref?pref(b):0)-(pref?pref(a):0));})[0];
+}
+/* line the frames up and vote. A slot is one printed receipt line. */
+function vsMerge(frames){
+  var slots=[],gaps=0;
+  function put(slot,r){
+    slot.code[r.code]=(slot.code[r.code]||0)+1;
+    var k=r.a.toFixed(2)+"|"+r.b.toFixed(2);slot.ab[k]=(slot.ab[k]||0)+1;slot.seen++;
+  }
+  frames.forEach(function(f){
+    var R=f.rows;if(!R.length)return;
+    if(!slots.length){R.forEach(function(r){var s={code:{},ab:{},seen:0};put(s,r);slots.push(s);});return;}
+    var best=null;
+    for(var o=-R.length+1;o<=slots.length;o++){
+      var hit=0,ov=0,miss=0;
+      for(var j=0;j<R.length;j++){var p=o+j;if(p<0||p>=slots.length)continue;ov++;if(vsSame(R[j],slots[p]))hit++;else miss++;}
+      if(!ov||!hit)continue;
+      var sc=hit-miss*0.6;
+      if(hit>=Math.max(1,Math.ceil(ov*0.5))&&(!best||sc>best.sc||(sc===best.sc&&o>best.o)))best={o:o,sc:sc,hit:hit};
+    }
+    if(!best){gaps++;best={o:slots.length};}         // no overlap: the pan skipped ahead
+    var pre=[];
+    R.forEach(function(r,j){
+      var p=best.o+j;
+      if(p<0){var s={code:{},ab:{},seen:0};put(s,r);pre.push(s);}
+      else if(p>=slots.length){var s2={code:{},ab:{},seen:0};put(s2,r);slots.push(s2);}
+      else put(slots[p],r);
+    });
+    if(pre.length)slots=pre.concat(slots);
+  });
+  var tails={},vats={},dates={};
+  frames.forEach(function(f){f.tail.forEach(function(v){var k=v.toFixed(2);tails[k]=(tails[k]||0)+1;});if(f.vat)vats[f.vat]=(vats[f.vat]||0)+1;if(f.date)dates[f.date]=(dates[f.date]||0)+1;});
+  var rows=slots.map(function(s){
+        var cs=Object.keys(s.code),sc=function(c){var e=vsEanOk(c);return s.code[c]+(e===true?0.9:0)+c.length*0.01;};
+    var code=cs.sort(function(a,b){return sc(b)-sc(a);})[0],ab=vsTop(s.ab).split("|").map(Number);
+    var agree=s.code[code]/s.seen;
+    var ean=vsEanOk(code);
+    return {code:code,a:ab[0],b:ab[1],seen:s.seen,sure:(ean===true&&agree>=0.5)||(s.seen>=3&&agree>=0.6)};
+  });
+  var seen=rows.map(function(r){return r.seen;}).sort(function(a,b){return a-b;});
+  return {rows:rows,tails:tails,gaps:gaps,vat:vsTop(vats),date:vsTop(dates),seen:seen.length?seen[Math.floor(seen.length/2)]:0};
+}
+function vsC(x){return Math.round(x*100);}
+/* which column is the amount, what the total is, and does it add up */
+function vsSolve(m){
+  var rows=m.rows,sa=0,sb=0;
+  rows.forEach(function(r){sa+=vsC(r.a);sb+=vsC(r.b);});
+  // the total is printed more than once (total, net, paid); take the most repeated amount after the items
+  var tk=Object.keys(m.tails).filter(function(k){return Number(k)>0;});
+  var total=null;
+  if(tk.length){
+    var exact=tk.filter(function(k){return vsC(Number(k))===sa||vsC(Number(k))===sb;});
+    total=Number((exact.length?exact:tk).sort(function(a,b){return (m.tails[b]-m.tails[a])||(Number(b)-Number(a));})[0]);
+  }
+  var amtFirst;
+  if(total!=null&&vsC(total)===sa)amtFirst=true;
+  else if(total!=null&&vsC(total)===sb)amtFirst=false;
+  else{
+    // no exact match: quantity is the column that is mostly whole small numbers
+    var qa=rows.filter(function(r){return r.a<=10&&vsC(r.a)%100===0;}).length,qb=rows.filter(function(r){return r.b<=10&&vsC(r.b)%100===0;}).length;
+    amtFirst=qb>=qa;
+  }
+  var lines=rows.map(function(r){
+    var amt=amtFirst?r.a:r.b,qty=amtFirst?r.b:r.a;if(!(qty>0))qty=1;
+    return {code:r.code,name_ar:null,qty:qty,unit_price:Math.round(amt/qty*100)/100,line_total:amt,sure:r.sure};
+  });
+  var sum=lines.reduce(function(a,l){return a+vsC(l.line_total);},0)/100;
+  var ok=total!=null&&vsC(sum)===vsC(total);
+  return {lines:lines,total:total!=null?total:sum,sum:sum,totalOK:total!=null?ok:null,verified:ok,
+    missing:(total!=null&&!ok&&total>sum)?Math.round((total-sum)*100)/100:0,
+    extra:(total!=null&&!ok&&sum>total)?Math.round((sum-total)*100)/100:0,
+    gaps:m.gaps,vat:m.vat,date:m.date,blurry:rows.length>0&&rows.filter(function(r){return !r.sure;}).length/rows.length>0.15,layout:amtFirst?"amount-qty":"qty-amount"};
+}
+function vsLev1(a,b){
+  if(a===b)return true;if(Math.abs(a.length-b.length)>1)return false;
+  var i=0,j=0,e=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue;}if(++e>1)return false;
+    if(a.length>b.length)i++;else if(b.length>a.length)j++;else{i++;j++;}}
+  return e+(a.length-i)+(b.length-j)<=1;
+}
+/* a long code read one digit off from exactly one code he already confirmed is that code */
+function vsKnown(code,known){
+  if(!code)return null;if(known[code])return code;if(code.length<8)return null;
+  var near=Object.keys(known).filter(function(k){return k.length>=8&&vsLev1(k,code);});
+  return near.length===1?near[0]:null;
+}
+function vsReadLines(frameTexts){return vsSolve(vsMerge(frameTexts.map(function(t){return vsFrame(String(t).split("\n"));})));}
+/* VSCAN-END */
+
+/* VSCAN-BROWSER — video in, frames out, Tesseract (self-hosted in ./ocr) reads each frame on the phone */
+var VS={w:null,loading:null},VS_BASE=new URL("ocr",location.href).href;
+function vsScript(src){return new Promise(function(ok,no){var t=document.createElement("script");t.src=src;t.onload=ok;
+  t.onerror=function(){no(new Error("ما قدرنا نحمّل القارئ — أول مرة يحتاج نت"));};document.head.appendChild(t);});}
+function vsWorker(){
+  if(VS.w)return Promise.resolve(VS.w);
+  if(!VS.loading)VS.loading=(async function(){
+    if(!window.Tesseract)await vsScript(VS_BASE+"/tesseract.min.js?v=5.1.1");
+    var w=await Tesseract.createWorker("eng",1,{workerPath:VS_BASE+"/worker.min.js",corePath:VS_BASE,langPath:VS_BASE,workerBlobURL:false,gzip:true});
+    await w.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});
+    VS.w=w;return w;
+  })().catch(function(e){VS.loading=null;throw e;});
+  return VS.loading;
+}
+function vsOpenVideo(file){
+  return new Promise(function(ok,no){
+    var v=document.createElement("video");v.muted=true;v.playsInline=true;v.setAttribute("playsinline","");v.setAttribute("muted","");v.preload="auto";
+    var t=setTimeout(function(){no(new Error("ما قدرنا نفتح الفيديو"));},20000);
+    v.onloadedmetadata=function(){clearTimeout(t);var p=v.play();if(p&&p.then)p.then(function(){v.pause();ok(v);},function(){ok(v);});else{v.pause();ok(v);}};
+    v.onerror=function(){clearTimeout(t);no(new Error("ما قدرنا نفتح الفيديو"));};
+    v.src=URL.createObjectURL(file);
+  });
+}
+function vsSeek(v,t){return new Promise(function(ok){var done=false;
+  function f(){if(done)return;done=true;v.removeEventListener("seeked",f);setTimeout(ok,40);}
+  v.addEventListener("seeked",f);v.currentTime=t;setTimeout(f,5000);});}
+/* one frame -> a clean black-on-white canvas: enlarge small video, divide out uneven light, stretch */
+function vsPrep(v){
+  var W=v.videoWidth,H=v.videoHeight,s=W<1000?2:1;if(W*s>1700)s=1700/W;
+  var w=Math.round(W*s),h=Math.round(H*s),c=document.createElement("canvas");c.width=w;c.height=h;
+  var x=c.getContext("2d",{willReadFrequently:true});x.drawImage(v,0,0,w,h);
+  var id=x.getImageData(0,0,w,h),d=id.data,n=w*h,g=new Float32Array(n),i,y,X;
+  for(i=0;i<n;i++)g[i]=d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114;
+  var r=Math.max(8,Math.floor(w/40)),W1=w+1,I=new Float64Array(W1*(h+1));
+  for(y=0;y<h;y++){var row=0;for(X=0;X<w;X++){row+=g[y*w+X];I[(y+1)*W1+X+1]=I[y*W1+X+1]+row;}}
+  var hist=new Uint32Array(256),out=new Uint8ClampedArray(n);
+  for(y=0;y<h;y++){var y0=Math.max(0,y-r),y1=Math.min(h,y+r+1);
+    for(X=0;X<w;X++){var x0=Math.max(0,X-r),x1=Math.min(w,X+r+1);
+      var bg=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((y1-y0)*(x1-x0));
+      var q=g[y*w+X]/Math.max(bg,1)*255;q=q>255?255:q;out[y*w+X]=q;hist[out[y*w+X]]++;}}
+  var acc=0,lo=0,hi=255;for(i=0;i<256;i++){acc+=hist[i];if(acc<=n*0.01)lo=i;if(acc<=n*0.60)hi=i;}
+  var k=255/Math.max(1,hi-lo);
+  for(i=0;i<n;i++){var u=(out[i]-lo)*k;u=u<0?0:u>255?255:u;d[i*4]=d[i*4+1]=d[i*4+2]=u;d[i*4+3]=255;}
+  x.putImageData(id,0,0);return c;
+}
+function storeFromVat(vat){
+  if(!vat)return null;var r=(S.receipts||[]).find(function(x){return x.vatNo===vat&&x.store&&x.store!=="Other";});
+  return r?r.store:null;
+}
+async function scanVideo(file){
+  if(!file)return;
+  view="rcpt";rcptUI={mode:"reading",vid:true,done:0,of:0,msg:"يجهّز القارئ…"};render();
+  var v=null;
+  try{
+    var w=await vsWorker();
+    v=await vsOpenVideo(file);
+    var dur=v.duration;
+    if(!isFinite(dur)||dur<2)throw new Error("الفيديو قصير — صوّر الفاتورة من أولها لآخرها ببطء (١٠ ثواني تقريباً).");
+    var N=Math.max(12,Math.min(30,Math.round(dur*2))),texts=[];
+    rcptUI.of=N;render();
+    for(var k=0;k<N;k++){
+      await vsSeek(v,0.15+k*(dur-0.3)/(N-1));
+      var res=await w.recognize(vsPrep(v));texts.push((res&&res.data&&res.data.text)||"");
+      if(view==="rcpt"&&rcptUI.mode==="reading"&&rcptUI.vid){rcptUI.done=k+1;render();}
+    }
+    var r=vsReadLines(texts);
+    if(!r.lines.length)throw new Error("ما لقينا أسطر فيها رقم صنف وسعر. قرّب الجوال لين الفاتورة تعبّي عرض الشاشة، ونزّل ببطء.");
+    openVideoReview(r);
+  }catch(e){rcptUI={mode:"idle",error:String(e.message||e)};render();}
+  finally{if(v){try{URL.revokeObjectURL(v.src);}catch(e){}}}
+}
+/* the video gives numbers; names come from codes he taught it. Unknown codes are one tap each,
+   offered from what he ticked for this trip, closest price first. */
+function openVideoReview(r){
+  var known=S.codes||{},store=storeFromVat(r.vat)||guessStoreForScan(),used={};
+  var hits=r.lines.map(function(l){var k=vsKnown(l.code,known),id=k&&S.items[known[k]]?known[k]:null;if(id)used[id]=1;return {k:k,id:id};});
+  var trip=recentTrip()||(S.trips||[])[0],pool=[];
+  if(trip)pool=(trip.items||[]).map(function(x){return x.id;});
+  Object.keys(S.cart||{}).forEach(function(id){if(pool.indexOf(id)<0)pool.push(id);});
+  pool=pool.filter(function(id){return S.items[id];});
+  var sl=r.lines.map(function(l,i){
+    if(hits[i].id)return {itemId:hits[i].id,how:"code"};
+    var opts=pool.filter(function(id){return !used[id];}).map(function(id){var it=S.items[id],p=lastPriceAt(it,store);
+      return {id:id,name:it.name,d:p?Math.abs(p-l.unit_price):1e6};}).sort(function(a,b){return a.d-b.d;}).slice(0,3)
+      .map(function(o){return {id:o.id,name:o.name};});
+    return {doubt:{options:opts}};
+  });
+  openScanReview({lines:r.lines.map(function(l,i){return {code:hits[i].k||l.code,name_ar:null,qty:l.qty,unit_price:l.unit_price,line_total:l.line_total};}),
+    total:r.total,sum:r.sum,date:r.date,mismatch:r.verified?0:Math.round((r.sum-r.total)*100)/100,engine:"video",
+    solved:{lines:sl,verified:r.verified,totalOK:r.totalOK,sum:r.sum,missing:r.missing}},null);
+  var D=rcptUI.data;
+  D.store=store||"Other";D.vatNo=r.vat||"";D.video=true;D.blurry=!!r.blurry;D.extra=r.extra||0;
+  D.lines.forEach(function(L,i){L.codeSure=!!hits[i].k||r.lines[i].sure;if(!L.printed&&L.code)L.printed="رقم الصنف "+L.code;});
+  render();
+}
+$("vidIn").onchange=function(){var f=$("vidIn").files[0];$("vidIn").value="";if(f)scanVideo(f);};
+$("vidLib").onchange=function(){var f=$("vidLib").files[0];$("vidLib").value="";if(f)scanVideo(f);};
+/* VSCAN-BROWSER-END */
 async function scanReceipt(files){
   if(!files)return;
   if(!Array.isArray(files))files=[files];
@@ -1366,13 +1618,15 @@ function rReview(){
            :(ask?'\u0628\u0627\u0642\u064a '+ar(ask)+' \u0633\u0624\u0627\u0644 \u0628\u0633'
               :'\u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u0645\u0627 \u0637\u0644\u0639 \u2014 \u0631\u0627\u062c\u0639 \u0627\u0644\u0623\u0635\u0646\u0627\u0641')))
       +'</div>'
-      +(R.missing?'<div style="margin-top:10px;font-size:13px;line-height:1.75">\u0642\u0631\u0623\u0646\u0627 '+ar(R.lines.length)+' \u0635\u0646\u0641 \u0628\u0645\u062c\u0645\u0648\u0639 '+money(R.sum)+'\u060c \u0648\u0627\u0644\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 '+money(R.printed)+'. \u0628\u0627\u0642\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0643\u0627\u0646 \u062e\u0627\u0631\u062c \u0627\u0644\u0635\u0648\u0631\u0629.<br><button class="btn" id="vmore" style="margin-top:10px;width:100%">\uff0b \u0632\u0648\u0651\u062f \u0635\u0648\u0631\u0629 \u0644\u0644\u062c\u0632\u0621 \u0627\u0644\u0628\u0627\u0642\u064a</button></div>':'')
+      +(R.video&&(R.missing||R.extra||R.blurry)?'<div style="margin-top:10px;font-size:13px;line-height:1.75">'+(R.missing||R.extra?'قرأنا '+ar(R.lines.length)+' صنف بمجموع '+money(R.sum)+'، والمكتوب '+money(R.printed)+'. ':'')+(R.blurry?'بعض الأرقام ما كانت واضحة. ':'')+'صوّرها مرة ثانية أبطأ وأقرب — أو كمّل وصحّح بنفسك.<br><button class="btn" id="vretake" style="margin-top:10px;width:100%">🎥 صوّر الفيديو مرة ثانية</button></div>':'')
+      +(R.missing&&!R.video?'<div style="margin-top:10px;font-size:13px;line-height:1.75">\u0642\u0631\u0623\u0646\u0627 '+ar(R.lines.length)+' \u0635\u0646\u0641 \u0628\u0645\u062c\u0645\u0648\u0639 '+money(R.sum)+'\u060c \u0648\u0627\u0644\u0645\u0643\u062a\u0648\u0628 \u0639\u0644\u0649 \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 '+money(R.printed)+'. \u0628\u0627\u0642\u064a \u0627\u0644\u0641\u0627\u062a\u0648\u0631\u0629 \u0643\u0627\u0646 \u062e\u0627\u0631\u062c \u0627\u0644\u0635\u0648\u0631\u0629.<br><button class="btn" id="vmore" style="margin-top:10px;width:100%">\uff0b \u0632\u0648\u0651\u062f \u0635\u0648\u0631\u0629 \u0644\u0644\u062c\u0632\u0621 \u0627\u0644\u0628\u0627\u0642\u064a</button></div>':'')
       +(R.totalOK===false&&!R.missing?'<div style="margin-top:6px;font-size:12.5px;color:var(--late)">\u0645\u062c\u0645\u0648\u0639 \u0627\u0644\u0623\u0633\u0637\u0631 '+money(R.sum)+' \u0648\u0627\u0644\u0645\u0643\u062a\u0648\u0628 '+money(R.printed)+'</div>':'')
       +'<button class="link" id="vdet" style="margin-top:12px;font-size:12.5px">'+(rcptUI.open?'\u0627\u062e\u0641\u0650 \u0627\u0644\u0623\u0635\u0646\u0627\u0641':'\u0634\u0648\u0641 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 ('+ar(R.lines.length)+')')+'</button>'
       +'</div>';
     pad.appendChild(vd);
     $("vdet").onclick=function(){rcptUI.open=!rcptUI.open;render();};
     if($("vmore"))$("vmore").onclick=function(){addReceiptPhoto();};
+    if($("vretake"))$("vretake").onclick=function(){$("vidIn").click();};
   }
   // the few questions, if any: one tap each, never an empty field
   if(R.scanned){
@@ -1457,7 +1711,7 @@ function lastPriceAt(it,store){var p=it&&it.prices&&it.prices[store];return p&&p
 function commitReceipt(R){
   var prices={};R.lines.forEach(function(l){if(l.unit!=null&&l.itemId)prices[l.itemId]=l.unit;});
   // remember what each printed code and name means, so the next receipt needs no reading
-  var lc={},ln={};R.lines.forEach(function(l){if(l.itemId){if(l.code)lc[l.code]=l.itemId;if(l.name)ln[normAr(l.name)]=l.itemId;}});
+  var lc={},ln={};R.lines.forEach(function(l){if(l.itemId){if(l.code&&l.codeSure!==false)lc[l.code]=l.itemId;if(l.name)ln[normAr(l.name)]=l.itemId;}});
   if(Object.keys(lc).length||Object.keys(ln).length)op("codes.learn",{codes:lc,names:ln});
   var rc={id:uid(),ts:R.ts,store:R.store||"Other",total:R.total,vat:R.vat||null,seller:R.seller||null,vatNo:R.vatNo||null,fromQR:!!R.fromQR,
     lines:R.lines.map(function(l){return {name:l.name,itemId:l.itemId,qty:l.qty,unit:l.unit,total:l.unit!=null?l.unit*l.qty:0};}),compare:null};
