@@ -15,12 +15,13 @@ const server = http.createServer((req, res) => {
   res.end(fs.readFileSync(f));
 });
 await new Promise((r) => server.listen(0, r));
-const BASE = "http://127.0.0.1:" + server.address().port;
+// BASE=https://moethiago.github.io/Moes-app runs the same checks against the live site (API still mocked, service worker blocked)
+const BASE = process.env.BASE || "http://127.0.0.1:" + server.address().port;
 let pass = 0, fail = 0; const failures = [];
 const check = (n, c, x) => { if (c) pass++; else { fail++; failures.push(n + (x ? " — " + x : "")); } console.log((c ? "PASS " : "FAIL ") + n + (c || !x ? "" : " — " + x)); };
 
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROME || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
 const page = await ctx.newPage();
 page.on("pageerror", (e) => { fail++; failures.push("PAGE ERROR: " + e.message.slice(0, 200)); });
 let DIALOG_ANSWER = "";
