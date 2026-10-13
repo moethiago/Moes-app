@@ -592,7 +592,7 @@ ROOTS.today=function(){
     wk.forEach(function(d){var cls="off",lab="",col="";
       if(d.done){cls="done";col=wc(d.done[0].c);lab=ic("check","sm");}else if(d.plan){cls="plan";col=wc(d.plan.c);lab=esc(d.plan.n.replace(/(\w)\w*\s*(\w?).*/,"$1$2"));}else if(d.miss)cls="miss";
       h+='<div class="wk'+(d.today?" today":"")+'"><div class="pl '+cls+'" style="--c:'+col+'">'+lab+'</div><div class="dn">'+"SMTWTFS"[d.dow]+'</div></div>';});
-    h+='</div><button class="btn main" data-a="start" data-w="'+nx.id+'">'+ic("play")+'Start workout</button></div>';}
+    h+='</div><button class="btn main" id="go" data-a="start" data-w="'+nx.id+'">'+ic("play")+'Start workout</button></div>';}
   h+='<div class="page tabbed" style="padding-top:0">';
   if(!a){h+='<section><h2>Today’s targets</h2><div class="list">';
     nx.x.forEach(function(it){var c=coach(S,it),right;
