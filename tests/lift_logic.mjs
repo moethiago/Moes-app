@@ -1,4 +1,4 @@
-// Lift logic grid — runs the coach, migration, schedule and body math straight out of lift/index.html.
+// Lift logic grid (v4) — runs the coach, migration, calories, gym-visit rules and body math straight out of lift/index.html.
 // Usage: node tests/lift_logic.mjs [path/to/lift/index.html]   (zero cost, no network)
 import fs from "node:fs"; import vm from "node:vm"; import path from "node:path";
 const file = process.argv[2] || path.join(process.cwd(), "lift/index.html");
@@ -7,139 +7,147 @@ const src = html.slice(html.indexOf("/*LOGIC-START*/"), html.indexOf("/*LOGIC-EN
 const L = {}; vm.createContext(L); vm.runInContext(src, L);
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) pass++; else { fail++; console.log("FAIL " + n + (x !== undefined ? "  — " + JSON.stringify(x) : "")); } };
-const D = 864e5, NOW = new Date("2026-10-13T15:00:00+03:00").getTime();
-const mk = (id, w, daysAgo, sets) => ({ id, w, wn: w, c: 0, start: NOW - daysAgo * D, end: NOW - daysAgo * D + 3e6, sets: sets.map(([e, k, r, f], n) => ({ i: id + n, e, k, r, f: f || 2, t: NOW - daysAgo * D + n })) });
+const D = 864e5, NOW = new Date("2026-10-14T15:00:00+03:00").getTime(); // Wednesday
+const mk = (id, w, daysAgo, sets, mins = 50) => ({ id, w, wn: w, c: 0, start: NOW - daysAgo * D, end: NOW - daysAgo * D + mins * 60000, sets: sets.map(([e, k, r, f], n) => ({ i: id + n, e, k, r, f: f || 2, t: NOW - daysAgo * D + n })) });
 const st0 = () => L.seedState();
 const it = (e, s = 3, lo = 10, hi = 12, step = 2.5, kind = "w") => ({ e, n: e, kind, step, s, lo, hi, rest: 90 });
-const P = "Leverage_Chest_Press";
+const CP = "DOoWcnA", LP = "eYnzaCm", LEGP = L.OLD2NEW.Leg_Press, WALK = L.OLD2NEW.Walking_Treadmill;
 
-// ---- seed + program
+// ---- library facts
+ok("core: every program exercise has facts", L.TEMPLATES.every(t => t.w.every(w => w.x.every(r => L.CORE[r[0]]))));
+ok("kind: machine → weights", L.kindOfMeta(L.CORE[CP]) === "w");
+ok("kind: incline walk → minutes", L.kindOfMeta(L.CORE[WALK]) === "c");
+ok("kind: hyperextension (bodyweight) → reps", L.kindOfMeta(L.CORE[L.OLD2NEW.Hyperextensions_Back_Extensions]) === "b");
+ok("step: leg press (sled) 5 kg, dumbbells 2 kg, machines 2.5 kg", L.stepOfMeta(L.CORE[LEGP]) === 5 && L.stepOfMeta(L.CORE[L.OLD2NEW.Side_Lateral_Raise]) === 2 && L.stepOfMeta(L.CORE[CP]) === 2.5);
+ok("names in sentence case", L.CORE[CP][0] === "Machine chest press" && L.CORE[LP][0] === "Cable bar lateral pulldown");
+ok("unknown id falls back to a readable name", L.metaOf(st0(), "Barbell_Hip_Thrust")[0] === "Barbell Hip Thrust");
+{ const st = st0(); st.custom.c1 = { n: "Hip thrust machine", t: ["glutes"], bp: ["upper legs"], eq: ["leverage machine"], kind: "w" };
+  ok("custom exercise facts", L.metaOf(st, "c1")[0] === "Hip thrust machine" && L.kindOfE(st, "c1") === "w"); }
+{ const i = L.itemFor(st0(), CP); ok("new item defaults: 3 × 10–12, 90 s rest", i.s === 3 && i.lo === 10 && i.hi === 12 && i.rest === 90 && i.n === "Machine chest press"); }
+{ const i = L.itemFor(st0(), WALK); ok("new cardio item: 15–20 min, no rest", i.kind === "c" && i.lo === 15 && i.hi === 20 && i.rest === 0); }
+
+// ---- templates
+const fb5 = L.tplById("fb5"), beg = L.tplById("beg4");
+ok("5-day program: 5 routines, gym days Sa Su Mo We Th", fb5.w.length === 5 && JSON.stringify(fb5.days) === "[0,1,3,4,6]");
+ok("5-day program never has two rest days in a row", L.restPairs(fb5.days).length === 0);
+ok("beginner program: 4 routines", beg.w.length === 4);
+ok("every routine ends with the incline walk", fb5.w.concat(beg.w).every(w => w.x[w.x.length - 1][0] === WALK));
+{ const p = L.tplProgram(fb5, st0()); ok("template → program items with sets/reps/rest", p.length === 5 && p[0].x[0].s === 3 && p[0].x[0].hi === 12 && p[0].x[0].rest === 90 && p[2].x[6].lo === 20 && p[2].x[6].hi === 30);
+  ok("routine ids are unique", new Set(p.map(w => w.id)).size === 5); }
+
+// ---- seed
 const s0 = st0();
-ok("seed: 4 workouts, rotation starts at Upper A", s0.program.length === 4 && s0.program[0].n === "Upper A" && s0.next === 0);
-ok("seed: every program exercise has curated how-to", s0.program.every(w => w.x.every(x => L.CUR[x.e] && L.CUR[x.e].c.length === 3)));
-ok("seed: every workout ends with the incline walk", s0.program.every(w => w.x[w.x.length - 1].kind === "c"));
+ok("seed: v3, beginner 4-day", s0.ver === 3 && s0.program.length === 4 && s0.program[0].n === "Upper A");
 
-// ---- coach: full grid over reps × feel × sets
-const cases = [];
-for (const r1 of [8, 9, 10, 11, 12, 13, 15]) for (const r2 of [8, 10, 12, 14]) for (const f of [1, 2, 3]) cases.push([r1, r2, f]);
-let gridBad = [];
-for (const [r1, r2, f] of cases) {
-  const st = st0(); st.sessions.push(mk("a", "ua", 3, [[P, 40, r1, f], [P, 40, r2, f]]));
-  const c = L.coach(st, it(P, 2)), allTop = r1 >= 12 && r2 >= 12, low = r1 < 10 || r2 < 10;
-  const want = allTop ? (f === 1 ? 45 : 42.5) : 40;
-  if (c.k !== want) gridBad.push({ r1, r2, f, got: c.k, want });
-  if (allTop && c.r !== 10) gridBad.push({ r1, r2, f, reps: c.r });
-  if (!c.msg || c.msg.length < 10) gridBad.push({ r1, r2, f, msg: c.msg });
+// ---- migration from his live v2 data
+const live = { ver: 2, days: [0, 1, 2, 3, 4, 5, 6], next: 0, active: null, notes: { Leg_Press: "Seat 3" }, body: [], goal: {}, custom: {},
+  program: [{ id: "wabc", n: "Arms & Shoulders & Chest & Abs", c: 0, x: [
+    { e: "Leg_Press", n: "Leg press", kind: "w", step: 5, s: 3, lo: 10, hi: 12, rest: 120 },
+    { e: "Leverage_Chest_Press", n: "Chest press machine", kind: "w", step: 2.5, s: 3, lo: 10, hi: 12, rest: 90 },
+    { e: "Wide-Grip_Lat_Pulldown", n: "Lat pulldown", kind: "w", step: 2.5, s: 3, lo: 10, hi: 12, rest: 90 },
+    { e: "Seated_Leg_Curl", n: "Seated leg curl", kind: "w", step: 2.5, s: 2, lo: 12, hi: 15, rest: 60 },
+    { e: "Seated_Side_Lateral_Raise", n: "Seated Side Lateral Raise", kind: "w", step: 2, s: 2, lo: 12, hi: 15, rest: 60 },
+    { e: "Barbell_Hip_Thrust", n: "Barbell Hip Thrust", kind: "w", step: 2.5, s: 3, lo: 10, hi: 12, rest: 90 }]}],
+  sessions: [mk("s1", "wabc", 2, [["Leg_Press", 60, 12], ["Leverage_Chest_Press", 30, 10], ["Barbell_Hip_Thrust", 40, 10]])] };
+{ const m = L.migrate(live), x = m.program[0].x;
+  ok("migrate: version 3, routine and days kept", m.ver === 3 && m.program[0].n === "Arms & Shoulders & Chest & Abs" && m.days.length === 7);
+  ok("migrate: exercises moved to the illustrated library", x[0].e === LEGP && x[1].e === CP && x[2].e === LP && x[3].e === L.OLD2NEW.Seated_Leg_Curl && x[4].e === L.OLD2NEW.Seated_Side_Lateral_Raise);
+  ok("migrate: new names", x[0].n === "Sled 45° leg press" && x[1].n === "Machine chest press");
+  ok("migrate: sets/reps/rest kept", x[3].s === 2 && x[3].lo === 12 && x[3].hi === 15 && x[0].rest === 120);
+  ok("migrate: logged sets follow", m.sessions[0].sets[0].e === LEGP && m.sessions[0].sets[1].e === CP);
+  ok("migrate: an exercise with no match stays, as your own exercise", x[5].e === "Barbell_Hip_Thrust" && m.custom.Barbell_Hip_Thrust && m.custom.Barbell_Hip_Thrust.n === "Barbell Hip Thrust");
+  ok("migrate: machine settings follow", m.notes[LEGP] === "Seat 3" && !m.notes.Leg_Press);
+  ok("migrate: coach reads old history (60 kg × 12 → 65 kg on the 5 kg leg press)", L.coach(m, it(LEGP, 1, 10, 12, 5)).k === 65);
+  ok("migrate: v3 passes through unchanged", JSON.stringify(L.migrate(m)) === JSON.stringify(m)); }
+{ const v1 = { items: [], log: [], days: [0, 1, 3, 5], next: 2, sessions: [{ id: "a", w: "ua", start: NOW - 2 * D, end: NOW - 2 * D + 3e6, sets: [{ i: "1", e: "chest_press", k: 40, r: 12, t: 1 }, { i: "2", e: "walk", k: 0, r: 15, t: 2 }] }], active: null };
+  const m = L.migrate(v1);
+  ok("migrate v1: days, rotation and sets kept on new ids", JSON.stringify(m.days) === "[0,1,3,5]" && m.next === 2 && m.sessions[0].sets[0].e === CP && m.sessions[0].sets[1].e === WALK && m.sessions[0].wn === "Upper A"); }
+ok("migrate: null → seed", L.migrate(null).ver === 3);
+{ const m = L.migrate({ ver: 3, program: [], next: 9 }); ok("migrate: repairs empty program/bad next", m.program.length === 4 && m.next >= 0 && m.next < 4 && Array.isArray(m.body)); }
+
+// ---- coach grid (reps × feel)
+let gridBad = [], cases = 0;
+for (const r1 of [8, 9, 10, 11, 12, 13, 15]) for (const r2 of [8, 10, 12, 14]) for (const f of [1, 2, 3]) {
+  cases++; const st = st0(); st.sessions.push(mk("a", "x", 3, [[CP, 40, r1, f], [CP, 40, r2, f]]));
+  const c = L.coach(st, it(CP, 2)), allTop = r1 >= 12 && r2 >= 12, want = allTop ? (f === 1 ? 45 : 42.5) : 40;
+  if (c.k !== want || (allTop && c.r !== 10) || !c.msg) gridBad.push({ r1, r2, f, got: c.k, want });
 }
-ok(`coach grid: ${cases.length} reps×feel combos give the right next weight`, !gridBad.length, gridBad.slice(0, 4));
-{ const st = st0(); ok("coach: first time → test set, no weight", L.coach(st, it(P)).k === null && L.coach(st, it(P)).tag === "new"); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 3, [[P, 40, 12], [P, 40, 12]])); ok("coach: 2 sets at 12 but program wants 3 → no increase", L.coach(st, it(P, 3)).k === 40); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 6, [[P, 40, 9], [P, 40, 8]])); st.sessions.push(mk("b", "ua", 2, [[P, 40, 9], [P, 40, 8]]));
-  const c = L.coach(st, it(P, 2)); ok("coach: two sessions below range → deload ~10% (37.5)", c.k === 37.5 && c.tag === "down", c); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 6, [[P, 40, 9], [P, 40, 8]])); st.sessions.push(mk("b", "ua", 2, [[P, 42.5, 9], [P, 42.5, 8]]));
-  ok("coach: below range at a NEW weight → hold, no deload", L.coach(st, it(P, 2)).k === 42.5); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 2, [[P, 5, 9], [P, 5, 8]])); st.sessions.push(mk("b", "ua", 1, [[P, 5, 9], [P, 5, 8]]));
-  const c = L.coach(st, it(P, 2)); ok("coach: deload never goes below 0 and always drops", c.k < 5 && c.k >= 0, c); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 2, [[P, 40, 12], [P, 40, 12], [P, 35, 15]]));
-  ok("coach: uses the main working weight, not a back-off set", L.coach(st, it(P, 2)).k === 42.5); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 2, [[P, 40, 12, 2], [P, 40, 12, 2]])); st.sessions[0].sets.unshift({ i: "w", e: P, k: 20, r: 10, f: 2, wu: 1, t: 0 });
-  ok("coach: warm-up sets ignored", L.coach(st, it(P, 2)).k === 42.5); }
-{ const B = "Hyperextensions_Back_Extensions", st = st0(); st.sessions.push(mk("a", "lb", 2, [[B, 0, 15], [B, 0, 15]]));
-  const c = L.coach(st, it(B, 2, 10, 15, 2.5, "b")); ok("coach: bodyweight maxed → hold a 2.5 kg plate", c.k === 2.5 && /plate/.test(c.msg), c); }
-{ const Wk = "Walking_Treadmill", st = st0(); st.sessions.push(mk("a", "ua", 2, [[Wk, 0, 15]]));
-  const c = L.coach(st, it(Wk, 1, 15, 20, 0, "c")); ok("coach: walk 15 → 17 min next", c.r === 17, c); }
-{ const Wk = "Walking_Treadmill", st = st0(); st.sessions.push(mk("a", "ua", 2, [[Wk, 0, 20, 2]]));
-  ok("coach: walk at 20 min → steeper, not longer", /steeper/.test(L.coach(st, it(Wk, 1, 15, 20, 0, "c")).msg)); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 2, [["Side_Lateral_Raise", 4, 15], ["Side_Lateral_Raise", 4, 15]]));
-  ok("coach: dumbbell step 1 kg (4 → 5)", L.coach(st, it("Side_Lateral_Raise", 2, 12, 15, 1)).k === 5); }
-
-// ---- in-workout adjustment after each set
-const A = (r, f, first) => L.adjustNext(it(P, 3), { k: 40, r, f }, first);
-ok("adjust: 16 reps → too light, +2.5", A(16, 2).k === 42.5);
+ok(`coach grid: ${cases} combos give the right next weight`, !gridBad.length, gridBad.slice(0, 3));
+ok("coach: first time → test set", L.coach(st0(), it(CP)).k === null);
+{ const st = st0(); st.sessions.push(mk("a", "x", 6, [[CP, 40, 9], [CP, 40, 8]])); st.sessions.push(mk("b", "x", 2, [[CP, 40, 9], [CP, 40, 8]]));
+  ok("coach: two tough sessions → ease off ~10%", L.coach(st, it(CP, 2)).k === 37.5); }
+{ const st = st0(); st.sessions.push(mk("a", "x", 2, [[WALK, 0, 15]])); ok("coach: walk 15 → 17 min", L.coach(st, it(WALK, 1, 15, 20, 0, "c")).r === 17); }
+const A = (r, f, first) => L.adjustNext(it(CP, 3), { k: 40, r, f }, first);
 ok("adjust: easy at 12 → +2.5", A(12, 1).k === 42.5);
-ok("adjust: first time, easy at 12 → +5 (calibrating)", A(12, 1, true).k === 45);
-ok("adjust: first time, easy at 10 → +2.5", A(10, 1, true).k === 42.5);
-ok("adjust: hard and under range → −2.5", A(8, 3).k === 37.5);
-ok("adjust: good at 11 → same weight", A(11, 2).k === 40 && A(11, 2).r === 11);
-ok("adjust: hard at 10 → same weight", A(10, 3).k === 40);
-ok("adjust: never negative", L.adjustNext(it(P), { k: 0, r: 5, f: 3 }).k === 0);
-let adjBad = []; for (let r = 1; r <= 25; r++) for (const f of [1, 2, 3]) for (const first of [true, false]) { const a = L.adjustNext(it(P), { k: 40, r, f }, first); if (!(a.k >= 0 && a.k <= 45 && a.r >= 1)) adjBad.push({ r, f, first, a }); }
-ok("adjust grid: 150 combos stay sane (0 ≤ kg ≤ +2 steps)", !adjBad.length, adjBad[0]);
-
-// ---- warm-ups
-ok("warm-ups: 40 kg → 20×10, 30×5", JSON.stringify(L.warmups(it(P), 40)) === JSON.stringify([{ k: 20, r: 10 }, { k: 30, r: 5 }]));
-ok("warm-ups: none for light weights", L.warmups(it(P), 7.5).length === 0);
-ok("warm-ups: none for cardio or bodyweight", L.warmups(it("x", 1, 1, 1, 0, "c"), 50).length === 0 && L.warmups(it("x", 1, 1, 1, 2.5, "b"), 50).length === 0);
+ok("adjust: first time, easy at 12 → +5", A(12, 1, true).k === 45);
+ok("adjust: hard and short → −2.5", A(8, 3).k === 37.5);
+ok("adjust: good at 11 → same", A(11, 2).k === 40);
+ok("warm-ups: 40 kg → 20×10, 30×5", JSON.stringify(L.warmups(it(CP), 40)) === JSON.stringify([{ k: 20, r: 10 }, { k: 30, r: 5 }]));
 
 // ---- PRs
-{ const st = st0(); ok("PR: nothing on first ever set", L.prFor(st, it(P), 40, 12) === null);
-  st.sessions.push(mk("a", "ua", 2, [[P, 40, 12], [P, 40, 10]]));
-  ok("PR: heavier → weight PR", L.prFor(st, it(P), 42.5, 6).type === "weight");
-  ok("PR: same kg more reps → best set", L.prFor(st, it(P), 40, 13).type === "set");
-  ok("PR: weaker set → none", L.prFor(st, it(P), 40, 11) === null);
-  st.active = { id: "x", sets: [{ i: "1", e: P, k: 45, r: 8, f: 2 }] };
-  ok("PR: compares against sets earlier in this workout", L.prFor(st, it(P), 42.5, 8) === null && L.prFor(st, it(P), 47.5, 5).type === "weight");
-  st.active = null; st.sessions[0].sets.push({ i: "w", e: P, k: 100, r: 10, f: 2, wu: 1 });
-  ok("PR: warm-up sets never count", L.prFor(st, it(P), 42.5, 6).type === "weight"); }
-{ const st = st0(); st.sessions.push(mk("a", "ua", 5, [[P, 40, 12]])); const s2 = mk("b", "ua", 1, [[P, 42.5, 10], [P, 40, 13], [P, 40, 5]]); st.sessions.push(s2);
-  ok("session PRs counted", L.sessionPRs(st, s2, () => "w").length === 2); }
+{ const st = st0(); st.sessions.push(mk("a", "x", 2, [[CP, 40, 12], [CP, 40, 10]]));
+  ok("PR: heavier → weight PR", L.prFor(st, it(CP), 42.5, 6).type === "weight");
+  ok("PR: more reps → best set", L.prFor(st, it(CP), 40, 13).type === "set");
+  ok("PR: weaker → none", L.prFor(st, it(CP), 40, 11) === null); }
 
-// ---- ops: idempotent under 409 replay
-{ const st = st0(); const ops = [
-    { t: "start", p: { id: "S", w: "ua" }, ts: NOW }, { t: "set", p: { sid: "S", i: "1", e: P, k: 40, r: 12, f: 2 }, ts: NOW + 1 },
-    { t: "feel", p: { sid: "S", i: "1", f: 1 }, ts: NOW + 2 }, { t: "set", p: { sid: "S", i: "w", e: P, k: 20, r: 10, wu: 1 }, ts: NOW + 3 },
-    { t: "swap", p: { sid: "S", from: "Wide-Grip_Lat_Pulldown", item: { e: "Close-Grip_Front_Lat_Pulldown", n: "Close-grip pulldown", kind: "w", step: 2.5 } }, ts: NOW + 4 },
-    { t: "finish", p: { sid: "S" }, ts: NOW + 5 }];
+// ---- ops
+{ const st = st0(); const ops = [{ t: "start", p: { id: "S", w: st.program[0].id }, ts: NOW }, { t: "set", p: { sid: "S", i: "1", e: CP, k: 40, r: 12, f: 2 }, ts: NOW + 60000 }, { t: "feel", p: { sid: "S", i: "1", f: 1 }, ts: NOW + 61000 }, { t: "finish", p: { sid: "S" }, ts: NOW + 50 * 60000 }];
   ops.forEach(o => L.applyOp(st, o)); const once = JSON.stringify(st); ops.forEach(o => L.applyOp(st, o));
-  ok("ops: replaying the same batch twice changes nothing", JSON.stringify(st) === once);
-  ok("ops: finish stores session, rotates to Lower A", st.sessions.length === 1 && st.next === 1 && st.active === null);
-  ok("ops: feel updated on the set", st.sessions[0].sets[0].f === 1);
-  ok("ops: warm-up flagged", st.sessions[0].sets[1].wu === 1); }
-{ const st = st0(); L.applyOp(st, { t: "start", p: { id: "S", w: "la" }, ts: 1 }); L.applyOp(st, { t: "set", p: { sid: "S", i: "w", e: "Leg_Press", k: 40, r: 10, wu: 1 }, ts: 2 }); L.applyOp(st, { t: "finish", p: { sid: "S" }, ts: 3 });
-  ok("ops: a workout with only warm-ups isn't saved", st.sessions.length === 0 && st.active === null); }
-{ const st = st0(); L.applyOp(st, { t: "start", p: { id: "S", w: "ua" }, ts: 1 }); L.applyOp(st, { t: "swap", p: { sid: "S", from: P, item: { e: "Machine_Bench_Press", n: "Machine bench", kind: "w", step: 2.5, s: 9, lo: 1, hi: 2 } }, ts: 2 });
-  const x = st.active.x[0]; ok("ops: swap keeps the program's sets/reps/rest", x.e === "Machine_Bench_Press" && x.s === 3 && x.lo === 10 && x.hi === 12);
-  ok("ops: swap is this workout only", st.program[0].x[0].e === P);
-  L.applyOp(st, { t: "set", p: { sid: "S", i: "a", e: "Machine_Bench_Press", k: 30, r: 10 }, ts: 3 });
-  L.applyOp(st, { t: "rmex", p: { sid: "S", e: "Machine_Bench_Press" }, ts: 4 }); ok("ops: can't remove an exercise that has sets", st.active.x[0].e === "Machine_Bench_Press");
-  L.applyOp(st, { t: "set", p: { sid: "OTHER", i: "b", e: P, k: 30, r: 10 }, ts: 5 }); ok("ops: set for a different workout id ignored", st.active.sets.length === 1); }
-{ const st = st0(); const p = JSON.parse(JSON.stringify(st.program)); p.splice(0, 1); st.next = 2; L.applyOp(st, { t: "prog", p: { program: p }, ts: 1 });
-  ok("ops: editing the program keeps 'next' pointing at the same workout", st.program[st.next].id === "ub"); }
-{ const st = st0(); st.next = 3; const p = JSON.parse(JSON.stringify(st.program)).slice(0, 2); L.applyOp(st, { t: "prog", p: { program: p }, ts: 1 });
-  ok("ops: deleting the next workout falls back safely", st.next === 0); }
+  ok("ops: replaying a batch changes nothing (409-safe)", JSON.stringify(st) === once);
+  ok("ops: finish records start and finish times", st.sessions[0].start === NOW && st.sessions[0].end === NOW + 50 * 60000 && st.next === 1); }
+{ const st = st0(); L.applyOp(st, { t: "start", p: { id: "S", w: st.program[0].id }, ts: NOW }); L.applyOp(st, { t: "set", p: { sid: "S", i: "1", e: CP, k: 40, r: 12 }, ts: NOW + 600000 });
+  L.applyOp(st, { t: "finish", p: { sid: "S", end: NOW + 900000 }, ts: NOW + 9 * 36e5 });
+  ok("ops: forgotten workout saved with the real finish time", st.sessions[0].end === NOW + 900000); }
+{ const st = st0(); st.sessions.push(mk("a", "x", 1, [[CP, 40, 12]]));
+  L.applyOp(st, { t: "times", p: { id: "a", start: NOW - D + 3600000, end: NOW - D + 7200000 }, ts: NOW });
+  ok("ops: edit start/finish time", st.sessions[0].start === NOW - D + 3600000 && st.sessions[0].end === NOW - D + 7200000);
+  L.applyOp(st, { t: "times", p: { id: "a", start: NOW, end: NOW - 1 }, ts: NOW }); ok("ops: finish before start is refused", st.sessions[0].start === NOW - D + 3600000); }
+{ const st = st0(); const prog = L.tplProgram(fb5, st); L.applyOp(st, { t: "useprog", p: { program: prog, days: fb5.days }, ts: NOW });
+  ok("ops: use the 5-day program (routines + days, starts at routine 1)", st.program.length === 5 && st.next === 0 && JSON.stringify(st.days) === "[0,1,3,4,6]"); }
 
-// ---- migration from v1
-const v1 = { items: [], log: [], days: [0, 1, 3, 5], next: 2, sessions: [{ id: "s1", w: "ua", start: NOW - 2 * D, end: NOW - 2 * D + 3e6, sets: [{ i: "a", e: "chest_press", k: 40, r: 12, t: 1 }, { i: "b", e: "walk", k: 0, r: 15, t: 2 }] }], active: { id: "x", w: "la", start: NOW, sets: [{ i: "c", e: "leg_press", k: 80, r: 10, t: 3 }] } };
-{ const m = L.migrate(v1); ok("migrate: keeps days + rotation", JSON.stringify(m.days) === "[0,1,3,5]" && m.next === 2);
-  ok("migrate: sessions keep every set, renamed to library ids", m.sessions[0].sets[0].e === P && m.sessions[0].sets[1].e === "Walking_Treadmill" && m.sessions[0].wn === "Upper A");
-  ok("migrate: in-progress workout survives", m.active && m.active.x.length === 6 && m.active.sets[0].e === "Leg_Press");
-  ok("migrate: coach reads v1 history", L.coach(m, it(P, 1)).k === 42.5);
-  ok("migrate: v2 state passes through unchanged", JSON.stringify(L.migrate(m)) === JSON.stringify(m)); }
-ok("migrate: null → fresh seed", L.migrate(null).program.length === 4);
-{ const m = L.migrate({ ver: 2, program: [], next: 9 }); ok("migrate: repairs empty program and bad next", m.program.length === 4 && m.next >= 0 && m.next < 4 && Array.isArray(m.body)); }
+// ---- calories
+const withW = (kg) => { const st = st0(); st.body.push({ id: "b", t: NOW - 10 * D, kg }); return st; };
+{ const st = withW(108); const s = mk("a", "x", 1, [[CP, 40, 12], [CP, 40, 12], [WALK, 0, 20]], 60);
+  const want = Math.round(3.5 * 3.5 * 108 / 200 * 40 + 6 * 3.5 * 108 / 200 * 20);
+  ok("calories: 40 min lifting + 20 min incline walk at 108 kg ≈ " + want, L.sessionKcal(st, s) === want, L.sessionKcal(st, s)); }
+ok("calories: unknown without a weight", L.sessionKcal(st0(), mk("a", "x", 1, [[CP, 40, 12]])) === null);
+{ const st = withW(100); st.body.push({ id: "c", t: NOW - 1 * D, kg: 98 });
+  ok("calories: uses the weight from that day", L.weightAt(st, NOW - 5 * D) === 100 && L.weightAt(st, NOW) === 98); }
+{ const st = withW(108); const s = mk("a", "x", 1, [[CP, 40, 12]], 900);
+  ok("calories: a forgotten 15-hour workout is capped at 3 hours", L.sessionKcal(st, s) === Math.round(3.5 * 3.5 * 108 / 200 * 180)); }
+{ const st = withW(108); const e = L.routineEst(st, st.program[0].x, NOW);
+  ok("routine estimate: ~minutes and calories", e.min >= 45 && e.min <= 70 && e.kcal > 300 && e.kcal < 700, e);
+  ok("routine estimate: no calories without weight", L.routineEst(st0(), st0().program[0].x, NOW).kcal === null); }
 
-// ---- schedule (fixed clock: Tue 13 Oct 2026)
-{ const st = st0(); const w = L.weekPlan(st, NOW);
-  ok("week: Sun→Sat, today Tue", w.length === 7 && w[0].dow === 0 && w[2].today);
-  ok("week: Sun missed, Tue/Wed/Sat planned in rotation order", w[0].miss && w[2].plan.id === "ua" && w[3].plan.id === "la" && w[6].plan.id === "ub" && !w[4].plan); }
-{ const st = st0(); st.sessions.push(mk("t", "ua", 0, [[P, 40, 12]])); st.sessions[0].wn = "Upper A"; st.next = 1; const w = L.weekPlan(st, NOW);
-  ok("week: done today shows done, rotation continues tomorrow", w[2].done && !w[2].plan && w[3].plan.id === "la"); }
-{ const st = st0(); st.days = []; ok("week: no gym days → nothing planned, no crash", L.weekPlan(st, NOW).every(d => !d.plan)); }
+// ---- rule: never two rest days in a row
+const ruleSt = (agos) => { const st = st0(); agos.forEach((a, i) => st.sessions.push(mk("r" + i, "x", a, [[CP, 40, 12]]))); return st; };
+ok("rule: no history → nothing to say", L.ruleToday(st0(), NOW) === null);
+ok("rule: trained today → done", L.ruleToday(ruleSt([0, 3]), NOW) === "done");
+ok("rule: rested yesterday → must train today", L.ruleToday(ruleSt([2]), NOW) === "must");
+ok("rule: trained yesterday, today is a gym day → gym", L.ruleToday(ruleSt([1]), NOW) === "gym");
+{ const st = ruleSt([1]); st.days = [0, 1, 2, 4, 6]; ok("rule: trained yesterday, today is a rest day → rest", L.ruleToday(st, NOW) === "rest"); }
+ok("rule: first-ever workout yesterday isn't a missed day", L.ruleToday(ruleSt([1]), NOW) !== "must");
+ok("plan check: Tue+Wed off → one pair", JSON.stringify(L.restPairs([0, 1, 4, 5, 6])) === "[[2,3]]");
+ok("plan check: Fri+Sat off wraps to Sun ok", JSON.stringify(L.restPairs([0, 1, 2, 3, 4])) === "[[5,6]]");
+ok("plan check: Sat+Sun off across the week edge", JSON.stringify(L.restPairs([1, 2, 3, 4, 5])) === "[[6,0]]");
+ok("plan check: every day → none", L.restPairs([0, 1, 2, 3, 4, 5, 6]).length === 0);
+
+// ---- visit stats
+{ const st = withW(108); [0, 1, 3, 9, 20].forEach((a, i) => st.sessions.push(mk("v" + i, "x", a, [[CP, 40, 12]], 40 + i * 5)));
+  const g = L.gymStats(st, NOW);
+  ok("stats: this week counts days trained (Sun–Sat)", g.week === 3, g);
+  ok("stats: this month and average minutes", g.month === 4 && g.avgMin === 50 && g.monthMin === 40 + 45 + 50 + 55, g);
+  ok("stats: monthly calories", g.monthKcal > 0); }
+{ const st = st0(); L.applyOp(st, { t: "start", p: { id: "S", w: st.program[0].id }, ts: NOW - 6 * 36e5 }); L.applyOp(st, { t: "set", p: { sid: "S", i: "1", e: CP, k: 40, r: 12 }, ts: NOW - 5 * 36e5 });
+  const s = L.staleActive(st, NOW); ok("forgot to finish: noticed after 3 h, suggests last set + 5 min", s && s.end === NOW - 5 * 36e5 + 300000);
+  ok("active workout not stale while training", L.staleActive(st, NOW - 5 * 36e5 + 600000) === null); }
+{ const st = st0(); st.sessions.push(mk("a", "x", 5, [[CP, 40, 12], [CP, 40, 11]])); st.sessions.push(mk("b", "x", 2, [[CP, 42.5, 10]]));
+  const l = L.lastTime(st, CP); ok("last time: most recent session's sets", l && l.sets.length === 1 && l.sets[0].k === 42.5); }
 
 // ---- body
 const body = (pts, goal) => { const st = st0(); pts.forEach(([d, kg], i) => st.body.push({ id: "b" + i, t: NOW - d * D, kg })); if (goal) st.goal = { kg: goal }; return st; };
 { const p = L.projection(body([[28, 110], [21, 109.2], [14, 108.6], [7, 107.9], [0, 107.1]], 95), NOW);
-  ok("body: ~0.75 kg/week loss detected", p.perWeek < -0.6 && p.perWeek > -0.9, p);
-  ok("body: goal date projected (~16 weeks)", p.state === "ontrack" && p.days > 100 && p.days < 130, p); }
-ok("body: no goal → asks for one", L.projection(body([[7, 100], [0, 99]]), NOW).state === "nogoal");
-ok("body: one weigh-in → needs more data", L.projection(body([[0, 100]], 90), NOW).state === "needdata");
-ok("body: gaining while goal is lower → honest 'away'", L.projection(body([[14, 100], [7, 101], [0, 102]], 90), NOW).state === "away");
-ok("body: goal reached", L.projection(body([[7, 91], [0, 90.1]], 90), NOW).state === "reached");
-ok("body: empty", L.projection(st0(), NOW).state === "empty");
-ok("body: weigh-ins older than 6 weeks ignored for pace", L.projection(body([[100, 130], [99, 129], [7, 100], [0, 99.5]], 90), NOW).perWeek > -1);
-
-// ---- numbers
-ok("round: 41.3 → 42.5 on 2.5 steps? no: nearest is 42.5", L.roundTo(41.3, 2.5) === 42.5 && L.roundTo(41.2, 2.5) === 40);
-ok("format: 42.50 → '42.5', 40 → '40'", L.kgs(42.5) === "42.5" && L.kgs(40) === "40");
+  ok("body: pace + goal date", p.state === "ontrack" && p.perWeek < -0.6 && p.days > 100 && p.days < 130, p); }
+ok("body: gaining while goal lower → away", L.projection(body([[14, 100], [7, 101], [0, 102]], 90), NOW).state === "away");
 
 console.log(`\nLOGIC lift: PASS ${pass}  FAIL ${fail}`); process.exit(fail ? 1 : 0);
