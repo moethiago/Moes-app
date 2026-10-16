@@ -1261,8 +1261,10 @@ async function wainHandler(req, res) {
 const LIFT_KEY = "lift:state";
 const LIFT_PINS = [process.env.LIFT_PIN || PIN_FULL].filter(Boolean);
 const LIFT_LITE_BLOCKED = ["snapshot","restore"];
-async function liftRead() {
-  const raw = await kv(["GET", LIFT_KEY]);
+// Second, separate Lift for a friend (lift2/): own data key, own code. Moaath's Lift is untouched.
+const LIFT_INSTANCES = { f: { key: "lift-f:state", pins: [process.env.LIFT_FRIEND_PIN || "250958"] } };
+async function liftRead(key = LIFT_KEY) {
+  const raw = await kv(["GET", key]);
   if (!raw) return { v: 0, state: null };
   try { return JSON.parse(raw); } catch { return { v: 0, state: null }; }
 }
@@ -1275,35 +1277,38 @@ async function liftHandler(req, res) {
     const body = req.method === "POST" ? (typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})) : {};
     const action = body.action || req.query.action || "state";
     const pin = String(req.headers["x-pin"] || body.pin || req.query.pin || "").trim();
-    const role = pin && pin === LIFT_PINS[0] ? "full" : (pin && LIFT_PINS[1] && pin === LIFT_PINS[1] ? "lite" : null);
+    const inst = (req.query && LIFT_INSTANCES[req.query.u]) || null;
+    if (req.query && req.query.u && !inst) return res.status(404).json({ error: "no such lift" });
+    const KEY = inst ? inst.key : LIFT_KEY, PINS = inst ? inst.pins : LIFT_PINS;
+    const role = pin && pin === PINS[0] ? "full" : (pin && PINS[1] && pin === PINS[1] ? "lite" : null);
     if (!role) return res.status(401).json({ error: "pin" });
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
-    if (action === "state") { const s = await liftRead(); return res.status(200).json({ ...s, role }); }
+    if (action === "state") { const s = await liftRead(KEY); return res.status(200).json({ ...s, role }); }
     if (action === "save") {
-      const cur = await liftRead();
+      const cur = await liftRead(KEY);
       if (Number(body.v) !== Number(cur.v)) return res.status(409).json({ conflict: true, ...cur });
       const st = body.state || {};
       if (JSON.stringify(st).length > 900000) return res.status(413).json({ error: "too big" });
       const nv = cur.v + 1;
-      await kv(["SET", LIFT_KEY, JSON.stringify({ v: nv, state: st, ts: Date.now() })]);
+      await kv(["SET", KEY, JSON.stringify({ v: nv, state: st, ts: Date.now() })]);
       return res.status(200).json({ v: nv });
     }
     if (action === "snapshot" && role === "full") {
       const name = String(body.name || "manual").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32);
-      const raw = await kv(["GET", LIFT_KEY]);
-      await kv(["SET", LIFT_KEY.replace(":state", ":snapshot:") + name, JSON.stringify({ ts: Date.now(), state: raw })]);
+      const raw = await kv(["GET", KEY]);
+      await kv(["SET", KEY.replace(":state", ":snapshot:") + name, JSON.stringify({ ts: Date.now(), state: raw })]);
       return res.status(200).json({ ok: true, name, bytes: (raw || "").length });
     }
     if (action === "restore" && role === "full") {
       const name = String(body.name || "").replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 32);
-      const raw = await kv(["GET", LIFT_KEY.replace(":state", ":snapshot:") + name]);
+      const raw = await kv(["GET", KEY.replace(":state", ":snapshot:") + name]);
       if (!raw) return res.status(404).json({ error: "no snapshot" });
       const snap = JSON.parse(raw);
       if (!snap.state) return res.status(404).json({ error: "empty snapshot" });
-      const cur = await liftRead();
+      const cur = await liftRead(KEY);
       const st = JSON.parse(snap.state);
-      await kv(["SET", LIFT_KEY, JSON.stringify({ v: (cur.v || 0) + 1, state: st.state, ts: Date.now() })]);
+      await kv(["SET", KEY, JSON.stringify({ v: (cur.v || 0) + 1, state: st.state, ts: Date.now() })]);
       return res.status(200).json({ ok: true, v: (cur.v || 0) + 1 });
     }
     return res.status(400).json({ error: "unknown action" });
