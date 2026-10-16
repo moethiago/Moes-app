@@ -85,12 +85,29 @@ export default async function handler(req, res) {
     }
 
     const putData = await putRes.json();
+    // Mirrors: a friend's copy of an app gets every update automatically (same file, own data).
+    //   lift/<file>  →  lift2/<file>
+    let mirror;
+    const MIRRORS = { 'lift/': 'lift2/' };
+    for (const from in MIRRORS) {
+      if (!filePath.startsWith(from)) continue;
+      const to = MIRRORS[from] + filePath.slice(from.length);
+      try {
+        const mBase = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME + '/contents/' + to;
+        const mGet = await fetch(mBase + '?ref=' + BRANCH, { headers: { 'Authorization': 'token ' + githubToken, 'Accept': 'application/vnd.github.v3+json' } });
+        const mBody = { message: message + ' (mirror → ' + to + ')', content: putBody.content, branch: BRANCH };
+        if (mGet.ok) mBody.sha = (await mGet.json()).sha;
+        const mPut = await fetch(mBase, { method: 'PUT', headers: { 'Authorization': 'token ' + githubToken, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify(mBody) });
+        mirror = mPut.ok ? { ok: true, path: to } : { ok: false, path: to, error: (await mPut.text()).slice(0, 200) };
+      } catch (e) { mirror = { ok: false, path: to, error: e.message }; }
+    }
     return res.status(200).json({
       ok:      true,
       path:    filePath,
       sha:     putData.content && putData.content.sha,
       commit:  putData.commit && putData.commit.sha,
       message: message,
+      ...(mirror ? { mirror } : {}),
     });
 
   } catch (e) {
