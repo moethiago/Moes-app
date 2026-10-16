@@ -71,4 +71,22 @@ r = await call({ query: { app: "wain" }, body: { action: "state", pin: FULL } })
 r = await call({ query: {}, body: { action: "state", pin: FULL } }); check("maqadi still routes to maqadi (v=188)", r.j.v === 188);
 r = await call({ query: {}, method: "GET", body: {} }); check("GET health still works", r.code === 200 && "ok" in r.j);
 
+// friend's Lift (lift2/, ?u=f): separate data, separate code, can't see or touch Moaath's Lift
+const FQ = { app: "lift", u: "f" }, FPIN = "250958", FK = "lift-f:state";
+const mine = store.get(K);
+r = await call({ query: FQ, body: { action: "state", pin: FPIN } }); check("friend: clean start (v=0, no state)", r.code === 200 && r.j.v === 0 && r.j.state === null && r.j.role === "full");
+r = await call({ query: FQ, body: { action: "state", pin: FULL } }); check("friend lift refuses Moaath's code", r.code === 401);
+r = await call({ query: FQ, body: { action: "state", pin: LITE } }); check("friend lift refuses wife's code", r.code === 401);
+r = await call({ query: Q, body: { action: "state", pin: FPIN } }); check("Moaath's lift refuses friend's code", r.code === 401);
+r = await call({ query: { app: "lift", u: "zz" }, body: { action: "state", pin: FPIN } }); check("unknown lift id 404", r.code === 404);
+before = snap();
+r = await call({ query: FQ, body: { action: "save", pin: FPIN, v: 0, state: { items: [{ id: "f" }] } } }); check("friend save v=1", r.code === 200 && r.j.v === 1);
+check("friend save landed in its own key", JSON.parse(store.get(FK)).state.items[0].id === "f");
+check("friend save did NOT touch Moaath's lift", store.get(K) === mine);
+check("friend save did NOT touch neighbours", snap() === before);
+r = await call({ query: FQ, body: { action: "save", pin: FPIN, v: 0, state: {} } }); check("friend stale save 409", r.code === 409 && r.j.v === 1);
+r = await call({ query: FQ, body: { action: "snapshot", pin: FPIN, name: "f1" } }); check("friend snapshot in own namespace", r.code === 200 && store.has("lift-f:snapshot:f1") && !store.has("lift:snapshot:f1"));
+r = await call({ query: FQ, body: { action: "restore", pin: FPIN, name: "t1" } }); check("friend can't restore Moaath's snapshot", r.code === 404);
+r = await call({ query: Q, body: { action: "state", pin: FULL } }); check("Moaath's lift still reads his data", r.code === 200 && JSON.stringify({ v: r.j.v, state: r.j.state }) === JSON.stringify({ v: JSON.parse(mine).v, state: JSON.parse(mine).state }));
+
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
