@@ -1,7 +1,7 @@
 name: backend tests
 on:
   push:
-    paths: ["api/**", "tests/**", "maqadi/**", "maham/**", "wain/**", "thoughts/**"]
+    paths: ["api/**", "tests/**", "maqadi/**", "maham/**", "wain/**", "thoughts/**", "lift/**", "lift2/**"]
   schedule:
     - cron: "0 4 * * *"   # daily 07:00 Riyadh
   workflow_dispatch:
@@ -16,6 +16,10 @@ jobs:
         run: node tests/backend_contract.mjs ./api/health-check.js
       - name: brief contract grid (offline, mocked RSS + model, zero cost)
         run: node tests/brief_contract.mjs ./api/feed.js
+      - name: lift contract (offline) + deploy mirror grid
+        run: (cd tests && node lift_contract.mjs ../api/health-check.js) && node tests/deploy_mirror.mjs ./api/deploy.js
+      - name: friend's Lift (lift2/) is identical to Lift (lift/)
+        run: diff -r --exclude=library.json lift lift2
       - name: wait for Vercel
         if: github.event_name == 'push'
         run: sleep 90
