@@ -233,6 +233,16 @@ with sync_playwright() as p:
     tap2("[data-a='delroutine']", 700)
     ok("delete routine (tap twice)", len(prog("Push day")) == 0 and title() == "ROOT:Routines")
 
+    # ================= ready-made: StrengthLog 5-day full body (proposed, confirm in app) =================
+    ok("StrengthLog program listed first under Ready-made", "StrengthLog Full Body" in pg.locator("[data-p='template']").first.inner_text())
+    before = json.dumps(ST()["program"]); tap("[data-p='template'][data-id='slhf5']", 900)
+    sl_txt = pg.inner_text("#view")
+    ok("StrengthLog page: 5 workouts, 5 gym days, body figures", pg.locator(".rcard").count() == 5 and pg.locator(".pills .pill").count() == 5 and pg.locator(".rcard svg.bmap").count() == 5)
+    ok("StrengthLog page shows source, science and beginner start", all(k in sl_txt for k in ["Andreas Abelsson", "Schoenfeld 2019", "2 sets", "raise them to 3"]))
+    ok("StrengthLog page fits phone width", noscroll())
+    pg.screenshot(path="/tmp/slhf5_top.png"); pg.evaluate("window.scrollTo(0,document.body.scrollHeight)"); pg.wait_for_timeout(300); pg.screenshot(path="/tmp/slhf5_bottom.png"); pg.evaluate("window.scrollTo(0,0)")
+    tap("[data-a='usetpl']", 150); ok("StrengthLog: first tap only asks (Tap again)", "Tap again" in pg.inner_text("[data-a='usetpl']") and json.dumps(ST()["program"]) == before)
+    tap(".hdr .back", 600); ok("leaving without confirming changes nothing", json.dumps(ST()["program"]) == before)
     # ================= ready-made: 5-day full body =================
     tap("[data-p='template'][data-id='fb5']", 900)
     ok("5-day program page: 5 routines, 5 days", pg.locator(".rcard").count() == 5 and pg.locator(".pills .pill").count() == 5 and back_reachable())
@@ -448,7 +458,7 @@ with sync_playwright() as p:
     p2 = c2.new_page(); p2.route("**/api/health-check**", api); p2.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
     p2.goto(f"http://127.0.0.1:{PORT}/index.html"); p2.wait_for_timeout(800); p2.fill("#pin", "2026"); p2.click("#pinGo"); p2.wait_for_timeout(1500)
     ready = p2.evaluate("navigator.serviceWorker.ready.then(r=>!!r.active)"); p2.wait_for_timeout(1500)
-    cached = p2.evaluate("caches.open('lift-v4.1').then(c=>c.keys()).then(k=>k.map(r=>new URL(r.url).pathname.split('/').pop()))")
+    cached = p2.evaluate("caches.keys().then(n=>caches.open(n.find(x=>x.startsWith('lift-v')))).then(c=>c.keys()).then(k=>k.map(r=>new URL(r.url).pathname.split('/').pop()))")
     ok("offline worker installs and keeps the app + exercise list", ready and "index.html" in cached and "exercises.json" in cached, cached)
     c2.set_offline(True); p2.reload(); p2.wait_for_timeout(1500)
     ok("no signal: the app still opens (from the phone)", p2.is_visible("#app") and p2.locator("#go, [data-a='resume']").count() >= 1)
