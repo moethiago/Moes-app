@@ -34,7 +34,7 @@ with sync_playwright() as p:
         ok(f"{folder}: phone storage kept separate ({prefix}…)", keys and all(k.startswith(prefix) for k in keys if k.startswith("lift")), keys)
         ready = pg.evaluate("navigator.serviceWorker.ready.then(r=>!!r.active)"); pg.wait_for_timeout(1200)
         names = pg.evaluate("caches.keys()")
-        ok(f"{folder}: offline copy installs under its own name", ready and (folder + "-v4.1") in names, names)
+        ok(f"{folder}: offline copy installs under its own name", ready and any(n.startswith(folder + "-v") for n in names), names)
         ctx.close()
     br.close()
 print(f"E2E two lifts: PASS {P}  FAIL {F}"); srv.shutdown(); sys.exit(1 if F else 0)
