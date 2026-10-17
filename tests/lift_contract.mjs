@@ -89,4 +89,31 @@ r = await call({ query: FQ, body: { action: "snapshot", pin: FPIN, name: "f1" } 
 r = await call({ query: FQ, body: { action: "restore", pin: FPIN, name: "t1" } }); check("friend can't restore Moaath's snapshot", r.code === 404);
 r = await call({ query: Q, body: { action: "state", pin: FULL } }); check("Moaath's lift still reads his data", r.code === 200 && JSON.stringify({ v: r.j.v, state: r.j.state }) === JSON.stringify({ v: JSON.parse(mine).v, state: JSON.parse(mine).state }));
 
+// ---- friends added from Moaath's Admin page: same link, own code, own clean data ----
+r = await call({ body: { action: "state", pin: FULL } }); check("Moaath is admin", r.code === 200 && r.j.admin === true && !r.j.user);
+r = await call({ body: { action: "state", pin: LITE } }); check("wife's grocery code doesn't open Lift", r.code === 401);
+r = await call({ query: FQ, body: { action: "state", pin: FPIN } }); check("Lift2 friend is not admin", r.code === 200 && r.j.admin === false);
+r = await call({ body: { action: "users", pin: LITE } }); check("wife's code can't list users", r.code === 401);
+r = await call({ query: FQ, body: { action: "adduser", pin: FPIN } }); check("Lift2 friend can't add users", r.code === 403);
+r = await call({ body: { action: "users", pin: FULL } }); check("no users at first", r.code === 200 && r.j.users.length === 0);
+r = await call({ body: { action: "adduser", pin: FULL, name: "  Saad <b>  " } }); const U1 = r.j.user;
+check("add user → 6-digit code + name", r.code === 200 && /^\d{6}$/.test(U1.code) && U1.name === "Saad b" && r.j.users.length === 1);
+r = await call({ body: { action: "adduser", pin: FULL } }); const U2 = r.j.user;
+check("second user: default name, different code", r.code === 200 && U2.name === "Friend 2" && U2.code !== U1.code);
+check("codes never clash with Moaath's or Lift2's", ![FULL, LITE, FPIN].includes(U1.code) && ![FULL, LITE, FPIN].includes(U2.code));
+r = await call({ body: { action: "state", pin: U1.code } }); check("new user opens a clean, empty Lift", r.code === 200 && r.j.v === 0 && r.j.state === null && r.j.admin === false && r.j.user.name === "Saad b" && r.j.role === "full");
+r = await call({ body: { action: "save", pin: U1.code, v: 0, state: { mine: "saad" } } }); check("user saves own data", r.code === 200 && r.j.v === 1);
+check("user's data lives in own key", store.has("lift-u-" + U1.id + ":state") && JSON.parse(store.get("lift-u-" + U1.id + ":state")).state.mine === "saad");
+r = await call({ body: { action: "state", pin: U2.code } }); check("other user still sees nothing of the first", r.j.state === null);
+r = await call({ body: { action: "state", pin: FULL } }); check("Moaath's data untouched by users", JSON.stringify({ v: r.j.v, state: r.j.state }) === JSON.stringify({ v: JSON.parse(store.get(K)).v, state: JSON.parse(store.get(K)).state }) && !(r.j.state && r.j.state.mine));
+r = await call({ body: { action: "users", pin: U1.code } }); check("a user can't see the user list", r.code === 403);
+r = await call({ body: { action: "adduser", pin: U1.code } }); check("a user can't add users", r.code === 403);
+r = await call({ body: { action: "snapshot", pin: U1.code, name: "s1" } }); check("user snapshot stays in own namespace", r.code === 200 && store.has("lift-u-" + U1.id + ":snapshot:s1"));
+r = await call({ query: FQ, body: { action: "state", pin: U1.code } }); check("user code doesn't open Lift2", r.code === 401);
+r = await call({ body: { action: "state", pin: "000000" } }); check("unknown 6-digit code refused", r.code === 401);
+r = await call({ body: { action: "deluser", pin: FULL, id: "nope" } }); check("remove unknown user → 404", r.code === 404);
+r = await call({ body: { action: "deluser", pin: FULL, id: U1.id } }); check("Moaath removes a user", r.code === 200 && r.j.users.length === 1 && r.j.users[0].id === U2.id);
+r = await call({ body: { action: "state", pin: U1.code } }); check("removed user's code stops working", r.code === 401);
+r = await call({ body: { action: "state", pin: U2.code } }); check("the other user still works", r.code === 200);
+
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
