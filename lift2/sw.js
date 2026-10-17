@@ -1,4 +1,4 @@
-var P=self.registration.scope.indexOf("/lift2/")>=0?"lift2":"lift",C=P+"-v4.4",G=P+"-gif",GMAX=250; /* same file serves lift/ and lift2/ */
+var P=self.registration.scope.indexOf("/lift2/")>=0?"lift2":"lift",C=P+"-v4.5",G=P+"-gif",GMAX=250; /* same file serves lift/ and lift2/ */
 var SHELL=["./","./index.html","./manifest.json","./icon-192.png","./icon-512.png","./exercises.json"];
 self.addEventListener("install",function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(SHELL);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==C&&k!==G;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
