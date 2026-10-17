@@ -1274,6 +1274,16 @@ async function liftUsers() {
   const raw = await kv(["GET", LIFT_USERS_KEY]);
   try { const j = raw ? JSON.parse(raw) : null; return j && Array.isArray(j.users) ? j : { users: [] }; } catch { return { users: [] }; }
 }
+// Friends flag a wrong video/picture or ask for a missing exercise; only Moaath reads them. "fix" = videos he hid for everyone.
+const LIFT_REPORTS_KEY = "lift:reports", LIFT_FIX_KEY = "lift:fix";
+async function liftReports() {
+  const raw = await kv(["GET", LIFT_REPORTS_KEY]);
+  try { const j = raw ? JSON.parse(raw) : null; return j && Array.isArray(j.items) ? j : { items: [] }; } catch { return { items: [] }; }
+}
+async function liftFix() {
+  const raw = await kv(["GET", LIFT_FIX_KEY]);
+  try { const j = raw ? JSON.parse(raw) : null; return j && j.hv && typeof j.hv === "object" ? j : { hv: {} }; } catch { return { hv: {} }; }
+}
 function liftNewCode(taken) {
   for (let i = 0; i < 200; i++) { const c = String(100000 + Math.floor(Math.random() * 900000)); if (!taken.has(c)) return c; }
   throw new Error("no free code");
@@ -1300,7 +1310,30 @@ async function liftHandler(req, res) {
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
-    if (action === "state") { const s = await liftRead(KEY); return res.status(200).json({ ...s, role, admin, ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "state") { const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "report") {
+      const kind = String(body.kind || "");
+      if (!["video", "picture", "muscles", "steps", "name", "other", "missing"].includes(kind)) return res.status(400).json({ error: "kind" });
+      const clean = (v, n) => String(v || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, n);
+      const item = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t: Date.now(), kind, e: clean(body.e, 60), n: clean(body.n, 100), q: clean(body.q, 80), note: clean(body.note, 300), who: user ? user.name : (inst ? "Friend (lift2)" : "Moaath") };
+      if (kind === "missing" ? !item.q : !item.e) return res.status(400).json({ error: "what" });
+      const rep = await liftReports(); rep.items.push(item); if (rep.items.length > 300) rep.items = rep.items.slice(-300);
+      await kv(["SET", LIFT_REPORTS_KEY, JSON.stringify(rep)]);
+      return res.status(200).json({ ok: true });
+    }
+    if (action === "reports" || action === "delreport" || action === "fixvid") {
+      if (!admin) return res.status(403).json({ error: "admin" });
+      if (action === "fixvid") {
+        const e = String(body.e || "").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 60);
+        if (!e) return res.status(400).json({ error: "e" });
+        const fix = await liftFix(); if (body.hide) fix.hv[e] = 1; else delete fix.hv[e];
+        await kv(["SET", LIFT_FIX_KEY, JSON.stringify(fix)]);
+        return res.status(200).json({ ok: true, fix });
+      }
+      const rep = await liftReports();
+      if (action === "delreport") { const id = String(body.id || ""); rep.items = rep.items.filter((x) => x.id !== id); await kv(["SET", LIFT_REPORTS_KEY, JSON.stringify(rep)]); }
+      return res.status(200).json({ items: rep.items });
+    }
     if (action === "users" || action === "adduser" || action === "deluser") {
       if (!admin) return res.status(403).json({ error: "admin" });
       const reg = await liftUsers();
