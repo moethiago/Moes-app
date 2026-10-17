@@ -108,7 +108,7 @@ with sync_playwright() as p:
     ok("machine notes carried to the new ids", st["notes"].get("10Z2DXU") == "Seat 5", st["notes"])
 
     # ================= Today =================
-    ok("4 tabs: Today, Routines, Log, Body", pg.locator("nav.tabs button").all_inner_texts() == ["Today", "Routines", "Log", "Body"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("5 tabs: Today, Routines, Muscles, Log, Body", pg.locator("nav.tabs button").all_inner_texts() == ["Today", "Routines", "Muscles", "Log", "Body"], pg.locator("nav.tabs button").all_inner_texts())
     ok("hero shows his routine + one Start button", "Arms & Shoulders" in pg.inner_text(".hero .w") and pg.locator("#go").count() == 1)
     ok("long routine name gets the smaller size", pg.locator(".hero .w.xs").count() == 1)
     ok("hero body figure lights the muscles", pg.locator(".hero svg.bmap use[fill='#E2453C']").count() >= 5)
@@ -125,12 +125,12 @@ with sync_playwright() as p:
 
     # ================= search: gym names find the right thing =================
     tap("nav [data-tab='routines']", 500)
-    ok("library row shows 1,817 exercises", "1,817 exercises" in pg.inner_text("#view"))
+    ok("library row shows 1,846 exercises", "1,846 exercises" in pg.inner_text("#view"))
     tap("[data-p='library']", 1500)
     ok("library opens with Back", title() == "Exercise library" and back_reachable())
     ok("browse starts with common machines", "Machine" in pg.locator("#liblist .row .t").first.inner_text() or "Sled" in pg.locator("#liblist .row .t").first.inner_text())
     cases = [("lever seated hip adduction", "Machine seated hip adduction", 1), ("face pull", "Cable rear delt row (with rope)", 2), ("pec deck", "Machine seated fly", 1),
-             ("hip thrust", "Barbell glute bridge two-leg on bench", 1), ("rdl", "Barbell romanian deadlift", 1), ("pullups", "Pull-up", 3), ("stairmaster", "Walking on stepmill", 1),
+             ("hip thrust", "Barbell hip thrust", 3), ("landmine press", "Landmine press", 1), ("seal row", "Seal row", 1), ("bayesian curl", "Bayesian cable curl", 1), ("hip thrust machine", "Hip thrust machine", 1), ("chest supported row", "Chest-supported dumbbell row", 2), ("low to high cable fly", "Cable fly upper chest", 2), ("reverse lunge", "Dumbbell rear lunge", 3), ("back squat", "Barbell full squat", 2), ("plank", "Plank", 1), ("rdl", "Barbell romanian deadlift", 1), ("pullups", "Pull-up", 3), ("stairmaster", "Walking on stepmill", 1),
              ("inner thigh", "Machine seated hip adduction", 1), ("bench press", "Barbell bench press", 1), ("lat pull down", "Cable bar lateral pulldown", 1),
              ("45 leg press", "Sled 45° leg press", 1), ("lunges", "Barbell lunge", 3), ("skull crushers", "Barbell lying triceps extension skull crusher", 1),
              ("dips", "Chest dip", 2), ("incline walk", "Walking on incline treadmill", 1), ("battle ropes", "Battling ropes", 1), ("farmers carry", "Farmers walk", 1)]
@@ -147,11 +147,11 @@ with sync_playwright() as p:
     ok("no match → 'Can't find it? Create'", pg.locator("#liblist [data-p='custom']").count() == 1 and "zzqqx" in pg.inner_text("#liblist"))
     pg.fill("#libq", ""); W(400)
     tap("[data-a='lg'][data-g='0']", 400); n_chest = int(pg.inner_text("#liblist .mute.small").split()[0].replace(",", ""))
-    ok("Chest filter", 100 < n_chest < 400 and "Chest" in pg.locator("#liblist .row .s").first.inner_text(), n_chest)
+    ok("Chest filter", 100 < n_chest < 400 and "chest" in pg.locator("#liblist .row .s").first.inner_text().lower(), n_chest)
     tap("[data-a='leq'][data-q='0']", 400); n_cm = int(pg.inner_text("#liblist .mute.small").split()[0].replace(",", ""))
     ok("Chest + Machine filter narrows it", 3 < n_cm < n_chest and "Machine" in pg.locator("#liblist .row .s").first.inner_text(), n_cm)
-    tap("[data-a='lg'][data-g='4']", 400)
-    ok("Legs includes the leg press", pg.evaluate("searchLib('',4,0).full.some(r=>r[1]==='Sled 45° leg press')"))
+    tap("[data-a='lg'][data-g='6']", 400)
+    ok("Legs includes the leg press", pg.evaluate("searchLib('',6,0).full.some(r=>r[1]==='Sled 45° leg press')"))
     tap("[data-a='lg'][data-g='']", 300); tap("[data-a='leq'][data-q='']", 300)
     n0 = pg.locator("#liblist .row").count(); tap("[data-a='libmore']", 400)
     ok("Show more adds 40", pg.locator("#liblist .row").count() == n0 + 40)
@@ -161,7 +161,7 @@ with sync_playwright() as p:
     tap(".hdr .back", 300)
     pg.fill("#libq", "machine chest press"); W(400)
     tap("#liblist [data-a='exinfo'][data-e='DOoWcnA']", 1200)
-    ok("exercise page: big animation, muscles, equipment", pg.locator(".gif.xl img").count() == 1 and "Chest" in pg.inner_text(".facts") and "Machine" in pg.inner_text(".facts"))
+    ok("exercise page: big animation, muscles, equipment", pg.locator(".gif.xl img").count() == 1 and "Middle chest" in pg.inner_text(".facts") and "Machine" in pg.inner_text(".facts"))
     ok("exercise page: body figure with Main/Helps legend", pg.locator(".mapcard svg.bmap use[fill='#E2453C']").count() >= 1 and "Helps" in pg.inner_text(".legend"))
     ok("how-to steps loaded, 'Step:1' prefix cleaned", pg.locator(".how li").count() == 2 and "Step:" not in pg.inner_text(".how"), pg.inner_text("#view")[-400:])
     ok("Back reachable on the exercise page", back_reachable())
@@ -199,7 +199,7 @@ with sync_playwright() as p:
     pg.fill("#libq", "hip thrust machine xyz"); W(400)
     tap("#liblist [data-p='custom']", 500)
     ok("create-your-own page, name filled in", title() == "New exercise" and pg.input_value("#cname") == "Hip thrust machine xyz" and back_reachable())
-    pg.fill("#cname", "Hip thrust machine"); tap("[data-a='cg'][data-v='5']", 200); tap("[data-a='ceq'][data-v='0']", 200); tap("[data-a='ck'][data-v='w']", 200)
+    pg.fill("#cname", "Hip thrust machine"); tap("[data-a='cmus'][data-v='gl']", 200); tap("[data-a='ceq'][data-v='0']", 200); tap("[data-a='ck'][data-v='w']", 200)
     tap("[data-a='savecustom']", 700)
     cx = [k for k in ST()["custom"] if ST()["custom"][k]["n"] == "Hip thrust machine"]
     ok("custom exercise saved (Glutes, Machine, kg+reps) and ticked", len(cx) == 1 and ST()["custom"][cx[0]]["t"] == ["glutes"] and "Add 3 exercises" in pg.inner_text(".pickbar"), ST()["custom"])
@@ -267,7 +267,7 @@ with sync_playwright() as p:
     ok("Start logs the start time", A() is not None and abs(A()["start"] - t0) < 5000 and A()["wn"] == "Full Body 1")
     ok("workout page: tabs hidden, header shows start time + clock", title() == "Full Body 1" and pg.is_hidden("nav.tabs") and "Started" in pg.inner_text(".hdr .ttl .s") and pg.locator("#elapsed").count() == 1)
     ok("big animation on top", pg.locator(".herogif .gif.xl img[src*='10Z2DXU.gif']").count() == 1)
-    ok("muscles under the name (Glutes + Quads…)", "Glutes" in pg.inner_text(".exm .mp") and "Quads" in pg.inner_text(".exm"))
+    ok("muscles under the name (Quads main, Glutes helping — leg press is a quad exercise)", "Quads" in pg.inner_text(".exm .mp") and "Glutes" in pg.inner_text(".exm"))
     ok("Easy/Good/Hard visible without scrolling", visible_in_viewport("[data-a='log'][data-f='3']"), pg.locator("[data-a='log'][data-f='3']").bounding_box())
     ok("first time: 'go light' tag, weight empty", pg.locator(".tagnew").count() == 1 and pg.input_value("#in_k") == "")
     ok("machine note shows on the exercise", "Seat 5" in pg.inner_text(".pill2"))
@@ -308,7 +308,7 @@ with sync_playwright() as p:
     ok("changed for today only", A()["x"][1]["e"] == alt and ST()["program"][0]["x"][1]["e"] == "DOoWcnA" and title() == "Full Body 1")
     tap("[data-a='exlist']", 300); tap("[data-a='addtoday']", 1200); pg.fill("#libq", "hip abduction"); W(500)
     tap("#liblist [data-a='addtoday'] >> nth=0", 800)
-    ok("added an exercise to today and jumped to it", A()["x"][-1]["e"] == "CHpahtl" and "hip abduction" in pg.inner_text(".exname").lower(), A()["x"][-1])
+    ok("added an exercise to today (before the walk, which stays last) and jumped to it", A()["x"][-2]["e"] == "CHpahtl" and A()["x"][-1]["kind"] == "c" and "hip abduction" in pg.inner_text(".exname").lower(), A()["x"][-2:])
     tap(".hdr .back", 500)
     ok("Back leaves it running; Today offers Continue", pg.is_visible("[data-a='resume']") and pg.is_visible("nav.tabs") and "in progress" in pg.inner_text(".hero").lower())
     tap("[data-a='resume']", 500); ok("Continue → same exercise", "hip abduction" in pg.inner_text(".exname").lower())
@@ -470,10 +470,10 @@ with sync_playwright() as p:
     pg.route("**/free-exercise-db/**", fdbj); pg.route("**wger.de/**", wgerj)
     pg.evaluate("loadLib().then(()=>1)"); pg.wait_for_timeout(400)
     lib = pg.evaluate("LIB.map(r=>[r[0],r[7]||''])")
-    ok("library grew past 1,285 (now 1,817)", len(lib) == 1817, len(lib))
-    ok("every exercise in the library has a YouTube video id", all(len(v) == 11 for _, v in lib), [k for k, v in lib if len(v) != 11][:5])
+    ok("library grew past 1,285 (now 1,846)", len(lib) == 1846, len(lib))
+    ok("every video is a real YouTube id; mismatched ones were removed, not left wrong", all(len(v) in (0, 11) for _, v in lib) and sum(1 for _, v in lib if v) >= 1800, sum(1 for _, v in lib if v))
     ok("no exercise id appears twice", len(set(k for k, _ in lib)) == len(lib))
-    ok("all 1,285 original exercises are still there", len([k for k, _ in lib if not k.startswith(("F_", "W_"))]) == 1285)
+    ok("all 1,285 original exercises are still there", len([k for k, _ in lib if not k.startswith(("F_", "W_", "L_"))]) == 1285)
     def open_ex(e, ms=900):
         pg.evaluate("e=>{var b=document.createElement('button');b.setAttribute('data-a','go');b.setAttribute('data-p','exercise');b.setAttribute('data-e',e);b.id='tmpgo';document.body.appendChild(b);b.click();b.remove();}", e); pg.wait_for_timeout(ms)
     open_ex("rR0LJzx")
@@ -484,7 +484,7 @@ with sync_playwright() as p:
     open_ex("F_Atlas_Stones", 1200)
     ok("new exercise (open library): photo + its own video + steps", "free-exercise-db/main/exercises/Atlas_Stones/0.jpg" in (pg.get_attribute(".gif.xl img", "src") or "") and pg.get_attribute("a.ytb", "href").endswith(dict(lib)["F_Atlas_Stones"]) and pg.locator(".how li").count() == 2, (xcalls))
     open_ex("W_297", 1200)
-    ok("new exercise (wger): picture + video + steps from its description", "wger.de/media/exercise-images/297/" in (pg.get_attribute(".gif.xl img", "src") or "") and pg.locator("a.ytb").count() == 1 and pg.locator(".how li").count() == 2, xcalls)
+    ok("new exercise (wger): picture taken from its own verified video + video + steps", ("i.ytimg.com/vi/" + dict(lib)["W_297"]) in (pg.get_attribute(".gif.xl img", "src") or "") and pg.locator("a.ytb").count() == 1 and pg.locator(".how li").count() == 2, xcalls)
     ok("…it never asks ExerciseDB for a wger/open-library exercise", not any(i.startswith(("F_", "W_")) for i in step_ids))
     open_ex("F_Ab_Roller", 900); pg.evaluate("document.querySelector('.gif.xl img') && gifFail(document.querySelector('.gif.xl img'))"); pg.wait_for_timeout(200)
     ok("picture fails to load → body figure instead (no broken image)", pg.locator(".gif.xl.none .bmap").count() == 1)
@@ -492,7 +492,7 @@ with sync_playwright() as p:
     for q, want in [("hollow hold", "W_297"), ("atlas stones", "F_Atlas_Stones"), ("dumbbell romanian deadlift", "rR0LJzx")]:
         hit = pg.evaluate("q=>searchLib(q).full.slice(0,5).map(r=>r[0])", q)
         ok("search finds '" + q + "'", want in hit, hit)
-    ok("library page count says 1,817", "1,817" in pg.evaluate("(LIB?LIB.length:0).toLocaleString('en-US')"))
+    ok("library page count says 1,846", "1,846" in pg.evaluate("(LIB?LIB.length:0).toLocaleString('en-US')"))
     # ================= works at the gym without signal (service worker) =================
     c2 = br.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True, locale="en-GB")
     p2 = c2.new_page(); p2.route("**/api/health-check**", api); p2.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
@@ -503,7 +503,7 @@ with sync_playwright() as p:
     c2.set_offline(True); p2.reload(); p2.wait_for_timeout(1500)
     ok("no signal: the app still opens (from the phone)", p2.is_visible("#app") and p2.locator("#go, [data-a='resume']").count() >= 1)
     p2.evaluate("loadLib && 1"); n_lib = p2.evaluate("LIB?LIB.length:0")
-    ok("no signal: exercise library still there", n_lib == 1817, n_lib)
+    ok("no signal: exercise library still there", n_lib == 1846, n_lib)
     c2.close()
     br.close()
 srv.shutdown()
