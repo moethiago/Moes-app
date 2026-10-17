@@ -43,8 +43,9 @@ def steps(route):
     eid = route.request.url.rstrip("/").split("/")[-1]; step_ids.add(eid)
     route.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"},
                   body=json.dumps({"success": True, "data": {"exerciseId": eid, "instructions": ["Step:1 Sit on the machine with your back flat.", "Step:2 Push slowly, then lower under control."]}}))
+OLDURLS = []
 def old(route):
-    calls["old"] += 1; route.fulfill(status=404, body=b"")
+    calls["old"] += 1; OLDURLS.append(route.request.url); route.fulfill(status=404, body=b"")
 
 res = []
 def ok(n, c, extra=""):
@@ -124,7 +125,7 @@ with sync_playwright() as p:
 
     # ================= search: gym names find the right thing =================
     tap("nav [data-tab='routines']", 500)
-    ok("library row shows 1,285 exercises", "1,285 exercises" in pg.inner_text("#view"))
+    ok("library row shows 1,817 exercises", "1,817 exercises" in pg.inner_text("#view"))
     tap("[data-p='library']", 1500)
     ok("library opens with Back", title() == "Exercise library" and back_reachable())
     ok("browse starts with common machines", "Machine" in pg.locator("#liblist .row .t").first.inner_text() or "Sled" in pg.locator("#liblist .row .t").first.inner_text())
@@ -294,6 +295,7 @@ with sync_playwright() as p:
     pg.fill("#in_r", "11"); tap("[data-a='saveset']", 500); ok("fixed", A()["sets"][0]["r"] == 11)
     tap("[data-a='editset'] >> nth=1", 300); tap2("[data-a='delset']", 500); ok("delete a set (tap twice)", len(A()["sets"]) == 1)
     tap("[data-a='how']", 900); ok("tap the picture → steps", pg.locator(".how li").count() == 2)
+    ok("workout: How to do it also shows the short YouTube technique video", pg.locator("a.ytb").count() == 1 and pg.get_attribute("a.ytb", "href").startswith("https://www.youtube.com/watch?v=") and pg.get_attribute("a.ytb", "target") == "_blank")
     tap("[data-a='how']", 300); ok("tap again hides them", pg.locator(".how").count() == 0)
     tap("[data-a='editnote']", 300); pg.fill("#noteIn", "Seat 4, feet high"); tap("[data-a='savenote']", 500)
     ok("seat settings saved", ST()["notes"].get("10Z2DXU") == "Seat 4, feet high")
@@ -431,7 +433,9 @@ with sync_playwright() as p:
         if pg.locator(".hdr").count() or pg.is_hidden("nav.tabs"): stuck.append(path + ["no return"])
     ok("every page: Back visible after scrolling, returns to the tab, fits width", not stuck, stuck)
     ok("no pop-up windows anywhere", pg.locator(".sheet").count() == 0 and not dialogs)
-    ok("no old photo hosts used; animations from ExerciseDB", calls["old"] == 0 and calls["gif"] > 10, calls)
+    fids = set(pg.evaluate("LIB.filter(r=>/^F_/.test(r[0])).map(r=>r[0].slice(2))"))
+    stray = [u for u in OLDURLS if "/free-exercise-db/main/exercises/" not in u or u.split("/exercises/")[1].split("/")[0].split(".json")[0] not in fids]
+    ok("old photo hosts only for the added open-library exercises; originals animate from ExerciseDB", not stray and calls["gif"] > 10, (calls, stray[:3]))
     ok("exercise steps fetched once each, then kept on the phone", calls["steps"] == len(step_ids) and "10Z2DXU" in pg.evaluate("localStorage.getItem('lift_steps')"), (calls, step_ids))
 
     # ================= narrow iPhone (375) =================
@@ -453,6 +457,42 @@ with sync_playwright() as p:
     ok("v1 data upgraded and saved", ST()["ver"] == 3 and ST()["sessions"][0]["sets"][0]["e"] == "DOoWcnA" and ST()["next"] == 1 and ST()["days"] == [0, 2, 3, 6])
     ok("no page errors", not errs, errs[:3])
 
+    # ================= v4.3: bigger library + a YouTube technique video (≤ 1 min) on every exercise =================
+    xcalls = {"fdb": 0, "wger": 0, "img": 0}
+    def fdbj(route):
+        if route.request.url.endswith(".json"):
+            xcalls["fdb"] += 1; return route.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps({"instructions": ["Hold the stone close.", "Stand up tall."]}))
+        xcalls["img"] += 1; route.fulfill(status=200, body=GIF1, content_type="image/gif")
+    def wgerj(route):
+        if "/api/v2/exerciseinfo/" in route.request.url:
+            xcalls["wger"] += 1; return route.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps({"translations": [{"language": 4, "description": "<p>Nope</p>"}, {"language": 2, "description": "<p>Lie on your back and press your lower back down.</p><p>Lift legs and shoulders a little and hold.</p>"}]}))
+        xcalls["img"] += 1; route.fulfill(status=200, body=GIF1, content_type="image/gif")
+    pg.route("**/free-exercise-db/**", fdbj); pg.route("**wger.de/**", wgerj)
+    pg.evaluate("loadLib().then(()=>1)"); pg.wait_for_timeout(400)
+    lib = pg.evaluate("LIB.map(r=>[r[0],r[7]||''])")
+    ok("library grew past 1,285 (now 1,817)", len(lib) == 1817, len(lib))
+    ok("every exercise in the library has a YouTube video id", all(len(v) == 11 for _, v in lib), [k for k, v in lib if len(v) != 11][:5])
+    ok("no exercise id appears twice", len(set(k for k, _ in lib)) == len(lib))
+    ok("all 1,285 original exercises are still there", len([k for k, _ in lib if not k.startswith(("F_", "W_"))]) == 1285)
+    def open_ex(e, ms=900):
+        pg.evaluate("e=>{var b=document.createElement('button');b.setAttribute('data-a','go');b.setAttribute('data-p','exercise');b.setAttribute('data-e',e);b.id='tmpgo';document.body.appendChild(b);b.click();b.remove();}", e); pg.wait_for_timeout(ms)
+    open_ex("rR0LJzx")
+    vid = dict(lib)["rR0LJzx"]
+    ok("exercise page (original library): Watch the technique button → that exercise's YouTube video", pg.locator("a.ytb").count() == 1 and pg.get_attribute("a.ytb", "href") == "https://www.youtube.com/watch?v=" + vid)
+    ok("…it opens outside the app (new tab / YouTube app)", pg.get_attribute("a.ytb", "target") == "_blank" and noscroll())
+    ok("…original exercise keeps its animated picture", "static.exercisedb.dev/media/rR0LJzx.gif" in (pg.get_attribute(".gif.xl img", "src") or ""))
+    open_ex("F_Atlas_Stones", 1200)
+    ok("new exercise (open library): photo + its own video + steps", "free-exercise-db/main/exercises/Atlas_Stones/0.jpg" in (pg.get_attribute(".gif.xl img", "src") or "") and pg.get_attribute("a.ytb", "href").endswith(dict(lib)["F_Atlas_Stones"]) and pg.locator(".how li").count() == 2, (xcalls))
+    open_ex("W_297", 1200)
+    ok("new exercise (wger): picture + video + steps from its description", "wger.de/media/exercise-images/297/" in (pg.get_attribute(".gif.xl img", "src") or "") and pg.locator("a.ytb").count() == 1 and pg.locator(".how li").count() == 2, xcalls)
+    ok("…it never asks ExerciseDB for a wger/open-library exercise", not any(i.startswith(("F_", "W_")) for i in step_ids))
+    open_ex("F_Ab_Roller", 900); pg.evaluate("document.querySelector('.gif.xl img') && gifFail(document.querySelector('.gif.xl img'))"); pg.wait_for_timeout(200)
+    ok("picture fails to load → body figure instead (no broken image)", pg.locator(".gif.xl.none .bmap").count() == 1)
+    pg.go_back() if False else None
+    for q, want in [("hollow hold", "W_297"), ("atlas stones", "F_Atlas_Stones"), ("dumbbell romanian deadlift", "rR0LJzx")]:
+        hit = pg.evaluate("q=>searchLib(q).full.slice(0,5).map(r=>r[0])", q)
+        ok("search finds '" + q + "'", want in hit, hit)
+    ok("library page count says 1,817", "1,817" in pg.evaluate("(LIB?LIB.length:0).toLocaleString('en-US')"))
     # ================= works at the gym without signal (service worker) =================
     c2 = br.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True, locale="en-GB")
     p2 = c2.new_page(); p2.route("**/api/health-check**", api); p2.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
@@ -463,7 +503,7 @@ with sync_playwright() as p:
     c2.set_offline(True); p2.reload(); p2.wait_for_timeout(1500)
     ok("no signal: the app still opens (from the phone)", p2.is_visible("#app") and p2.locator("#go, [data-a='resume']").count() >= 1)
     p2.evaluate("loadLib && 1"); n_lib = p2.evaluate("LIB?LIB.length:0")
-    ok("no signal: exercise library still there", n_lib == 1285, n_lib)
+    ok("no signal: exercise library still there", n_lib == 1817, n_lib)
     c2.close()
     br.close()
 srv.shutdown()
