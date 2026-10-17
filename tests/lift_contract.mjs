@@ -116,4 +116,23 @@ r = await call({ body: { action: "deluser", pin: FULL, id: U1.id } }); check("Mo
 r = await call({ body: { action: "state", pin: U1.code } }); check("removed user's code stops working", r.code === 401);
 r = await call({ body: { action: "state", pin: U2.code } }); check("the other user still works", r.code === 200);
 
+
+// reports + hidden videos (4.5)
+before = snap();
+r = await call({ body: { action: "report", pin: U2.code, kind: "video", e: "rR0LJzx", n: "Dumbbell romanian deadlift", note: "video shows a <b>barbell</b>" } }); check("friend can report a wrong video", r.code === 200);
+r = await call({ body: { action: "report", pin: U2.code, kind: "missing", q: "Hip thrust machine" } }); check("friend can ask for a missing exercise", r.code === 200);
+r = await call({ body: { action: "report", pin: U2.code, kind: "hack" , e: "x" } }); check("unknown report kind refused", r.code === 400);
+r = await call({ body: { action: "report", pin: U2.code, kind: "missing", q: "" } }); check("empty missing-exercise report refused", r.code === 400);
+r = await call({ query: FQ, body: { action: "report", pin: "250958", kind: "steps", e: "DOoWcnA" } }); check("Lift2 friend can report too", r.code === 200);
+r = await call({ body: { action: "reports", pin: U2.code } }); check("a friend can't read reports", r.code === 403);
+r = await call({ body: { action: "fixvid", pin: U2.code, e: "rR0LJzx", hide: true } }); check("a friend can't hide videos", r.code === 403);
+r = await call({ body: { action: "reports", pin: FULL } }); const items = r.j.items || [];
+check("Moaath reads all 3 reports, with who sent them", r.code === 200 && items.length === 3 && items[0].who === U2.name && items[2].who === "Friend (lift2)");
+check("report text is cleaned (no tags)", !/[<>]/.test(items[0].note));
+r = await call({ body: { action: "delreport", pin: FULL, id: items[0].id } }); check("Moaath marks a report done", r.code === 200 && r.j.items.length === 2);
+r = await call({ body: { action: "fixvid", pin: FULL, e: "rR0LJzx", hide: true } }); check("Moaath hides a video for everyone", r.code === 200 && r.j.fix.hv.rR0LJzx === 1);
+r = await call({ body: { action: "state", pin: U2.code } }); check("every Lift gets the hidden-video list with its state", r.j.fix && r.j.fix.hv.rR0LJzx === 1);
+r = await call({ query: FQ, body: { action: "state", pin: "250958" } }); check("…Lift2 too", r.j.fix && r.j.fix.hv.rR0LJzx === 1);
+r = await call({ body: { action: "fixvid", pin: FULL, e: "rR0LJzx", hide: false } }); check("Moaath shows it again", r.code === 200 && !r.j.fix.hv.rR0LJzx);
+check("reports never touch other apps' data", snap() === before);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
