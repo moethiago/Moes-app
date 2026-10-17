@@ -127,6 +127,7 @@ nav.tabs button.on{color:var(--chalk)}
 .exm{color:var(--chalk2);font-size:15px;margin-bottom:12px}
 .how{background:var(--iron2);border-radius:18px;padding:14px 16px 4px;margin-bottom:12px}
 .how ol{margin:0;padding-left:20px}.how li{margin-bottom:10px}
+.btn.ytb{margin:4px 0 12px;background:#E2453C;color:#fff;font-size:17px;min-height:52px;padding:14px;text-decoration:none}.btn.ytb .ic{fill:currentColor}.ytm{font-weight:500;opacity:.85;font-size:14px}
 .note{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:var(--iron2);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:15px;min-height:48px}
 .noteedit{display:flex;gap:8px;margin-bottom:12px}
 .noteedit input{flex:1;min-width:0;background:var(--iron2);border:1px solid var(--chalk3);border-radius:14px;padding:12px 14px;font-size:16px;color:var(--chalk)}
@@ -671,7 +672,7 @@ var BODY={"front":[["chest",["M272.91 422.84c-18.95-17.19-22-57-12.64-78.79 5.57
 
 /* ===== sync: {v,state} with version-checked saves; 409 = re-apply pending ops and retry ===== */
 /* one source for every Lift: lift/ is Moaath's, lift2/ is his friend's (own data + code); the folder decides */
-var LIFT_U=/\/lift2\//.test(location.pathname)?"f":"",BUILD_ID="4.2",API="https://moes-app-two.vercel.app/api/health-check?app=lift"+(LIFT_U?"&u="+LIFT_U:""),LS=LIFT_U?"liftf_":"lift_";
+var LIFT_U=/\/lift2\//.test(location.pathname)?"f":"",BUILD_ID="4.3",API="https://moes-app-two.vercel.app/api/health-check?app=lift"+(LIFT_U?"&u="+LIFT_U:""),LS=LIFT_U?"liftf_":"lift_";
 var $=function(id){return document.getElementById(id);};
 var S=null,V=0,PIN="",pending=[],saving=false,online=navigator.onLine,ROLE="full";
 function uid(){return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);}
@@ -749,7 +750,12 @@ function beep(){try{if(!ACX)return;[0,.22,.44].forEach(function(d,i){var o=ACX.c
 function wake(on){try{if(on&&navigator.wakeLock&&!WAKE)navigator.wakeLock.request("screen").then(function(l){WAKE=l;l.addEventListener("release",function(){WAKE=null;});}).catch(function(){});if(!on&&WAKE){WAKE.release();WAKE=null;}}catch(e){}}
 
 /* ---------- exercise library ---------- */
-function isEdb(e){return !!(LIBMAP[e]||CORE[e])||(/^[A-Za-z0-9]{7}$/.test(e)&&!(S&&S.custom&&S.custom[e]));}
+/* extra exercises from two open libraries (F_ = free-exercise-db, W_ = wger) + a short YouTube technique video for every exercise */
+var VID={},XIMG={},FDB="https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/",WGER="https://wger.de/";
+function isX(e){return /^[FW]_/.test(String(e));}
+function xImg(e){e=String(e);if(/^F_/.test(e))return FDB+encodeURIComponent(e.slice(2))+"/0.jpg";if(XIMG[e])return WGER+"media/exercise-images/"+XIMG[e];return "";}
+function vidBtn(e){var v=VID[e];if(!v)return "";return '<a class="btn ytb" href="https://www.youtube.com/watch?v='+encodeURIComponent(v)+'" target="_blank" rel="noopener">'+ic("play")+'Watch the technique <span class="ytm">under 1 min</span></a>';}
+function isEdb(e){if(isX(e))return false;return !!(LIBMAP[e]||CORE[e])||(/^[A-Za-z0-9]{7}$/.test(e)&&!(S&&S.custom&&S.custom[e]));}
 function exName(e){return metaOf(S,e)[0];}
 function mname(m){return MNAME[m]||cap(m);}
 function uniq(a){var o=[];a.forEach(function(x){if(o.indexOf(x)<0)o.push(x);});return o;}
@@ -759,7 +765,7 @@ function eqName(e){return eqLabel(metaOf(S,e)[4][0]);}
 function setsTxt(it){return it.kind==="c"?it.hi+" min":it.s+" set"+(it.s>1?"s":"")+" · "+it.hi+" reps";}
 function loadLib(){
   if(LIB)return Promise.resolve(LIB);
-  if(!LIBLOADING)LIBLOADING=fetch("exercises.json?v="+BUILD_ID).then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json();}).then(function(j){LIB=j;j.forEach(function(x){LIBMAP[x[0]]=[x[1],x[2],x[3],x[4],x[5]];});return LIB;}).catch(function(e){LIBLOADING=null;throw e;});
+  if(!LIBLOADING)LIBLOADING=fetch("exercises.json?v="+BUILD_ID).then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json();}).then(function(j){LIB=j;j.forEach(function(x){LIBMAP[x[0]]=[x[1],x[2],x[3],x[4],x[5]];if(x[7])VID[x[0]]=x[7];if(x[8])XIMG[x[0]]=x[8];});return LIB;}).catch(function(e){LIBLOADING=null;throw e;});
   return LIBLOADING;
 }
 function whenLib(){var r=RENDERS;loadLib().then(function(){if(RENDERS===r)render();}).catch(function(){});}
@@ -824,18 +830,30 @@ function bodyMap(k,cls){
 }
 function gif(e,cls){
   if(isEdb(e))return '<span class="gif '+(cls||"")+'"><img src="'+GIF+esc(e)+'.gif" alt="" loading="lazy" decoding="async" data-e="'+esc(e)+'" onerror="gifFail(this)"></span>';
+  var xi=isX(e)?xImg(e):"";if(xi)return '<span class="gif '+(cls||"")+'"><img src="'+esc(xi)+'" alt="" loading="lazy" decoding="async" data-e="'+esc(e)+'" onerror="gifFail(this)"></span>';
   return '<span class="gif none '+(cls||"")+'">'+bodyMap(musKeys(e))+'</span>';
 }
 function gifFail(img){var sp=img.parentNode;if(!sp)return;sp.classList.add("none");sp.innerHTML=bodyMap(musKeys(img.getAttribute("data-e")));}
 function prefetch(list){list.forEach(function(e){if(isEdb(e)){var i=new Image();i.src=GIF+e+".gif";}});}
 var STEPS={},STEPWAIT={};try{STEPS=JSON.parse(localStorage.getItem(LS+"steps")||"{}");}catch(e){}
 function stepsFor(e){
-  if(STEPS[e])return STEPS[e];if(!isEdb(e))return [];
+  if(STEPS[e])return STEPS[e];if(isX(e))return xSteps(e);if(!isEdb(e))return [];
   if(!STEPWAIT[e]){STEPWAIT[e]=1;fetch(EDB_API+encodeURIComponent(e)).then(function(r){return r.json();}).then(function(j){
     STEPS[e]=((j.data&&j.data.instructions)||[]).map(function(s){return String(s).replace(/^Step:\s*\d+\s*/i,"");});
     try{localStorage.setItem(LS+"steps",JSON.stringify(STEPS));}catch(x){}
     var top=STACK[STACK.length-1];if(top&&(top.p==="workout"||top.p==="exercise")&&!(document.activeElement&&document.activeElement.tagName==="INPUT"))render();
   }).catch(function(){STEPWAIT[e]=0;});}
+  return null;
+}
+function xText(html){var d=document.createElement("div");d.innerHTML=String(html||"").replace(/<\/(p|li|div|h\d)>|<br\s*\/?>/gi,"\n");return (d.textContent||"").split(/\n+/).map(function(s){return s.replace(/\s+/g," ").trim();}).filter(function(s){return s.length>2;});}
+function xSteps(e){
+  if(!STEPWAIT[e]){STEPWAIT[e]=1;var id=String(e).slice(2),f=/^F_/.test(e);
+    fetch(f?FDB+encodeURIComponent(id)+".json":WGER+"api/v2/exerciseinfo/"+encodeURIComponent(id)+"/").then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json();}).then(function(j){
+      var a=[];if(f)a=(j.instructions||[]).map(String);
+      else{var t=(j.translations||[]).filter(function(x){return x.language===2;})[0];a=xText(t&&t.description);if(a.length===1&&a[0].length>160)a=(a[0].match(/[^.!?]+[.!?]+/g)||a).map(function(s){return s.trim();});}
+      STEPS[e]=a.slice(0,10);try{localStorage.setItem(LS+"steps",JSON.stringify(STEPS));}catch(x){}
+      var top=STACK[STACK.length-1];if(top&&(top.p==="workout"||top.p==="exercise")&&!(document.activeElement&&document.activeElement.tagName==="INPUT"))render();
+    }).catch(function(){STEPWAIT[e]=0;});}
   return null;
 }
 function stepsHtml(e){var st=stepsFor(e);if(st===null)return '<div class="how mute">Loading the steps…</div>';if(!st.length)return '';return '<div class="how"><ol>'+st.map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+'</ol></div>';}
@@ -927,7 +945,7 @@ PAGES.workout=function(){
   var w=workOf(it.e),note=S.notes[it.e],c=coach(S,it),mus=musNames(it.e);
   h+='<button class="herogif" data-a="how">'+gif(it.e,"xl")+'<span class="tag">'+ic("book-open","sm")+(W.how?"Hide steps":"How to do it")+'</span></button>';
   h+='<div class="exname">'+esc(it.n)+'</div><div class="exm"><span class="mp">'+esc(mus.cardio?"Heart and lungs":mus.p.join(", "))+'</span>'+(mus.s.length?' <span class="faint">+ '+esc(mus.s.join(", "))+'</span>':'')+'</div>';
-  if(W.how)h+=stepsHtml(it.e);
+  if(W.how)h+=vidBtn(it.e)+stepsHtml(it.e);
   if(note)h+='<div class="pills"><span class="pill2">'+ic("notebook-pen","sm")+esc(note)+'</span></div>';
   if(rest)h+='<button class="restband" id="restB" data-a="skiprest"><span class="tm" id="restT">'+clock(REST.end-Date.now()+999)+'</span><span class="grow"><b id="restL">Rest</b><br><span class="mute small">'+esc(REST.next||"")+'</span></span><span class="faint small">Skip</span></button>';
   var ed=W.edit&&S.active.sets.find(function(s){return s.i===W.edit;});
@@ -1019,7 +1037,7 @@ ROOTS.routines=function(){
   S.program.forEach(function(w,i){h+=routineCard(w,i);});
   h+='<button class="btn add" data-a="newroutine">'+ic("plus")+'New routine</button></section>';
   h+='<section><h2>Ready-made programs</h2><div class="list">'+TEMPLATES.map(function(t){return '<button class="row" data-a="go" data-p="template" data-id="'+t.id+'">'+ic("calendar-days")+'<div class="grow"><div class="t">'+esc(t.n)+'</div><div class="s">'+esc(t.sub)+'</div></div>'+ic("chevron-right","faint")+'</button>';}).join("")+'</div></section>';
-  h+='<section><div class="list"><button class="row" data-a="go" data-p="library">'+ic("search")+'<div class="grow"><div class="t">Exercise library</div><div class="s">'+num(LIB?LIB.length:1285)+' exercises with moving pictures</div></div>'+ic("chevron-right","faint")+'</button><button class="row" data-a="go" data-p="howcoach">'+ic("sparkles")+'<div class="grow"><div class="t">How the coach works</div></div>'+ic("chevron-right","faint")+'</button><button class="row" data-a="logout">'+ic("log-out")+'<div class="grow"><div class="t">Log out on this phone</div></div></button></div>';
+  h+='<section><div class="list"><button class="row" data-a="go" data-p="library">'+ic("search")+'<div class="grow"><div class="t">Exercise library</div><div class="s">'+num(LIB?LIB.length:1817)+' exercises with moving pictures</div></div>'+ic("chevron-right","faint")+'</button><button class="row" data-a="go" data-p="howcoach">'+ic("sparkles")+'<div class="grow"><div class="t">How the coach works</div></div>'+ic("chevron-right","faint")+'</button><button class="row" data-a="logout">'+ic("log-out")+'<div class="grow"><div class="t">Log out on this phone</div></div></button></div>';
   return h+'<p class="faint tiny" style="margin:12px 4px">Lift build '+BUILD_ID+'. Exercise animations: ExerciseDB (exercisedb.dev). Body figure: react-native-body-highlighter (MIT).</p></section></div>';
 };
 PAGES.routine=function(a){
@@ -1101,7 +1119,7 @@ PAGES.custom=function(a){
 PAGES.exercise=function(a){
   var e=a.e,m=metaOf(S,e),k=kindOfE(S,e),hs=histFor(S,e),b=bestsFor(S,e,k),note=S.notes[e],mus=musNames(e);
   if(!LIB&&!CORE[e])whenLib();
-  var h=hdr(m[0])+'<div class="page">'+gif(e,"xl")+'<div class="exname">'+esc(m[0])+'</div>';
+  var h=hdr(m[0])+'<div class="page">'+gif(e,"xl")+'<div class="exname">'+esc(m[0])+'</div>'+vidBtn(e);
   h+='<div class="facts">'+(mus.p.length?'<div><span>Main muscle</span><b>'+esc(mus.p.join(", "))+'</b></div>':(mus.cardio?'<div><span>Works</span><b>Heart and lungs</b></div>':''))+(mus.s.length?'<div><span>Also works</span><b>'+esc(mus.s.join(", "))+'</b></div>':'')+(m[4].length?'<div><span>Equipment</span><b>'+esc(eqName(e))+'</b></div>':'')+'</div>';
   var mk=musKeys(e);if(mk.p.length||mk.s.length)h+='<div class="card mapcard">'+bodyMap(mk,"big")+'<div class="legend"><span><i class="lg1"></i>Main</span><span><i class="lg2"></i>Helps</span></div></div>';
   var steps=stepsHtml(e);if(steps)h+='<section style="margin-top:18px"><h2>How to do it</h2>'+steps+'</section>';
