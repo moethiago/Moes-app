@@ -1268,6 +1268,16 @@ async function liftRead(key = LIFT_KEY) {
   if (!raw) return { v: 0, state: null };
   try { return JSON.parse(raw); } catch { return { v: 0, state: null }; }
 }
+// Friends Moaath adds from his Admin page: one shared Lift link, each friend's own code opens their own clean data.
+const LIFT_USERS_KEY = "lift:users";
+async function liftUsers() {
+  const raw = await kv(["GET", LIFT_USERS_KEY]);
+  try { const j = raw ? JSON.parse(raw) : null; return j && Array.isArray(j.users) ? j : { users: [] }; } catch { return { users: [] }; }
+}
+function liftNewCode(taken) {
+  for (let i = 0; i < 200; i++) { const c = String(100000 + Math.floor(Math.random() * 900000)); if (!taken.has(c)) return c; }
+  throw new Error("no free code");
+}
 async function liftHandler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
@@ -1279,12 +1289,37 @@ async function liftHandler(req, res) {
     const pin = String(req.headers["x-pin"] || body.pin || req.query.pin || "").trim();
     const inst = (req.query && LIFT_INSTANCES[req.query.u]) || null;
     if (req.query && req.query.u && !inst) return res.status(404).json({ error: "no such lift" });
-    const KEY = inst ? inst.key : LIFT_KEY, PINS = inst ? inst.pins : LIFT_PINS;
-    const role = pin && pin === PINS[0] ? "full" : (pin && PINS[1] && pin === PINS[1] ? "lite" : null);
+    let KEY = inst ? inst.key : LIFT_KEY; const PINS = inst ? inst.pins : LIFT_PINS;
+    let role = pin && pin === PINS[0] ? "full" : (pin && PINS[1] && pin === PINS[1] ? "lite" : null);
+    let user = null;
+    if (!role && !inst && /^\d{6}$/.test(pin) && KV_URL && KV_TOKEN) {
+      const u = (await liftUsers()).users.find((x) => x.code === pin);
+      if (u) { user = u; KEY = "lift-u-" + u.id + ":state"; role = "full"; }
+    }
     if (!role) return res.status(401).json({ error: "pin" });
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
-    if (action === "state") { const s = await liftRead(KEY); return res.status(200).json({ ...s, role }); }
+    const admin = !inst && !user && role === "full";
+    if (action === "state") { const s = await liftRead(KEY); return res.status(200).json({ ...s, role, admin, ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "users" || action === "adduser" || action === "deluser") {
+      if (!admin) return res.status(403).json({ error: "admin" });
+      const reg = await liftUsers();
+      if (action === "adduser") {
+        const taken = new Set([...LIFT_PINS, ...Object.values(LIFT_INSTANCES).flatMap((x) => x.pins), ...reg.users.map((x) => x.code)].map(String));
+        const name = String(body.name || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 40) || ("Friend " + (reg.users.length + 1));
+        const u = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, code: liftNewCode(taken), created: Date.now() };
+        reg.users.push(u); await kv(["SET", LIFT_USERS_KEY, JSON.stringify(reg)]);
+        return res.status(200).json({ ok: true, user: u, users: reg.users });
+      }
+      if (action === "deluser") {
+        const id = String(body.id || ""); const before = reg.users.length;
+        reg.users = reg.users.filter((x) => x.id !== id);
+        if (reg.users.length === before) return res.status(404).json({ error: "no such user" });
+        await kv(["SET", LIFT_USERS_KEY, JSON.stringify(reg)]);
+        return res.status(200).json({ ok: true, users: reg.users });
+      }
+      return res.status(200).json({ users: reg.users });
+    }
     if (action === "save") {
       const cur = await liftRead(KEY);
       if (Number(body.v) !== Number(cur.v)) return res.status(409).json({ conflict: true, ...cur });
