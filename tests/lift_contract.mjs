@@ -172,5 +172,10 @@ check("Moaath sees every account: himself, each friend, Lift2", r.code === 200 &
 check("…friend's opens, logins, saves and changes-saved number", fr.act.opens === o0 + 3 && fr.act.logins >= 1 && fr.act.saves === 1 && fr.v === cur2.v + 1);
 check("…and what they trained: the workout, its sets and exercises", fr.st.sessions.length === 1 && fr.st.sessions[0].wn === "Push" && fr.st.sessions[0].sets.length === 2 && fr.st.sessions[0].sets[1].wu === 1 && fr.st.program[0].x[0] === "DOoWcnA");
 check("…no codes or other private fields leak into the stats", !JSON.stringify(A).includes(U2.code) && !("notes" in fr.st));
+{ const s0 = fr.st.sessions[0]; check("4.8: workouts come with how each set felt and the routine targets", s0.sets[0].f === 2 && Array.isArray(fr.st.program[0].t) && fr.st.program[0].t.length === 1); }
+{ const o1 = actOf(U2.id).opens; await call({ body: { action: "state", pin: U2.code, quiet: 1 } }); check("a quiet state read (backups, checks) isn't counted as an open", actOf(U2.id).opens === o1);
+  r = await call({ body: { action: "actadj", pin: U2.code, aid: U2.id, opens: 1 } }); check("a friend can't change counts", r.code === 403);
+  const b4 = actOf(U2.id), want = b4.opens - Math.min(b4.days[day].o, b4.opens);
+  r = await call({ body: { action: "actadj", pin: FULL, aid: U2.id, opens: 99 } }); check("Moaath can take back today's fake opens, never below 0", r.code === 200 && actOf(U2.id).opens === want && want >= 0 && actOf(U2.id).days[day].o === 0); }
 check("usage tracking never touches other apps' data", snap() === before);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
