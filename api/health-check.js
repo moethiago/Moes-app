@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 // ============================================================
 // api/health-check.js — pings all services, returns status JSON
 // Used by admin.html and can be polled by an external monitor
@@ -1308,6 +1309,150 @@ function liftNewCode(taken) {
   for (let i = 0; i < 200; i++) { const c = String(100000 + Math.floor(Math.random() * 900000)); if (!taken.has(c)) return c; }
   throw new Error("no free code");
 }
+// ---------- Lift reminders: Web Push to the Home Screen app (no SMS, no outside account) ----------
+// Keys are made once and kept in Upstash; messages are encrypted for each phone (RFC 8291) and signed (VAPID, RFC 8292).
+const LIFT_PUSH_IDX = "lift:pushidx", LIFT_VAPID_KEY = "lift:vapid";
+const liftPushKey = (aid) => "lift:push:" + aid;
+const b64u = (buf) => Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = (s) => Buffer.from(String(s || "").replace(/-/g, "+").replace(/_/g, "/"), "base64");
+async function liftVapid() {
+  const raw = await kv(["GET", LIFT_VAPID_KEY]);
+  if (raw) { try { const j = JSON.parse(raw); if (j && j.d && j.x && j.y) return j; } catch {} }
+  const { privateKey } = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
+  const jwk = privateKey.export({ format: "jwk" });
+  const j = { d: jwk.d, x: jwk.x, y: jwk.y, made: Date.now() };
+  await kv(["SET", LIFT_VAPID_KEY, JSON.stringify(j)]);
+  return j;
+}
+const liftVapidPublic = (v) => b64u(Buffer.concat([Buffer.from([4]), unb64u(v.x), unb64u(v.y)]));
+function liftVapidAuth(v, endpoint) {
+  const aud = new URL(endpoint).origin;
+  const head = b64u(JSON.stringify({ typ: "JWT", alg: "ES256" }));
+  const body = b64u(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "https://moethiago.github.io/Moes-app/lift/" }));
+  const key = crypto.createPrivateKey({ key: { kty: "EC", crv: "P-256", d: v.d, x: v.x, y: v.y }, format: "jwk" });
+  const sig = crypto.sign("sha256", Buffer.from(head + "." + body), { key, dsaEncoding: "ieee-p1363" });
+  return "vapid t=" + head + "." + body + "." + b64u(sig) + ", k=" + liftVapidPublic(v);
+}
+function liftEncrypt(sub, payload) {
+  const uaPub = unb64u(sub.keys.p256dh), auth = unb64u(sub.keys.auth);
+  const ecdh = crypto.createECDH("prime256v1"); ecdh.generateKeys();
+  const asPub = ecdh.getPublicKey(), secret = ecdh.computeSecret(uaPub);
+  const hmac = (k, d) => crypto.createHmac("sha256", k).update(d).digest();
+  const ikm = hmac(hmac(auth, secret), Buffer.concat([Buffer.from("WebPush: info\0"), uaPub, asPub, Buffer.from([1])]));
+  const salt = crypto.randomBytes(16), prk = hmac(salt, ikm);
+  const cek = hmac(prk, Buffer.from("Content-Encoding: aes128gcm\0\x01")).subarray(0, 16);
+  const nonce = hmac(prk, Buffer.from("Content-Encoding: nonce\0\x01")).subarray(0, 12);
+  const c = crypto.createCipheriv("aes-128-gcm", cek, nonce);
+  const ct = Buffer.concat([c.update(Buffer.concat([Buffer.from(payload), Buffer.from([2])])), c.final(), c.getAuthTag()]);
+  const rs = Buffer.alloc(4); rs.writeUInt32BE(4096);
+  return Buffer.concat([salt, rs, Buffer.from([asPub.length]), asPub, ct]);
+}
+async function liftPushSend(v, sub, msg) {
+  try {
+    const r = await fetch(sub.endpoint, { method: "POST", headers: { Authorization: liftVapidAuth(v, sub.endpoint), TTL: "43200", Urgency: "normal",
+      "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream" }, body: liftEncrypt(sub, JSON.stringify(msg)) });
+    return r.status;
+  } catch (e) { return 0; }
+}
+async function liftPushRead(aid) {
+  const raw = await kv(["GET", liftPushKey(aid)]);
+  let j = null; try { j = raw ? JSON.parse(raw) : null; } catch {}
+  j = j && typeof j === "object" ? j : {};
+  return { subs: Array.isArray(j.subs) ? j.subs : [], prefs: { on: 1, time: "17:00", day: 1, miss: 1, week: 1, open: 1, lang: "en", ...(j.prefs || {}) }, sent: j.sent || {}, log: Array.isArray(j.log) ? j.log : [] };
+}
+async function liftPushIdx(aid, key, add) {
+  const raw = await kv(["GET", LIFT_PUSH_IDX]); let idx = []; try { idx = raw ? JSON.parse(raw) : []; if (!Array.isArray(idx)) idx = []; } catch { idx = []; }
+  idx = idx.filter((x) => x.aid !== aid); if (add) idx.push({ aid, key });
+  await kv(["SET", LIFT_PUSH_IDX, JSON.stringify(idx)]); return idx;
+}
+// Riyadh calendar (UTC+3, no daylight saving)
+const liftRyd = (t) => { const d = new Date(t + 3 * 3600e3); return { dow: d.getUTCDay(), day: d.toISOString().slice(0, 10), min: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
+const liftDay0 = (t) => { const d = new Date(t + 3 * 3600e3); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 3 * 3600e3; };
+function liftNext(st, now) { // same choice as the app's "next up"
+  const P = st.program || [], pins = (w) => (w && Array.isArray(w.days) ? w.days : []), R = P.filter((w) => !pins(w).length);
+  let s = 0; if (R.length) { for (let k = 0; k < P.length; k++) { const i = R.indexOf(P[((st.next || 0) + k) % P.length]); if (i >= 0) { s = i; break; } } }
+  const dow = liftRyd(now).dow, pinned = P.find((w) => pins(w).indexOf(dow) >= 0);
+  return pinned || R[s] || P[0] || null;
+}
+function liftEst(w) { let m = 0; (w && w.x || []).forEach((it) => { m += it.kind === "c" ? ((it.lo || 0) + (it.hi || 0)) / 2 : (it.s || 3) * (45 + (it.rest == null ? 60 : it.rest)) / 60; }); return Math.max(5, Math.round((m + 5) / 5) * 5); }
+const LIFT_TXT = {
+  en: { day: (w, m) => ["Gym day today", (w ? w.n + " · about " + m + " min" : "Time to train") + ". Open Lift when you're there."],
+        miss: (d, w) => [d + " days without training", (w ? w.n + " is up next" : "Your next workout is waiting") + " — even a short session counts."],
+        open: (h) => ["Your workout is still open", "You started it " + h + " ago. Finish it or save it so it counts."],
+        week: (a, b, s, mn) => ["Your week in Lift", a + " of " + b + " workouts · " + s + " sets · " + mn + " min" + (a >= b && b ? ". Target hit — well done." : a ? ". Keep going." : ". Start with one today.")],
+        test: () => ["Lift reminders are on", "This is how your reminders will look. Nothing else to do."] },
+  ar: { day: (w, m) => ["اليوم يوم نادي", (w ? w.n + " · حوالي " + m + " دقيقة" : "حان وقت التمرين") + ". افتح Lift لما توصل."],
+        miss: (d, w) => [d + " أيام بدون تمرين", (w ? "التمرين القادم: " + w.n : "تمرينك القادم ينتظرك") + " — حتى الحصة القصيرة تفرق."],
+        open: (h) => ["تمرينك ما زال مفتوحاً", "بدأته قبل " + h + ". أنهِه أو احفظه عشان ينحسب."],
+        week: (a, b, s, mn) => ["أسبوعك في Lift", a + " من " + b + " تمارين · " + s + " مجموعة · " + mn + " دقيقة" + (a >= b && b ? ". حققت الهدف — ممتاز." : a ? ". كمّل." : ". ابدأ بتمرين اليوم.")],
+        test: () => ["تنبيهات Lift شغّالة", "هكذا ستظهر تنبيهاتك. لا شيء آخر مطلوب."] },
+};
+// What is due for one person right now. Pure: same inputs → same answer (tested over a grid of days and times).
+function liftDue(st, prefs, sent, now, force) {
+  const out = [], T = LIFT_TXT[prefs.lang === "ar" ? "ar" : "en"], r = liftRyd(now), at = /^(\d{1,2}):(\d{2})$/.exec(prefs.time || "17:00");
+  const atMin = at ? Math.min(23 * 60 + 59, +at[1] * 60 + +at[2]) : 17 * 60, quiet = r.min < 8 * 60 || r.min > 22 * 60 + 30;
+  if (!st || !prefs.on) return out;
+  const sess = Array.isArray(st.sessions) ? st.sessions : [], d0 = liftDay0(now);
+  const doneToday = sess.some((s) => s.start >= d0) || !!(st.active && st.active.start >= d0);
+  const w = liftNext(st, now), mins = liftEst(w);
+  const gymDay = (st.days || []).indexOf(r.dow) >= 0 || !!(w && Array.isArray(w.days) && w.days.indexOf(r.dow) >= 0);
+  const due = (k) => force || (prefs[k] && sent[k] !== r.day && r.min >= atMin && !quiet);
+  if (st.active && st.active.start) {
+    const age = now - st.active.start;
+    if ((force || (prefs.open && age > 4 * 3600e3 && !quiet && sent.open !== String(st.active.start)))) { const h = Math.max(1, Math.round(age / 3600e3)); const t = T.open(prefs.lang === "ar" ? h + " ساعة" : h + (h === 1 ? " hour" : " hours")); out.push({ k: "open", v: String(st.active.start), title: t[0], body: t[1] }); }
+  }
+  if (gymDay && !doneToday && !st.active && due("day")) { const t = T.day(w, mins); out.push({ k: "day", v: r.day, title: t[0], body: t[1] }); }
+  const last = sess.reduce((m, s) => Math.max(m, s.end || s.start || 0), 0);
+  const missed = last ? Math.round((d0 - liftDay0(last)) / 864e5) - 1 : 0; // whole days with no training since the last workout
+  if (last && missed >= 2 && !doneToday && !st.active && due("miss")) { const t = T.miss(missed, w); out.push({ k: "miss", v: r.day, title: t[0], body: t[1] }); }
+  if ((r.dow === 4 || force) && due("week")) {
+    const ws = d0 - r.dow * 864e5, wk = sess.filter((s) => s.start >= ws), sets = wk.reduce((n, s) => n + (s.sets || []).filter((x) => !x.wu).length, 0);
+    const mn = wk.reduce((n, s) => n + Math.max(0, Math.round(((s.end || s.start) - s.start) / 60000)), 0), t = T.week(wk.length, (st.days || []).length, sets, mn);
+    out.push({ k: "week", v: r.day, title: t[0], body: t[1] });
+  }
+  // a reminder already shown today never comes twice; the miss reminder waits two days before repeating
+  return out.filter((m) => force || m.k !== "miss" || !sent.missAt || now - sent.missAt >= 2 * 864e5);
+}
+function liftPreview(st, prefs, now) {
+  const T = LIFT_TXT[prefs.lang === "ar" ? "ar" : "en"], s = st || {}, sess = Array.isArray(s.sessions) ? s.sessions : [], w = liftNext(s, now), r = liftRyd(now), d0 = liftDay0(now);
+  const last = sess.reduce((m, x) => Math.max(m, x.end || x.start || 0), 0), days = last ? Math.max(2, Math.round((d0 - liftDay0(last)) / 864e5) - 1) : 2;
+  const ws = d0 - r.dow * 864e5, wk = sess.filter((x) => x.start >= ws), sets = wk.reduce((n, x) => n + (x.sets || []).filter((y) => !y.wu).length, 0);
+  const mn = wk.reduce((n, x) => n + Math.max(0, Math.round(((x.end || x.start) - x.start) / 60000)), 0);
+  const h = s.active && s.active.start ? Math.max(1, Math.round((now - s.active.start) / 3600e3)) : 5;
+  return [["day", T.day(w, liftEst(w))], ["miss", T.miss(days, w)], ["week", T.week(wk.length, (s.days || []).length, sets, mn)], ["open", T.open(prefs.lang === "ar" ? h + " ساعة" : h + (h === 1 ? " hour" : " hours"))]]
+    .map(([k, t]) => ({ k, title: t[0], body: t[1] }));
+}
+async function liftPushDeliver(aid, P, msgs, why) {
+  const v = await liftVapid(); let ok = 0; const keep = [];
+  for (const sub of P.subs) {
+    let alive = true;
+    for (const m of msgs) {
+      const st = await liftPushSend(v, sub, { title: m.title, body: m.body, tag: "lift-" + m.k });
+      P.log.push({ t: Date.now(), k: m.k, why, s: st, d: String(sub.ua || "").slice(0, 30) });
+      if (st >= 200 && st < 300) ok++; else if (st === 404 || st === 410) alive = false;
+    }
+    if (alive) keep.push(sub);
+  }
+  P.subs = keep; if (P.log.length > 40) P.log = P.log.slice(-40);
+  return ok;
+}
+async function liftRemindAll(now) {
+  const raw = await kv(["GET", LIFT_PUSH_IDX]); let idx = []; try { idx = raw ? JSON.parse(raw) : []; } catch {}
+  const res = [];
+  for (const a of Array.isArray(idx) ? idx : []) {
+    try {
+      const P = await liftPushRead(a.aid); if (!P.subs.length || !P.prefs.on) continue;
+      const doc = await liftRead(a.key), msgs = liftDue(doc.state, P.prefs, P.sent, now, false);
+      if (!msgs.length) continue;
+      const sent = await liftPushDeliver(a.aid, P, msgs, "schedule");
+      msgs.forEach((m) => { P.sent[m.k] = m.v; if (m.k === "miss") P.sent.missAt = now; });
+      await kv(["SET", liftPushKey(a.aid), JSON.stringify(P)]);
+      if (!P.subs.length) await liftPushIdx(a.aid, a.key, false);
+      res.push({ aid: a.aid, n: msgs.length, ok: sent });
+    } catch (e) { res.push({ aid: a.aid, err: String(e && e.message || e).slice(0, 80) }); }
+  }
+  return res;
+}
 async function liftHandler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
@@ -1316,6 +1461,14 @@ async function liftHandler(req, res) {
   try {
     const body = req.method === "POST" ? (typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {})) : {};
     const action = body.action || req.query.action || "state";
+    if (action === "remind") { // GitHub Actions calls this every 15 min; safe any time — each reminder goes once
+      if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
+      const now = Date.now(), last = Number(await kv(["GET", "lift:remind:last"]) || 0);
+      if (now - last < 60000) return res.status(200).json({ ok: true, skipped: "too soon" });
+      await kv(["SET", "lift:remind:last", String(now)]);
+      const out = await liftRemindAll(now);
+      return res.status(200).json({ ok: true, people: out.length, sent: out.reduce((n, x) => n + (x.ok || 0), 0), errors: out.filter((x) => x.err).length });
+    }
     const pin = String(req.headers["x-pin"] || body.pin || req.query.pin || "").trim();
     const inst = (req.query && LIFT_INSTANCES[req.query.u]) || null;
     if (req.query && req.query.u && !inst) return res.status(404).json({ error: "no such lift" });
@@ -1331,6 +1484,36 @@ async function liftHandler(req, res) {
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
     const aid = user ? user.id : (inst ? String(req.query.u) : "admin");
+    if (action === "pushkey") { const v = await liftVapid(); return res.status(200).json({ key: liftVapidPublic(v) }); }
+    if (["pushsub", "pushunsub", "pushprefs", "pushget", "pushtest", "pushpreview"].includes(action)) {
+      const P = await liftPushRead(aid);
+      if (action === "pushsub") {
+        const sb = body.sub || {}, ep = String(sb.endpoint || "");
+        if (!/^https:\/\/[a-z0-9.-]+(:\d+)?\//i.test(ep) || !sb.keys || !sb.keys.p256dh || !sb.keys.auth) return res.status(400).json({ error: "subscription" });
+        P.subs = P.subs.filter((x) => x.endpoint !== ep);
+        P.subs.push({ endpoint: ep.slice(0, 800), keys: { p256dh: String(sb.keys.p256dh).slice(0, 200), auth: String(sb.keys.auth).slice(0, 100) }, ua: String(body.ua || "").replace(/[<>]/g, "").slice(0, 60), added: Date.now() });
+        if (P.subs.length > 5) P.subs = P.subs.slice(-5);
+        P.prefs.on = 1; if (body.lang) P.prefs.lang = body.lang === "ar" ? "ar" : "en";
+        await liftPushIdx(aid, KEY, true);
+      }
+      if (action === "pushunsub") { const ep = String(body.endpoint || ""); P.subs = ep ? P.subs.filter((x) => x.endpoint !== ep) : []; if (!P.subs.length) await liftPushIdx(aid, KEY, false); }
+      if (action === "pushprefs") {
+        const pr = body.prefs || {};
+        for (const k of ["on", "day", "miss", "week", "open"]) if (k in pr) P.prefs[k] = pr[k] ? 1 : 0;
+        if (/^(0?[6-9]|1\d|2[0-2]):(00|30)$/.test(String(pr.time || ""))) P.prefs.time = String(pr.time);
+        if (pr.lang) P.prefs.lang = pr.lang === "ar" ? "ar" : "en";
+      }
+      let sent = null;
+      if (action === "pushtest" || action === "pushpreview") {
+        if (!P.subs.length) return res.status(409).json({ error: "no phone" });
+        const doc = await liftRead(KEY), T = LIFT_TXT[P.prefs.lang === "ar" ? "ar" : "en"].test();
+        const msgs = action === "pushtest" ? [{ k: "test", title: T[0], body: T[1] }] : liftPreview(doc.state, P.prefs, Date.now());
+        sent = await liftPushDeliver(aid, P, msgs, action === "pushtest" ? "test" : "preview");
+        if (!P.subs.length) await liftPushIdx(aid, KEY, false);
+      }
+      if (action !== "pushget") await kv(["SET", liftPushKey(aid), JSON.stringify(P)]);
+      return res.status(200).json({ ok: true, on: !!P.prefs.on, phones: P.subs.length, prefs: P.prefs, log: P.log.slice(-10), ...(sent != null ? { sent } : {}) });
+    }
     if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
