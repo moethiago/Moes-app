@@ -5,6 +5,7 @@ time, test/preview, turning off — English + Arabic, dark + light. Push itself 
 Usage: python3 tests/lift_reminders_e2e.py [path-to-lift-folder]"""
 import json, threading, http.server, socketserver, sys, os, re, base64, datetime
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lift_46_e2e_contrast import CONTRAST_JS
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift-test")
@@ -60,7 +61,7 @@ with sync_playwright() as p:
         if perm == "refuse": extra += "let P='default';Object.defineProperty(Notification,'permission',{get:()=>P});Notification.requestPermission=()=>{P='default';return Promise.resolve('default')};"
         init = "localStorage.setItem('liftt_pin','2026');localStorage.setItem('liftt_who','2026');" + ("localStorage.setItem('lift_lang','%s');" % lang if lang else "") + ("localStorage.setItem('lift_theme','%s');" % theme if theme else "")
         ctx.add_init_script(init + STUB % extra)
-        pg = ctx.new_page(); pg.route("**/api/health-check**", api)
+        pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.route("**/api/health-check**", api)
         for pat in ("**/static.exercisedb.dev/**", "**/i.ytimg.com/**", "**raw.githubusercontent.com/**", "**wger.de/**", "**/oss.exercisedb.dev/**"): pg.route(pat, lambda r: r.fulfill(status=404, body=b""))
         pg.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
