@@ -135,4 +135,19 @@ r = await call({ body: { action: "state", pin: U2.code } }); check("every Lift g
 r = await call({ query: FQ, body: { action: "state", pin: "250958" } }); check("…Lift2 too", r.j.fix && r.j.fix.hv.rR0LJzx === 1);
 r = await call({ body: { action: "fixvid", pin: FULL, e: "rR0LJzx", hide: false } }); check("Moaath shows it again", r.code === 200 && !r.j.fix.hv.rR0LJzx);
 check("reports never touch other apps' data", snap() === before);
+// 4.6: report count for the badge on Moaath's User tab; screen measurements from his phone only
+r = await call({ body: { action: "state", pin: FULL } }); check("Moaath's state carries the open-report count (2)", r.code === 200 && r.j.reports === 2);
+r = await call({ body: { action: "state", pin: U2.code } }); check("a friend's state has no report count", r.code === 200 && !("reports" in r.j));
+r = await call({ query: FQ, body: { action: "state", pin: "250958" } }); check("…Lift2 neither", r.code === 200 && !("reports" in r.j));
+r = await call({ body: { action: "diag", pin: U2.code, d: { a: 1 } } }); check("a friend can't send screen data", r.code === 403);
+r = await call({ query: FQ, body: { action: "diag", pin: "250958", d: { a: 1 } } }); check("…Lift2 can't either", r.code === 403);
+r = await call({ body: { action: "diaglog", pin: U2.code } }); check("a friend can't read screen data", r.code === 403);
+r = await call({ body: { action: "diag", pin: FULL, d: { tag: "start<script>", navBottom: 852, standalone: true, ["x".repeat(40)]: "y".repeat(200) } } }); check("Moaath's phone sends screen data", r.code === 200 && r.j.ok);
+for (let i = 0; i < 45; i++) await call({ body: { action: "diag", pin: FULL, d: { i } } });
+r = await call({ body: { action: "diaglog", pin: FULL } }); const dl = r.j.items || [];
+check("screen log keeps the newest 40", r.code === 200 && dl.length === 40 && dl[39].i === 44);
+r = await call({ body: { action: "diag", pin: FULL, d: { tag: "start<script>", navBottom: 852, standalone: true, ["x".repeat(40)]: "y".repeat(200) } } });
+r = await call({ body: { action: "diaglog", pin: FULL } }); const last = r.j.items[r.j.items.length - 1];
+check("screen data is cleaned and capped", last.tag === "startscript" && last.navBottom === 852 && last.standalone === true && last["x".repeat(20)].length === 80);
+check("screen data never touches other apps' data", snap() === before);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
