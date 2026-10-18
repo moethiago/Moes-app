@@ -137,15 +137,10 @@ for (const days of [3, 4, 5]) for (const kit of ["full", "basic", "home"]) for (
   ok("home plan swaps machines for dumbbell/band/bodyweight moves with the same main muscle", P.program.every(w => w.x.every(i => L.gearOk({ gear: P.gear, custom: {} }, i.e))) && P.program[0].x.length >= 5, P.program[0].x.map(i => i.n)); }
 ok("3-day template exists and every exercise has facts", !!L.tplById("fb3") && L.tplById("fb3").w.every(w => w.x.every(r => L.CORE[r[0]])));
 
-// ---- bottom bar: never pad for the home indicator twice
-ok("normal iPhone home-screen app: page reaches the bottom → keep the 34pt inset", L.sbPad(34, true, 0) === 34);
-ok("page already stops above the home indicator (iOS bug) → no second inset", L.sbPad(34, true, 34) === 0 && L.sbPad(34, true, 50) === 0);
-ok("in Safari (not home screen) the inset is left alone", L.sbPad(34, false, 120) === 34);
-ok("phones without a home indicator → nothing to pad", L.sbPad(0, true, 0) === 0);
-{ const n = (...a) => JSON.stringify(L.navLayout(...a));
-  ok("Moaath's case: bar ends 58pt above the screen bottom → move it down 58, keep the home-indicator space", n(true, 59, 34, 58, 58) === '{"sb":34,"shift":58}');
-  ok("never moved more than 64pt (can't slide off the screen again)", n(true, 59, 34, 122, 122) === '{"sb":34,"shift":64}');
-  ok("gap can't be measured but viewport is short → just drop the doubled space", n(true, 59, 34, 0, 58) === '{"sb":0,"shift":0}');
-  ok("the other iOS bug (system bar on top, top inset 0) → leave the bar alone", n(true, 0, 34, 62, 62) === '{"sb":34,"shift":0}');
-  ok("normal phone → unchanged", n(true, 59, 34, 0, 0) === '{"sb":34,"shift":0}' && n(false, 59, 34, 120, 120) === '{"sb":34,"shift":0}'); }
+// ---- bottom bar (4.6): no JavaScript moves the bar any more; the page itself is made screen-tall on iPhone
+// home-screen apps (iOS 26 shortens the viewport by the status-bar height while the page is shorter than the screen).
+ok("home-screen apps get a screen-tall page", /@media \(display-mode: standalone\)\{html\{min-height:min\(100lvh,calc\(100% \+ env\(safe-area-inset-top\)\)\)\}\}/.test(html));
+ok("…and the same rule by class for iOS versions without display-mode", html.includes("html.standalone{min-height:min(100lvh,calc(100% + env(safe-area-inset-top)))}") && html.includes('classList.add("standalone")'));
+ok("no code moves or re-pads the bottom bar", !/navLayout|sbPad|--navshift|nav\.tabs[^{]*\{[^}]*transform/.test(html));
+ok("the bar sits on the screen bottom with the home-indicator space inside it", /nav\.tabs\{position:fixed;left:0;right:0;bottom:0;[^}]*padding:6px 6px calc\(6px \+ var\(--sb\)\)/.test(html));
 console.log(`\nMUSCLES lift: PASS ${pass}  FAIL ${fail}`); if (fail) process.exit(1);
