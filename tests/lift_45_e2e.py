@@ -27,7 +27,8 @@ def api(route):
     j = lambda code, o: route.fulfill(status=code, body=json.dumps(o), content_type="application/json")
     if pin not in db: return j(401, {"error": "pin"})
     adm = pin == ADMIN
-    if a == "state": return j(200, {**db[pin], "role": "full", "admin": adm, "fix": FIX})
+    if a == "state": return j(200, {**db[pin], "role": "full", "admin": adm, "fix": FIX, **({"reports": len(REPORTS)} if adm else {})})
+    if a in ("diag", "diaglog"): return j(200, {"ok": True}) if adm else j(403, {"error": "admin"})
     if a == "save":
         if b.get("v") != db[pin]["v"]: return j(409, {"conflict": True, **db[pin]})
         db[pin]["v"] += 1; db[pin]["state"] = b["state"]; return j(200, {"v": db[pin]["v"]})
@@ -85,12 +86,14 @@ with sync_playwright() as p:
         if SHOTS: pg.screenshot(path=os.path.join(SHOTS, name + ".png"), full_page=True)
     def go_page(p_, **a):
         pg.evaluate("([p,a])=>{show(p,a)}", [p_, a]); W(700)
-    def tab(name, ms=700):
-        pg.evaluate("t=>{TAB=t;STACK=[];saveUI();render();window.scrollTo(0,0)}", name); W(ms)
+    TABMAP = {"today": ["today", None], "user": ["user", None], "routines": ["programs", "routines"], "exercises": ["programs", "exercises"], "programs": ["programs", "programs"],
+              "muscles": ["log", "muscles"], "log": ["log", "workouts"], "body": ["log", "body"]}
+    def tab(name, ms=700):  # 4.6: Home · Programs (Routines/Exercises/Programs) · Log (Muscles/Workouts/Body) · User
+        pg.evaluate("([t,g])=>{TAB=t;if(g)SEG[t]=g;STACK=[];saveUI();render();window.scrollTo(0,0)}", TABMAP[name]); W(ms)
 
     pg.goto(f"http://127.0.0.1:{PORT}/index.html"); W(1800)
     ok("app opens with a seeded plan", ST() is not None and len(ST()["program"]) >= 4, ST() and len(ST()["program"]))
-    ok("5 tabs incl. Muscles", pg.locator("nav.tabs button").all_inner_texts() == ["Today", "Routines", "Muscles", "Log", "Body"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == ["Home", "Programs", "Log", "User"], pg.locator("nav.tabs button").all_inner_texts())
 
     # ---- this week: bench 3 sets, pulldown 3 sets, leg press 3 sets (2 days ago if that's still this week, else today)
     now = NOW(); ws = WS; t1 = WS + D + 18 * 3600e3  # Monday 18:00
@@ -99,6 +102,7 @@ with sync_playwright() as p:
     db[ADMIN]["v"] += 1; pg.evaluate("localStorage.removeItem('lift_state')"); pg.reload(); W(1800)
     tab("muscles", 900)
     shot("01_muscles_week")
+    ok("Muscles is the first part of the Log tab", title() == "ROOT:Log" and pg.locator(".tabseg button").all_inner_texts() == ["Muscles", "Workouts", "Body"] and pg.locator(".tabseg [data-v='muscles'].on").count() == 1)
     t = txt()
     ok("Muscles tab: heat map + legend + summary", pg.locator(".mapcard svg.bmap").count() >= 1 and "On target" in t and "muscles on target" in t)
     def mrow(name):
@@ -119,9 +123,11 @@ with sync_playwright() as p:
     tap("[data-a='mrange'][data-r='avg4']", 500)
     ok("4-week average (last 4 full weeks): 2/4 = 0.5 a week for middle chest", " 0.5 sets" in mrow("Middle chest"), mrow("Middle chest"))
     tap("[data-a='mrange'][data-r='week']", 500)
-    tap("[data-a='level'][data-v='some']", 600)
+    ok("level lives in User now; Muscles links to it", pg.locator("[data-a='level']").count() == 0 and pg.locator(".lvlrow[data-t='user']").count() == 1 and "New" in txt(".lvlrow"))
+    tap(".lvlrow", 600); ok("…the link opens the User tab", title() == "ROOT:User" and pg.locator("[data-a='level']").count() == 3)
+    tap("[data-a='level'][data-v='some']", 600); tab("muscles", 700)
     ok("level 'Under 1 year' → quads target 10–20, saved", "target 10–20" in mrow("Quads") and ST().get("level") == "some")
-    tap("[data-a='level'][data-v='new']", 500)
+    tab("user", 500); tap("[data-a='level'][data-v='new']", 500); tab("muscles", 700)
 
     # ---- one muscle: Lats
     tap(".mrow:has(.t:text-is('Lats'))", 1500)
@@ -134,7 +140,7 @@ with sync_playwright() as p:
     tap(".hdr .back", 500)
 
     # ---- library: browse by muscle → upper chest
-    tab("routines", 600); tap("[data-p='library']", 1500)
+    tab("exercises", 1500)
     tap("[data-a='lview'][data-v='muscle']", 700); shot("03_library_by_muscle")
     ok("library 'By muscle' shows every group and muscle", pg.locator(".mtile").count() >= 25 and "Upper chest" in txt() and "Rear delts" in txt())
     tap(".mtile[data-id='cu']", 1500); shot("04_upper_chest")
@@ -162,19 +168,19 @@ with sync_playwright() as p:
     ok("library fits the phone", noscroll())
 
     # ---- my gym: no barbells
-    tap(".hdr .back", 500); tap("[data-p='gear']", 700); shot("05_gear")
+    tab("user", 500); tap("[data-p='gear']", 700); shot("05_gear")
     ok("gear page lists equipment, all ticked", pg.locator(".gearrow.on").count() == pg.locator(".gearrow").count() >= 10)
     tap(".gearrow[data-k='barbell']", 500)
     ok("unticking barbell saves my gym", isinstance(ST().get("gear"), list) and "barbell" not in ST()["gear"])
-    tap(".hdr .back", 400); tap("[data-p='library']", 1300)
+    tab("exercises", 1300)
     pg.fill("#libq", "barbell bench press"); W(600)
     ok("library hides barbell exercises (My gym on)", "Barbell bench press" not in pg.locator("#liblist .row .t").all_inner_texts() and pg.locator("[data-a='lmine']").count() == 1)
     tap("[data-a='lmine']", 600)
     ok("…'My gym' off shows them again", "Barbell bench press" in pg.locator("#liblist .row .t").all_inner_texts()[:3])
     pg.fill("#libq", ""); W(200)
-    tap(".hdr .back", 400); tap("[data-p='gear']", 600); tap("[data-a='gearall']", 500)
+    tab("user", 400); tap("[data-p='gear']", 600); tap("[data-a='gearall']", 500)
     ok("'My gym has everything' clears the list", "gear" not in ST())
-    tap(".hdr .back", 400)
+    tap(".hdr .back", 400); tab("routines", 600)
 
     # ---- fixed day: pin routine 2 to today
     dow = 3  # the fixed clock is a Wednesday
@@ -202,13 +208,16 @@ with sync_playwright() as p:
     tap("[data-a='rpkind'][data-v='video']", 300); pg.fill("#rpnote", "video shows a barbell"); pg.dispatch_event("#rpnote", "input")
     tap("[data-a='rpsend']", 800)
     ok("report sent with exercise, reason and note", REPORTS and REPORTS[-1]["kind"] == "video" and REPORTS[-1]["e"] == "rR0LJzx" and REPORTS[-1]["note"] == "video shows a barbell", REPORTS[-1:] )
-    tab("routines", 500); tap("[data-p='library']", 1200)
+    tab("exercises", 1200)
     pg.fill("#libq", "zzqqx machine"); W(600)
     tap("#liblist [data-p='report']", 700)
     ok("'Ask for it' opens with the name filled in", pg.input_value("#rpq") == "zzqqx machine")
     tap("[data-a='rpsend']", 800)
     ok("missing-exercise request sent", REPORTS[-1]["kind"] == "missing" and REPORTS[-1]["q"] == "zzqqx machine")
-    tab("routines", 500); tap("[data-p='reports']", 900); shot("08_reports")
+    tab("today", 500); pg.evaluate("pull().then(render)"); W(700)  # what happens when he comes back to the app
+    ok("User tab shows a red badge with the 2 open reports", pg.is_visible("#ubadge") and pg.inner_text("#ubadge").strip() == "2", pg.inner_text("#ubadge"))
+    tab("user", 500); ok("…and the Reports row says 2", "2" in txt("[data-p='reports'] .cbadge"))
+    tap("[data-p='reports']", 900); shot("08_reports")
     ok("admin Reports page lists both", pg.locator(".rprow").count() == 2 and "Missing exercise" in txt() and "Wrong video" in txt())
     tap2("[data-a='fixvid']", 900)
     ok("'Hide video for everyone' → server list updated", FIX["hv"].get("rR0LJzx") == 1)
@@ -216,6 +225,7 @@ with sync_playwright() as p:
     ok("…the video button is gone from that exercise", pg.locator("a.ytb").count() == 0)
     tap(".hdr .back", 400); tap("[data-a='rpdone'] >> nth=0", 800)
     ok("'Done' removes a report", len(REPORTS) == 1 and pg.locator(".rprow").count() == 1)
+    ok("…badge drops to 1", pg.inner_text("#ubadge").strip() == "1")
     tap("[data-a='unfixvid']", 700); ok("'Show video again' restores it", "rR0LJzx" not in FIX["hv"])
     tap(".hdr .back", 400)
 
@@ -275,19 +285,18 @@ with sync_playwright() as p:
     if SHOTS: pg.screenshot(path=os.path.join(SHOTS, "20_ar_muscles.png"), full_page=True)
     nav_h = pg.evaluate("document.querySelector('nav.tabs').getBoundingClientRect().height")
     ok("bottom bar is compact (≤ 66px without a home indicator)", nav_h <= 66, nav_h)
-    ok("Arabic tab label", pg.locator("nav.tabs [data-tab='muscles']").inner_text().strip() != "Muscles")
+    ok("Arabic tab labels", [t.strip() for t in pg.locator("nav.tabs button span").all_inner_texts()] == ["الرئيسية", "البرامج", "السجل", "حسابي"], pg.locator("nav.tabs button").all_inner_texts())
     for r_ in ("last", "avg4", "week"): tap(f"[data-a='mrange'][data-r='{r_}']", 400)
     tap(".mrow >> nth=0", 1400)
     go_page("muscle", id="cu"); go_page("muscle", id="ch")
-    pg.evaluate("TAB='routines';STACK=[];render()"); W(400)
-    tap("[data-p='library']", 1300); tap("[data-a='lview'][data-v='muscle']", 700)
+    tab("exercises", 1300); tap("[data-a='lview'][data-v='muscle']", 700)
     if SHOTS: pg.screenshot(path=os.path.join(SHOTS, "21_ar_library_muscle.png"), full_page=True)
     tap("[data-a='lview'][data-v='search']", 500); tap("[data-a='lg'][data-g='1']", 500); tap("[data-a='lm'] >> nth=1", 500)
     pg.fill("#libq", "zzqq"); W(600); pg.fill("#libq", ""); W(300)
     go_page("gear"); pg.locator(".gearrow").first.click(); W(400)
-    pg.evaluate("TAB='routines';STACK=[];render()"); W(400)
+    for t_ in ("routines", "programs", "workouts", "body", "user"): tab(t_ if t_ != "workouts" else "log", 500)
     go_page("library", mode="")
-    pg.evaluate("TAB='routines';STACK=[];render()"); W(400)
+    tab("programs", 400)
     go_page("setup")
     for k, v in (("goal", "fat"), ("exp", "some"), ("days", "5"), ("kit", "home")): tap(f"[data-a='su'][data-k='{k}'][data-v='{v}']", 300)
     W(800)
@@ -296,10 +305,9 @@ with sync_playwright() as p:
     go_page("reports"); W(500)
     pid = pg.evaluate("S.program[0].id"); go_page("editor", id=pid); tap("[data-a='wday'][data-d='3']", 500)
     go_page("exercise", e="eYnzaCm")
-    pg.evaluate("TAB='today';STACK=[];render()"); W(600)
-    pg.evaluate("TAB='routines';STACK=[];render()"); W(500)
+    tab("today", 600); tab("routines", 500)
     go_page("custom", mode="")
-    real = sorted(k for k in MISS if not re.fullmatch(r"(Full Body .*|Upper .*|Lower .*|Workout .*|.*[a-z]+ (press|row|curl|raise|fly|squat|pulldown).*)", k, re.I))
+    real = sorted(k for k in MISS if k != "Old" and not re.fullmatch(r"(Full Body .*|Upper .*|Lower .*|Workout .*|.*[a-z]+ (press|row|curl|raise|fly|squat|pulldown).*)", k, re.I))
     ok("Arabic: no English left on the new pages (names excepted)", not real, real[:40])
     json.dump(real, open("/tmp/w/armiss.json", "w"), ensure_ascii=False, indent=0) if os.path.isdir("/tmp/w") else None
     ok("no page errors (Arabic)", not errs, errs[:3])
