@@ -1329,7 +1329,7 @@ async function liftHandler(req, res) {
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
     const aid = user ? user.id : (inst ? "f" : "admin");
-    if (action === "state") { await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
       if (!admin) return res.status(403).json({ error: "admin" });
@@ -1386,6 +1386,16 @@ async function liftHandler(req, res) {
         return res.status(200).json({ ok: true, users: reg.users });
       }
       return res.status(200).json({ users: reg.users });
+    }
+    if (action === "actadj") {
+      // Moaath only: take back opens that weren't real (e.g. a backup run). Only lowers today's count, never below 0.
+      if (!admin) return res.status(403).json({ error: "admin" });
+      const id = String(body.aid || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40), n = Math.max(0, Math.min(50, Number(body.opens) || 0));
+      const a = await liftActRead(id); if (!a) return res.status(404).json({ error: "no usage" });
+      const day = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10), d = (a.days || {})[day] || { o: 0, s: 0 }, take = Math.min(n, d.o || 0, a.opens || 0);
+      d.o -= take; a.opens -= take; if (a.days && a.days[day]) a.days[day] = d;
+      await kv(["SET", liftActKey(id), JSON.stringify(a)]);
+      return res.status(200).json({ ok: true, act: a });
     }
     if (action === "userstats") {
       // Moaath only: how each account uses Lift and what they trained (read-only).
