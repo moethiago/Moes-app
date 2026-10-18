@@ -1,0 +1,17 @@
+name: lift reminders
+# Every 15 minutes: asks the Lift backend to send any reminders that are due (notifications on the Lift icon).
+# Safe to run any time — each reminder goes to each person once; the backend ignores calls less than a minute apart.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: send due reminders
+        run: |
+          out=$(curl -s -m 60 -X POST "https://moes-app-two.vercel.app/api/health-check?app=lift" -H "Content-Type: application/json" -d '{"action":"remind"}')
+          echo "$out"
+          echo "$out" | grep -q '"ok":true'
