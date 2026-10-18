@@ -58,6 +58,7 @@ with sync_playwright() as p:
         pg.evaluate("forceReload('9.9')"); pg.wait_for_timeout(1500)
         names = pg.evaluate("caches.keys()"); regs = pg.evaluate("navigator.serviceWorker.getRegistrations().then(rs=>rs.map(r=>new URL(r.scope).pathname))")
         ok("test camp update refreshes only itself (Lift's offline copy and worker stay)", any(n.startswith("lift-v") for n in names) and "maqadi-v9" in names and any(x.endswith("/lift/") for x in regs), (names, regs))
+        ok("…and keeps its own worker registered, so the phone's reminders survive updates", any(x.endswith("/lift-test/") for x in regs), regs)
         ctx.close()
     br.close()
 print(f"E2E two lifts: PASS {P}  FAIL {F}"); srv.shutdown(); sys.exit(1 if F else 0)
