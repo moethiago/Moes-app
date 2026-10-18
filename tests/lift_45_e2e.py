@@ -5,6 +5,7 @@ with zero untranslated words. Real Chromium at iPhone size; backend mocked in-pr
 Usage: python3 tests/lift_45_e2e.py [path-to-lift-folder] [screenshot-dir]"""
 import json, threading, http.server, socketserver, sys, os, re, time, datetime
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift")
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else ""
 PORT = int(os.environ.get("PORT", "8185"))
@@ -64,7 +65,7 @@ with sync_playwright() as p:
         init = "localStorage.setItem('lift_pin','%s');localStorage.setItem('lift_who','%s');" % (pin, pin)
         if lang: init += "localStorage.setItem('lift_lang','%s');" % lang
         ctx.add_init_script(init)
-        pg = ctx.new_page(); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
+        pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
         pg.route("**/static.exercisedb.dev/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/i.ytimg.com/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/oss.exercisedb.dev/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps({"data": {"instructions": ["Step:1 Sit down.", "Step:2 Push."]}})))
@@ -79,7 +80,7 @@ with sync_playwright() as p:
         el = pg.locator(sel).first; el.evaluate("e=>e.scrollIntoView({block:'center'})"); el.click(); W(ms)
     def tap2(sel, ms=600): tap(sel, 150); tap(sel, ms)
     def txt(sel="#view"): return pg.inner_text(sel).replace(" ", " ").replace("\xa0", " ")
-    def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else ("ROOT:" + pg.inner_text(".root-top h1"))
+    def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else root_title(pg)
     def noscroll(): return pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1")
     ST = lambda: db[ADMIN]["state"]
     def shot(name):
@@ -93,7 +94,7 @@ with sync_playwright() as p:
 
     pg.goto(f"http://127.0.0.1:{PORT}/index.html"); W(1800)
     ok("app opens with a seeded plan", ST() is not None and len(ST()["program"]) >= 4, ST() and len(ST()["program"]))
-    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == ["Home", "Programs", "Log", "User"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == tabs_en(pg), pg.locator("nav.tabs button").all_inner_texts())
 
     # ---- this week: bench 3 sets, pulldown 3 sets, leg press 3 sets (2 days ago if that's still this week, else today)
     now = NOW(); ws = WS; t1 = WS + D + 18 * 3600e3  # Monday 18:00
@@ -285,7 +286,7 @@ with sync_playwright() as p:
     if SHOTS: pg.screenshot(path=os.path.join(SHOTS, "20_ar_muscles.png"), full_page=True)
     nav_h = pg.evaluate("document.querySelector('nav.tabs').getBoundingClientRect().height")
     ok("bottom bar is compact (≤ 66px without a home indicator)", nav_h <= 66, nav_h)
-    ok("Arabic tab labels", [t.strip() for t in pg.locator("nav.tabs button span").all_inner_texts()] == ["الرئيسية", "البرامج", "السجل", "حسابي"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("Arabic tab labels", [t.strip() for t in pg.locator("nav.tabs button span").all_inner_texts()] == tabs_ar(pg), pg.locator("nav.tabs button").all_inner_texts())
     for r_ in ("last", "avg4", "week"): tap(f"[data-a='mrange'][data-r='{r_}']", 400)
     tap(".mrow >> nth=0", 1400)
     go_page("muscle", id="cu"); go_page("muscle", id="ch")
