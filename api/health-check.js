@@ -1514,6 +1514,35 @@ async function liftHandler(req, res) {
       if (action !== "pushget") await kv(["SET", liftPushKey(aid), JSON.stringify(P)]);
       return res.status(200).json({ ok: true, on: !!P.prefs.on, phones: P.subs.length, prefs: P.prefs, log: P.log.slice(-10), ...(sent != null ? { sent } : {}) });
     }
+    if (action === "pushpeople" || action === "pushsend") {
+      // Moaath writes his own notification. In the test camp it only ever goes to the test camp itself.
+      const testcamp = !!inst && req.query.u === "t";
+      if (!admin && !testcamp) return res.status(403).json({ error: "admin" });
+      const histKey = testcamp ? "lift-t:pushmsgs" : "lift:pushmsgs";
+      let people;
+      if (testcamp) people = [{ aid: "t", name: "You (Lift Test)", key: KEY }];
+      else { const reg = await liftUsers(); people = [{ aid: "admin", name: "Moaath", key: LIFT_KEY }, ...reg.users.map((u) => ({ aid: u.id, name: u.name, key: "lift-u-" + u.id + ":state" })), { aid: "f", name: "Lift2 friend", key: LIFT_INSTANCES.f.key }]; }
+      const withP = await Promise.all(people.map(async (x) => ({ ...x, P: await liftPushRead(x.aid) })));
+      let hist = []; try { hist = JSON.parse((await kv(["GET", histKey])) || "[]"); if (!Array.isArray(hist)) hist = []; } catch { hist = []; }
+      const can = (x) => x.P.subs.length > 0 && x.P.prefs.on !== 0;
+      if (action === "pushpeople") return res.status(200).json({ people: withP.map((x) => ({ aid: x.aid, name: x.name, on: can(x), phones: x.P.subs.length })), history: hist.slice(-20).reverse() });
+      const clean = (v, n) => String(v || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, "").trim().slice(0, n);
+      const title = clean(body.title, 60) || "Lift", text = clean(body.body, 240);
+      if (!text) return res.status(400).json({ error: "empty" });
+      const to = Array.isArray(body.to) ? body.to.map(String) : [];
+      const targets = withP.filter((x) => can(x) && (to.includes("all") || to.includes(x.aid)));
+      if (!targets.length) return res.status(409).json({ error: "nobody" });
+      let delivered = 0, phones = 0;
+      for (const x of targets) {
+        phones += x.P.subs.length;
+        delivered += await liftPushDeliver(x.aid, x.P, [{ k: "msg", title, body: text }], "message");
+        await kv(["SET", liftPushKey(x.aid), JSON.stringify(x.P)]);
+        if (!x.P.subs.length) await liftPushIdx(x.aid, x.key, false);
+      }
+      hist.push({ t: Date.now(), title, body: text, to: targets.map((x) => x.name).slice(0, 30), delivered, phones }); if (hist.length > 30) hist = hist.slice(-30);
+      await kv(["SET", histKey, JSON.stringify(hist)]);
+      return res.status(200).json({ ok: true, people: targets.length, phones, delivered, history: hist.slice(-20).reverse() });
+    }
     if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
