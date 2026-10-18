@@ -3,6 +3,7 @@
 Usage: python3 tests/lift_ar_e2e.py [path-to-lift-folder]"""
 import json, threading, http.server, socketserver, sys, os, re, copy
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift")
 PORT = int(os.environ.get("PORT", "8171"))
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -48,7 +49,7 @@ with sync_playwright() as p:
     br = p.chromium.launch()
     ctx = br.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True, locale="en-GB", service_workers="block")
     ctx.expose_function("__trMiss", lambda k: MISS.add(k))
-    pg = ctx.new_page(); pg.route("**/api/health-check**", api)
+    pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.route("**/api/health-check**", api)
     pg.route("**/static.exercisedb.dev/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
     pg.route("**/oss.exercisedb.dev/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps({"data": {"instructions": ["Step:1 Stand tall with the dumbbells.", "Step:2 Hinge at the hips."]}})))
     pg.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
