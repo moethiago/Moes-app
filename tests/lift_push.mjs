@@ -99,6 +99,19 @@ r = await call(T, { action: "pushtest", pin: PIN }); ok("no phone → test refus
 r = await call({ u: "f" }, { action: "pushget", pin: "250958" }); ok("Lift2's reminders are its own (empty)", r.code === 200 && r.j.phones === 0);
 ok("reminders never touch any app's data", neighbours() === before);
 
+// ---------- Moaath's own message (any text) ----------
+{ const C = phone("https://web.push.apple.com/camp-C"); PHONES.set(C.endpoint, C); await call(T, { action: "pushsub", pin: PIN, sub: C.sub, lang: "en" });
+  r = await call(T, { action: "pushpeople", pin: PIN }); ok("test camp: the only person to write to is the test camp itself", r.code === 200 && r.j.people.length === 1 && r.j.people[0].aid === "t" && r.j.people[0].on);
+  r = await call(T, { action: "pushsend", pin: PIN, title: "Leg day!", body: "  Squats at 9 — don't be late <b>  ", to: ["all"] });
+  ok("his own words arrive on the phone, decrypted, tags stripped", r.j.delivered === 1 && C.got.slice(-1)[0].title === "Leg day!" && C.got.slice(-1)[0].body === "Squats at 9 — don't be late b", C.got.slice(-1));
+  r = await call(T, { action: "pushsend", pin: PIN, title: "", body: "Only text", to: ["t"] }); ok("no title → 'Lift'", C.got.slice(-1)[0].title === "Lift");
+  r = await call(T, { action: "pushsend", pin: PIN, body: "", to: ["all"] }); ok("empty message refused", r.code === 400);
+  r = await call(T, { action: "pushsend", pin: PIN, body: "x".repeat(500), to: ["all"] }); ok("long message cut to 240 characters", C.got.slice(-1)[0].body.length === 240);
+  r = await call(T, { action: "pushsend", pin: PIN, body: "hi", to: ["admin"] }); ok("test camp can't reach anyone else (asking for Moaath's real Lift → nobody)", r.code === 409);
+  r = await call(T, { action: "pushpeople", pin: PIN }); ok("sent messages are kept as a history, newest first", r.j.history.length === 3 && r.j.history[0].body.startsWith("xxx") && r.j.history[0].delivered === 1);
+  r = await call({ u: "f" }, { action: "pushsend", pin: "250958", body: "hack", to: ["all"] }); ok("Lift2 can't send messages", r.code === 403);
+  r = await call({}, { action: "pushpeople", pin: PIN }); ok("real Lift (admin) lists everyone with whether reminders are on", r.code === 200 && r.j.people[0].aid === "admin" && r.j.people.some((x) => x.aid === "f"));
+  await call(T, { action: "pushunsub", pin: PIN }); }
 // ---------- the schedule itself: pure function over a grid ----------
 const src = fs.readFileSync(file, "utf8"), a = src.indexOf("// ---------- Lift reminders"), b = src.indexOf("async function liftPushDeliver");
 const ctx = { crypto, Buffer, URL, kv: async () => null }; vm.createContext(ctx); vm.runInContext(src.slice(a, b) + "\nthis.liftRyd = liftRyd;", ctx);
