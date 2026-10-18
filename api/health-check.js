@@ -1545,7 +1545,21 @@ async function liftHandler(req, res) {
       await kv(["SET", histKey, JSON.stringify(hist)]);
       return res.status(200).json({ ok: true, people: targets.length, phones, delivered, history: hist.slice(-20).reverse() });
     }
-    if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
+    // In-app announcement pop-up: Moaath writes it once, every user sees it on their next open (Lift Test keeps its own, for trying first).
+    const annKey = inst && req.query.u === "t" ? "lift-t:announce" : "lift:announce";
+    if (action === "announceset" || action === "announceclear") {
+      if (!admin && !(inst && req.query.u === "t")) return res.status(403).json({ error: "admin" });
+      if (action === "announceclear") { await kv(["DEL", annKey]); return res.status(200).json({ ok: true, announce: null }); }
+      const clean = (v, n) => String(v || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, "").trim().slice(0, n);
+      const title = clean(body.title, 60), text = clean(body.body, 600);
+      if (!text) return res.status(400).json({ error: "empty" });
+      let cur = null; try { cur = JSON.parse((await kv(["GET", annKey])) || "null"); } catch { cur = null; }
+      const now = Date.now(), keep = !!body.keep && cur && cur.id;
+      const a = { id: keep ? cur.id : String(now), title, body: text, t: keep ? cur.t : now, ...(keep ? { edited: now } : {}) };
+      await kv(["SET", annKey, JSON.stringify(a)]);
+      return res.status(200).json({ ok: true, announce: a });
+    }
+    if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); let announce = null; try { announce = JSON.parse((await kv(["GET", annKey])) || "null"); } catch { announce = null; } return res.status(200).json({ ...s, role, admin, fix, announce, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
       if (!admin) return res.status(403).json({ error: "admin" });
