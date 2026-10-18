@@ -5,6 +5,7 @@ Real Chromium at iPhone size; backend mocked in-process (same contract as api/he
 Usage: python3 tests/lift_47_e2e.py [path-to-lift-folder] [screenshot-dir]"""
 import json, threading, http.server, socketserver, sys, os, re, datetime
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift")
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -64,7 +65,7 @@ with sync_playwright() as p:
         if lang: init += "localStorage.setItem('lift_lang','%s');" % lang
         if theme: init += "localStorage.setItem('lift_theme','%s');" % theme
         ctx.add_init_script(init + "}")
-        pg = ctx.new_page(); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
+        pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
         pg.route("**/static.exercisedb.dev/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/i.ytimg.com/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/oss.exercisedb.dev/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body='{"data":{"instructions":[]}}'))
