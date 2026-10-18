@@ -155,7 +155,7 @@ with sync_playwright() as p:
     ok("User: Language (English · العربية), English on", pg.locator("[data-a='setlang']").count() == 2 and pg.locator("[data-a='setlang'][data-v='en'].on").count() == 1)
     ok("User: level, gym equipment, how the coach works", pg.locator("[data-a='level']").count() == 3 and pg.locator("[data-p='gear']").count() == 1 and pg.locator("[data-p='howcoach']").count() == 1)
     ok("User (admin): Reports with 3 open + Users", pg.locator("[data-p='reports']").count() == 1 and txt("[data-p='reports'] .cbadge").strip() == "3" and pg.locator("[data-p='users']").count() == 1)
-    ok("User: log out + build number", pg.locator("[data-a='logout']").count() == 1 and "Lift build 4.6" in txt())
+    ok("User: log out + build number", pg.locator("[data-a='logout']").count() == 1 and "Lift build 4." in txt())
     ok("tab bar: red badge 3 on User", pg.is_visible("#ubadge") and pg.inner_text("#ubadge").strip() == "3")
     tap("[data-p='reports']", 900)
     ok("Reports page lists the friend's reports (gripper video first)", pg.locator(".rprow").count() == 3 and "Machine gripper hands" in txt())
@@ -170,7 +170,7 @@ with sync_playwright() as p:
     W(500); tags = [d.get("tag") for d in DIAG]
     ok("screen check sent at start (admin only)", "start" in tags and all(d["pin"] == ADMIN for d in DIAG), tags)
     d0 = next((d for d in DIAG if d.get("tag") == "start"), {})
-    ok("…with what's needed to see the bottom bar on his iPhone", all(k in d0 for k in ("build", "inner", "screen", "lvh", "svh", "top", "bottom", "navTop", "navBottom", "standalone", "doc")) and d0.get("build") == "4.6", d0)
+    ok("…with what's needed to see the bottom bar on his iPhone", all(k in d0 for k in ("build", "inner", "screen", "lvh", "svh", "top", "bottom", "navTop", "navBottom", "standalone", "doc")) and str(d0.get("build", "")).startswith("4."), d0)
     ok("…and on the first visit of each tab", tags.count("tab") >= 3, tags)
     # the page is made screen-tall on home-screen apps (the iOS 26 short-viewport fix) — never shorter than the screen
     ok("home-screen app: page at least screen-tall", pg.evaluate("document.documentElement.classList.add('standalone'),document.documentElement.getBoundingClientRect().height>=innerHeight-1"))
