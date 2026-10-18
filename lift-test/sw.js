@@ -1,4 +1,4 @@
-var SC=self.registration.scope,P=SC.indexOf("/lift-test/")>=0?"lift-test":SC.indexOf("/lift2/")>=0?"lift2":"lift",C=P+"-v4.9",G=P+"-gif",GMAX=250; /* same file serves lift/ and lift2/ */
+var SC=self.registration.scope,P=SC.indexOf("/lift-test/")>=0?"lift-test":SC.indexOf("/lift2/")>=0?"lift2":"lift",C=P+"-v4.10",G=P+"-gif",GMAX=250; /* same file serves lift/ and lift2/ */
 var SHELL=["./","./index.html","./manifest.json","./icon-192.png","./icon-512.png","./exercises.json"];
 self.addEventListener("install",function(e){e.waitUntil(caches.open(C).then(function(c){return c.addAll(SHELL);}).then(function(){return self.skipWaiting();}));});
 self.addEventListener("activate",function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf(P+"-v")===0&&k!==C;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();}));});
@@ -21,3 +21,9 @@ self.addEventListener("fetch",function(e){
     e.respondWith(caches.match(e.request).then(function(m){return m||fetch(e.request).then(function(r){if(r.ok||r.type==="opaque"){var cp=r.clone();caches.open(C).then(function(c){c.put(e.request,cp);});}return r;});}));
   } /* anything else (exercise steps) goes straight to the network; the app keeps its own copy */
 });
+
+/* reminders: show what the server sends (title + text only), tapping opens Lift */
+self.addEventListener("push",function(e){var d={};try{d=e.data?e.data.json():{};}catch(x){d={title:"Lift",body:e.data?e.data.text():""};}
+  e.waitUntil(self.registration.showNotification(d.title||"Lift",{body:d.body||"",tag:d.tag||"lift",icon:"icon-192.png",badge:"icon-192.png"}));});
+self.addEventListener("notificationclick",function(e){e.notification.close();
+  e.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(function(cs){for(var i=0;i<cs.length;i++){if("focus" in cs[i])return cs[i].focus();}return clients.openWindow("./");}));});
