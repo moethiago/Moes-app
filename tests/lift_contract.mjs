@@ -150,4 +150,27 @@ r = await call({ body: { action: "diag", pin: FULL, d: { tag: "start<script>", n
 r = await call({ body: { action: "diaglog", pin: FULL } }); const last = r.j.items[r.j.items.length - 1];
 check("screen data is cleaned and capped", last.tag === "startscript" && last.navBottom === 852 && last.standalone === true && last["x".repeat(20)].length === 80);
 check("screen data never touches other apps' data", snap() === before);
+// 4.7: usage per account + what they trained, for Moaath's Users page
+before = snap();
+const actOf = (aid) => JSON.parse(store.get("lift:act:" + aid) || "null");
+const o0 = (actOf(U2.id) || { opens: 0 }).opens;
+r = await call({ body: { action: "state", pin: U2.code } }); r = await call({ body: { action: "state", pin: U2.code, login: 1 } });
+let a2 = actOf(U2.id); check("a friend opening Lift is counted (opens +2, logins +1)", a2 && a2.opens === o0 + 2 && a2.logins >= 1 && a2.lastOpen > 0);
+const day = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+check("…per Riyadh day", a2.days[day] && a2.days[day].o >= 2);
+const cur2 = (await call({ body: { action: "state", pin: U2.code } })).j;
+const t0 = Date.now() - 864e5;
+r = await call({ body: { action: "save", pin: U2.code, v: cur2.v, state: { program: [{ n: "Push", x: [{ e: "DOoWcnA" }] }], days: [0, 2, 4], custom: {}, body: [],
+  sessions: [{ id: "s1", wn: "Push", start: t0, end: t0 + 3e6, sets: [{ i: "a", e: "DOoWcnA", k: 40, r: 10, f: 2, t: t0 + 1 }, { i: "b", e: "DOoWcnA", k: 45, r: 8, f: 2, t: t0 + 2, wu: true }] }], active: null } } });
+check("a friend's save works and is counted", r.code === 200 && actOf(U2.id).saves === 1);
+r = await call({ query: FQ, body: { action: "state", pin: FPIN } }); check("Lift2 opens are counted too", actOf("f") && actOf("f").opens >= 1);
+r = await call({ body: { action: "userstats", pin: U2.code } }); check("a friend can't see anyone's usage", r.code === 403);
+r = await call({ query: FQ, body: { action: "userstats", pin: FPIN } }); check("…Lift2 neither", r.code === 403);
+r = await call({ body: { action: "userstats", pin: FULL } }); const A = r.j.accounts || [];
+const me = A.find((x) => x.aid === "admin"), fr = A.find((x) => x.aid === U2.id), l2 = A.find((x) => x.aid === "f");
+check("Moaath sees every account: himself, each friend, Lift2", r.code === 200 && me && fr && l2 && A.length === 3);
+check("…friend's opens, logins, saves and changes-saved number", fr.act.opens === o0 + 3 && fr.act.logins >= 1 && fr.act.saves === 1 && fr.v === cur2.v + 1);
+check("…and what they trained: the workout, its sets and exercises", fr.st.sessions.length === 1 && fr.st.sessions[0].wn === "Push" && fr.st.sessions[0].sets.length === 2 && fr.st.sessions[0].sets[1].wu === 1 && fr.st.program[0].x[0] === "DOoWcnA");
+check("…no codes or other private fields leak into the stats", !JSON.stringify(A).includes(U2.code) && !("notes" in fr.st));
+check("usage tracking never touches other apps' data", snap() === before);
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
