@@ -1441,6 +1441,7 @@ async function liftRemindAll(now) {
   const res = [];
   for (const a of Array.isArray(idx) ? idx : []) {
     try {
+      if (a.aid === "t") continue; // the test camp only gets reminders by its own buttons, never duplicates of the real Lift's
       const P = await liftPushRead(a.aid); if (!P.subs.length || !P.prefs.on) continue;
       const doc = await liftRead(a.key), msgs = liftDue(doc.state, P.prefs, P.sent, now, false);
       if (!msgs.length) continue;
@@ -1512,7 +1513,8 @@ async function liftHandler(req, res) {
         if (!P.subs.length) await liftPushIdx(aid, KEY, false);
       }
       if (action !== "pushget") await kv(["SET", liftPushKey(aid), JSON.stringify(P)]);
-      return res.status(200).json({ ok: true, on: !!P.prefs.on, phones: P.subs.length, prefs: P.prefs, log: P.log.slice(-10), ...(sent != null ? { sent } : {}) });
+      const sched = Number(await kv(["GET", "lift:remind:last"]) || 0) || null;
+      return res.status(200).json({ ok: true, on: !!P.prefs.on, phones: P.subs.length, prefs: P.prefs, log: P.log.slice(-10), sched, ...(sent != null ? { sent } : {}) });
     }
     if (action === "pushpeople" || action === "pushsend") {
       // Moaath writes his own notification. In the test camp it only ever goes to the test camp itself.
@@ -1618,9 +1620,9 @@ async function liftHandler(req, res) {
       const accts = [{ aid: "admin", name: "Moaath", key: LIFT_KEY, you: true }, ...reg.users.map((u) => ({ aid: u.id, name: u.name, key: "lift-u-" + u.id + ":state", created: u.created })), { aid: "f", name: "Lift2 friend", key: LIFT_INSTANCES.f.key }];
       const trimSets = (ss) => (Array.isArray(ss) ? ss : []).map((x) => ({ e: x.e, k: x.k, r: x.r, t: x.t, ...(x.f ? { f: x.f } : {}), ...(x.wu ? { wu: 1 } : {}) }));
       const out = await Promise.all(accts.map(async (a) => {
-        const [doc, act] = await Promise.all([liftRead(a.key), liftActRead(a.aid)]);
+        const [doc, act, pu] = await Promise.all([liftRead(a.key), liftActRead(a.aid), liftPushRead(a.aid)]);
         const st = doc.state || null;
-        return { aid: a.aid, name: a.name, you: !!a.you, created: a.created || null, v: doc.v || 0, ts: doc.ts || null, act: act || null,
+        return { aid: a.aid, name: a.name, you: !!a.you, created: a.created || null, v: doc.v || 0, ts: doc.ts || null, act: act || null, push: { on: pu.subs.length > 0 && pu.prefs.on !== 0, phones: pu.subs.length },
           st: st ? { days: st.days || [], custom: st.custom || {}, body: (st.body || []).length,
             program: (st.program || []).map((w) => ({ n: w.n, x: (w.x || []).map((i) => i.e), t: (w.x || []).map((i) => [i.s, i.lo, i.hi, i.kind]) })),
             sessions: (st.sessions || []).map((x) => ({ wn: x.wn, c: x.c, start: x.start, end: x.end, sets: trimSets(x.sets) })),
