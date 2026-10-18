@@ -247,6 +247,10 @@ with sync_playwright() as p:
         a = ST()["active"]
         ok("'Add' starts today's workout with that exercise (walk stays last)", a and any(x["e"] == e_add for x in a["x"]) and a["x"][-1]["kind"] == "c", a and [x["e"] for x in a["x"]])
         ok("…and jumps to it", title() != "" and pg.locator(".exname").count() == 1)
+        tab("today", 900)
+        ok("Today mid-workout: the session's exercises fill the screen (no empty space)", pg.locator("[data-a='goexw']").count() == len(ST()["active"]["x"]) and "done" in txt())
+        tap("[data-a='goexw'] >> nth=2", 900)
+        ok("…tap an exercise → straight into the workout at that exercise", pg.locator(".exname").count() == 1 and ST()["active"]["x"][2]["n"] in pg.inner_text(".exname"))
         # log one set and finish → muscles worked
         if pg.locator("#in_k").count() and not pg.input_value("#in_k"): pg.fill("#in_k", "10"); pg.dispatch_event("#in_k", "input")
         pg.locator("[data-a='log'][data-f='2']").first.click(); W(500)
@@ -269,6 +273,8 @@ with sync_playwright() as p:
     ok("Arabic: right-to-left", pg.evaluate("document.documentElement.dir") == "rtl")
     tab("muscles", 1000)
     if SHOTS: pg.screenshot(path=os.path.join(SHOTS, "20_ar_muscles.png"), full_page=True)
+    nav_h = pg.evaluate("document.querySelector('nav.tabs').getBoundingClientRect().height")
+    ok("bottom bar is compact (≤ 66px without a home indicator)", nav_h <= 66, nav_h)
     ok("Arabic tab label", pg.locator("nav.tabs [data-tab='muscles']").inner_text().strip() != "Muscles")
     for r_ in ("last", "avg4", "week"): tap(f"[data-a='mrange'][data-r='{r_}']", 400)
     tap(".mrow >> nth=0", 1400)
