@@ -19,13 +19,13 @@ FIXED = datetime.datetime(2026, 10, 20, 15, 0, tzinfo=datetime.timezone(datetime
 def rday(ms): return datetime.datetime.fromtimestamp(ms / 1000 + 3 * 3600, datetime.timezone.utc).strftime("%Y-%m-%d")
 ADMIN = "2026"
 db = {ADMIN: {"v": 5, "state": None}}
-def sets(pairs, t0): return [{"e": e, "k": k, "r": r, "t": t0 + i * 60000} for i, (e, k, r) in enumerate(pairs)]
+def sets(pairs, t0): return [{"e": e, "k": k, "r": r, "t": t0 + i * 60000, "f": [1, 2, 3][i % 3]} for i, (e, k, r) in enumerate(pairs)]
 t1 = FIXED - 2 * D
 SAAD = {"aid": "u1", "name": "Saad", "you": False, "created": FIXED - 3 * D, "v": 36, "ts": FIXED - 3600e3,
         "act": {"opens": 14, "logins": 2, "saves": 30, "first": FIXED - 3 * D, "lastOpen": FIXED - 1800e3, "lastSave": FIXED - 3600e3,
                 "days": {rday(FIXED): {"o": 5, "s": 12}, rday(FIXED - D): {"o": 6, "s": 10}, rday(FIXED - 2 * D): {"o": 3, "s": 8}}},
         "st": {"days": [0, 2, 4], "custom": {"c_x1": {"n": "Hip thrust machine", "t": ["glutes"], "mp": ["gl"], "ms": ["hm"], "eq": ["leverage machine"], "kind": "w"}}, "body": 1,
-               "program": [{"n": "Push", "x": ["DOoWcnA", "EIeI8Vf"]}, {"n": "Legs", "x": ["10Z2DXU", "c_x1"]}],
+               "program": [{"n": "Push", "x": ["DOoWcnA", "EIeI8Vf"], "t": [[3, 8, 12, "w"], [2, 10, 10, "w"]]}, {"n": "Legs", "x": ["10Z2DXU", "c_x1"], "t": [[3, 10, 12, "w"], [3, 8, 10, "w"]]}],
                "sessions": [{"wn": "Push", "start": t1, "end": t1 + 50 * 60000, "sets": sets([("DOoWcnA", 40, 10), ("DOoWcnA", 45, 8), ("EIeI8Vf", 30, 10)], t1) + [{"e": "DOoWcnA", "k": 20, "r": 10, "t": t1, "wu": 1}]},
                             {"wn": "Legs", "start": FIXED - D, "end": FIXED - D + 40 * 60000, "sets": sets([("10Z2DXU", 80, 12), ("c_x1", 60, 10), ("c_x1", 70, 8)], FIXED - D)}],
                "active": {"wn": "Push", "start": FIXED - 1800e3, "sets": sets([("DOoWcnA", 50, 6)], FIXED - 1800e3)}}}
@@ -125,7 +125,27 @@ with sync_playwright() as p:
         ok(f"[{theme}] page fits the phone", noscroll())
         low = pg.evaluate(CONTRAST_JS, 3); ok(f"[{theme}] all text readable", not low, low[:5])
         if SHOTS: pg.screenshot(path=os.path.join(SHOTS, f"47_{theme}_saad.png"), full_page=True)
-        tap(".hdr .back", 500); tap("[data-p='ustat'][data-id='u2']", 900)
+        # 4.8: open a workout set by set, the one in progress, and a routine
+        tap("section:has(h2:text-is('Workouts')) .row >> nth=1", 1000)
+        t = txt()
+        ok(f"[{theme}] workout page: Push, Saad, 3 working sets, 2 exercises", pg.inner_text(".hdr .ttl").startswith("Push") and "Saad" in pg.inner_text(".hdr") and pg.locator(".tile .v").all_inner_texts()[:2] == ["3", "2"], pg.locator(".tile .v").all_inner_texts())
+        rows = pg.locator(".tl .tlr").all_inner_texts()
+        ok(f"[{theme}] set by set, with weights and how each felt", len(rows) == 2 and "40×10" in rows[0] and "45×8" in rows[0] and "Easy" in rows[0] and "Good" in rows[0] and "30×10" in rows[1] and "Hard" in rows[1], rows)
+        ok(f"[{theme}] warm-up shown but not counted, weight moved 1,060 kg", "warm-up" in rows[0] and "1 warm-up set, not counted" in t and "1,060" in t, t[:300])
+        ok(f"[{theme}] muscles worked for that workout", pg.locator(".mapcard svg.bmap").count() >= 1 and "Middle chest" in t)
+        ok(f"[{theme}] workout page fits, readable", noscroll() and not pg.evaluate(CONTRAST_JS, 3))
+        if SHOTS: pg.screenshot(path=os.path.join(SHOTS, f"48_{theme}_workout.png"), full_page=True)
+        tap(".hdr .back", 500); tap("section:has(h2:text-is('Workout in progress')) .row", 900)
+        ok(f"[{theme}] the workout still open on their phone can be watched", "Still open on their phone" in txt() and "50×6" in txt() and "Now" in txt())
+        tap(".hdr .back", 500); tap("section:has(h2:text-is('Their plan')) .row >> nth=0", 900)
+        rr = pg.locator(".row").all_inner_texts()
+        ok(f"[{theme}] routine shows its exercises with sets and reps", pg.inner_text(".hdr .ttl").startswith("Push") and len(rr) == 2 and "3 sets" in rr[0] and "8–12 reps" in rr[0] and "10 reps" in rr[1], rr)
+        tap(".hdr .back", 500); tap(".hdr .back", 800)
+        rw = pg.locator("section:has(h2:text-is('Recent workouts')) .row").all_inner_texts()
+        ok(f"[{theme}] Users page: recent workouts from everyone, newest first", len(rw) == 3 and "in progress" in rw[0] and rw[1].startswith("Saad · Legs") and rw[2].startswith("Saad · Push"), rw)
+        tap("section:has(h2:text-is('Recent workouts')) .row >> nth=1", 900)
+        ok(f"[{theme}] …tap one → that workout", pg.inner_text(".hdr .ttl").startswith("Legs") and "Hip thrust machine" in txt())
+        tap(".hdr .back", 600); tap("[data-p='ustat'][data-id='u2']", 900)
         ok(f"[{theme}] never-opened friend: zeros + 'hasn't opened Lift yet'", pg.locator(".tile .v").all_inner_texts()[:4] == ["0", "0", "0", "0"] and "opened Lift yet" in txt())
         ok(f"no page errors ({theme})", not errs, errs[:3])
         ctx.close()
@@ -135,6 +155,9 @@ with sync_playwright() as p:
     tap("nav.tabs [data-tab='user']", 500); tap("[data-p='users']", 1500)
     ok("Arabic: usage section heading", "كيف يستخدمون Lift" in txt())
     tap("[data-p='ustat'][data-id='u1']", 1500); ok("Arabic: detail page fits", noscroll())
+    for p_, e_ in (("uvisit", "0"), ("uvisit", "active"), ("uroutine", "0")):
+        pg.evaluate("([p,e])=>show(p,{id:'u1',e:e})", [p_, e_]); W(900); ok(f"Arabic: {p_} {e_} fits", noscroll()); tap(".hdr .back", 400)
+    pg.evaluate("show('uworkouts',{})"); W(700); tap(".hdr .back", 400)
     tap(".hdr .back", 500); tap("[data-p='ustat'][data-id='u2']", 900)
     real = sorted(k for k in MISS if not re.fullmatch(r"(Saad|Abdulaziz|Push|Legs|Workout .*|Full body .*|.*(press|machine|row|curl|squat).*)", k, re.I))
     ok("Arabic: no English left on the usage pages (names excepted)", not real, real[:30])
