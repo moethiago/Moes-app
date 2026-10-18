@@ -178,4 +178,16 @@ check("…no codes or other private fields leak into the stats", !JSON.stringify
   const b4 = actOf(U2.id), want = b4.opens - Math.min(b4.days[day].o, b4.opens);
   r = await call({ body: { action: "actadj", pin: FULL, aid: U2.id, opens: 99 } }); check("Moaath can take back today's fake opens, never below 0", r.code === 200 && actOf(U2.id).opens === want && want >= 0 && actOf(U2.id).days[day].o === 0); }
 check("usage tracking never touches other apps' data", snap() === before);
+// 4.9: test camp (lift-test/) — Moaath's code opens his own separate test data; nothing reaches the real Lifts
+{ const TQ = { app: "lift", u: "t" }, realBefore = store.get(K), friendBefore = store.get(FK), nb = snap();
+  r = await call({ query: TQ, body: { action: "state", pin: FULL } }); check("test camp opens with Moaath's code", r.code === 200 && r.j.role === "full");
+  check("…as its own empty space (not his real data)", r.j.v === 0 && r.j.state === null);
+  check("…without admin powers (users, reports, fixes stay in the real Lift)", r.j.admin === false);
+  r = await call({ query: TQ, body: { action: "save", pin: FULL, v: 0, state: { program: [{ n: "Test only" }] } } }); check("test camp saves", r.code === 200 && r.j.v === 1);
+  check("…into lift-t:state only — his real Lift and Lift2 untouched", JSON.parse(store.get("lift-t:state")).state.program[0].n === "Test only" && store.get(K) === realBefore && store.get(FK) === friendBefore && snap() === nb);
+  r = await call({ query: TQ, body: { action: "state", pin: FPIN } }); check("Lift2's code can't open the test camp", r.code === 401);
+  r = await call({ query: TQ, body: { action: "state", pin: U2.code } }); check("a friend's code can't open the test camp", r.code === 401);
+  r = await call({ query: TQ, body: { action: "users", pin: FULL } }); check("no user admin from the test camp", r.code === 403);
+  r = await call({ query: TQ, body: { action: "snapshot", pin: FULL, name: "t" } }); check("test camp can be snapshotted on its own", r.code === 200 && store.has("lift-t:snapshot:t"));
+  check("test camp opens are counted under their own name", actOf("t") && actOf("t").opens >= 1); }
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
