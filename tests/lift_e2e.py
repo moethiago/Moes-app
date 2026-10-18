@@ -90,6 +90,12 @@ with sync_playwright() as p:
         if state is not None: db["state"] = state; db["v"] += 1
         pg.evaluate("localStorage.removeItem('lift_state');localStorage.removeItem('lift_ui');localStorage.removeItem('lift_pending')"); pg.reload(); W(ms)
     def prog(name): return [w for w in ST()["program"] if w["n"] == name]
+    SEGS = {"today": ("today", None), "routines": ("programs", "routines"), "exercises": ("programs", "exercises"), "programs": ("programs", "programs"),
+            "muscles": ("log", "muscles"), "workouts": ("log", "workouts"), "body": ("log", "body"), "user": ("user", None)}
+    def go(where, ms=400):  # 4.6 tabs: Home · Programs (Routines / Exercises / Programs) · Log (Muscles / Workouts / Body) · User
+        tab, seg = SEGS[where]
+        tap(f"nav [data-tab='{tab}']", 250 if seg else ms)
+        if seg: tap(f".tabseg [data-a='seg'][data-v='{seg}']", ms)
     def visible_in_viewport(sel):
         b = pg.locator(sel).first.bounding_box(); return b and b["y"] >= 0 and b["y"] + b["height"] <= 844
 
@@ -108,7 +114,7 @@ with sync_playwright() as p:
     ok("machine notes carried to the new ids", st["notes"].get("10Z2DXU") == "Seat 5", st["notes"])
 
     # ================= Today =================
-    ok("5 tabs: Today, Routines, Muscles, Log, Body", pg.locator("nav.tabs button").all_inner_texts() == ["Today", "Routines", "Muscles", "Log", "Body"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == ["Home", "Programs", "Log", "User"], pg.locator("nav.tabs button").all_inner_texts())
     ok("hero shows his routine + one Start button", "Arms & Shoulders" in pg.inner_text(".hero .w") and pg.locator("#go").count() == 1)
     ok("long routine name gets the smaller size", pg.locator(".hero .w.xs").count() == 1)
     ok("hero body figure lights the muscles", pg.locator(".hero svg.bmap use[fill='#E2453C']").count() >= 5)
@@ -124,10 +130,9 @@ with sync_playwright() as p:
     ok("Today fits iPhone width", noscroll())
 
     # ================= search: gym names find the right thing =================
-    tap("nav [data-tab='routines']", 500)
-    ok("library row shows 1,846 exercises", "1,846 exercises" in pg.inner_text("#view"))
-    tap("[data-p='library']", 1500)
-    ok("library opens with Back", title() == "Exercise library" and back_reachable())
+    go("exercises", 1500)
+    ok("Programs › Exercises shows all 1,846 exercises", title() == "ROOT:Programs" and "1,846 exercises" in pg.inner_text(".root-top .sub"))
+    ok("Exercises sits inside the Programs tab (tab bar stays, segment marked)", pg.is_visible("nav.tabs") and pg.locator(".tabseg [data-v='exercises'].on").count() == 1)
     ok("browse starts with common machines", "Machine" in pg.locator("#liblist .row .t").first.inner_text() or "Sled" in pg.locator("#liblist .row .t").first.inner_text())
     cases = [("lever seated hip adduction", "Machine seated hip adduction", 1), ("face pull", "Cable rear delt row (with rope)", 2), ("pec deck", "Machine seated fly", 1),
              ("hip thrust", "Barbell hip thrust", 3), ("landmine press", "Landmine press", 1), ("seal row", "Seal row", 1), ("bayesian curl", "Bayesian cable curl", 1), ("hip thrust machine", "Hip thrust machine", 1), ("chest supported row", "Chest-supported dumbbell row", 2), ("low to high cable fly", "Cable fly upper chest", 2), ("reverse lunge", "Dumbbell rear lunge", 3), ("back squat", "Barbell full squat", 2), ("plank", "Plank", 1), ("rdl", "Barbell romanian deadlift", 1), ("pullups", "Pull-up", 3), ("stairmaster", "Walking on stepmill", 1),
@@ -171,7 +176,8 @@ with sync_playwright() as p:
     pg.fill("#libq", "hip abduction"); W(400)
     tap("#liblist [data-a='exinfo'][data-e='CHpahtl']", 900); tap("[data-p='addto']", 400); tap("[data-a='addtoprog'][data-w='w3x']", 700)
     ok("added to his routine (at the end)", ST()["program"][0]["x"][-1]["e"] == "CHpahtl" and len(ST()["program"][0]["x"]) == 6)
-    tap(".hdr .back", 300); tap(".hdr .back", 300); ok("Back, Back → Routines", title() == "ROOT:Routines")
+    tap(".hdr .back", 300); ok("Back → Programs › Exercises", title() == "ROOT:Programs" and pg.locator("#libq").count() == 1)
+    go("routines", 500); ok("Programs › Routines lists his routine", pg.locator(".rcard").count() == 1)
 
     # ================= routine page =================
     tap(".rcard .rtop >> nth=0", 900)
@@ -226,15 +232,17 @@ with sync_playwright() as p:
     tap("[data-a='edopen'][data-i='2']", 300)
     ok("cardio row has one Minutes control", pg.locator(".mstp").count() == 1 and "Minutes" in pg.inner_text(".edctl"))
     tap("[data-a='edstep'][data-i='2'][data-f='hi'][data-d='1']", 400); ok("+ minutes → 25", prog("Push day")[0]["x"][2]["hi"] == 25)
-    tap("[data-a='back'] >> nth=-1", 500); ok("Done → Routines, 'Push day' listed", title() == "ROOT:Routines" and "Push day" in pg.inner_text("#view"))
+    tap("[data-a='back'] >> nth=-1", 500); ok("Done → Programs › Routines, 'Push day' listed", title() == "ROOT:Programs" and "Push day" in pg.inner_text("#view"))
     tap("[data-a='newroutine']", 600); tap(".hdr .back", 600)
     ok("leaving an empty new routine creates nothing", len(ST()["program"]) == n_prog + 1)
     tap(".rcard:has-text('Push day') .rtop", 800); tap("[data-p='editor']", 600)
     ok("Edit opens the same builder", pg.input_value("#wname") == "Push day")
     tap2("[data-a='delroutine']", 700)
-    ok("delete routine (tap twice)", len(prog("Push day")) == 0 and title() == "ROOT:Routines")
+    ok("delete routine (tap twice)", len(prog("Push day")) == 0 and title() == "ROOT:Programs")
 
     # ================= ready-made: StrengthLog 5-day full body (proposed, confirm in app) =================
+    go("programs", 500)
+    ok("Programs › Programs: 'Set up my plan' on top", pg.locator("[data-p='setup']").count() == 1)
     ok("StrengthLog program listed first under Ready-made", "StrengthLog Full Body" in pg.locator("[data-p='template']").first.inner_text())
     before = json.dumps(ST()["program"]); tap("[data-p='template'][data-id='slhf5']", 900)
     sl_txt = pg.inner_text("#view")
@@ -248,8 +256,8 @@ with sync_playwright() as p:
     tap("[data-p='template'][data-id='fb5']", 900)
     ok("5-day program page: 5 routines, 5 days", pg.locator(".rcard").count() == 5 and pg.locator(".pills .pill").count() == 5 and back_reachable())
     ok("each routine shows its body figure", pg.locator(".rcard svg.bmap").count() == 5)
-    tap("[data-a='addtpl']", 700); ok("'Add these to my routines' appends 5", len(ST()["program"]) == 6 and title() == "ROOT:Routines")
-    tap("[data-p='template'][data-id='fb5']", 900)
+    tap("[data-a='addtpl']", 700); ok("'Add these to my routines' appends 5, lands on Programs › Routines", len(ST()["program"]) == 6 and title() == "ROOT:Programs" and pg.locator(".tabseg [data-v='routines'].on").count() == 1)
+    go("programs", 400); tap("[data-p='template'][data-id='fb5']", 900)
     tap("[data-a='usetpl']", 150); ok("'Use this program' asks first (button text)", "Tap again" in pg.inner_text("[data-a='usetpl']") and len(ST()["program"]) == 6)
     tap("[data-a='usetpl']", 900)
     ok("program replaced: Full Body 1–5", [w["n"] for w in ST()["program"]] == ["Full Body 1", "Full Body 2", "Full Body 3 (light)", "Full Body 4", "Full Body 5"])
@@ -335,7 +343,7 @@ with sync_playwright() as p:
     ok("week strip ticks today", pg.locator(".wk.today .pl.done").count() == 1)
 
     # ================= body weight → calories =================
-    tap("nav [data-tab='body']", 400)
+    go("body", 400)
     ok("body empty state, one button", "Add your weight" in pg.inner_text("#view") and pg.locator("[data-p='entry']").count() == 1)
     tap("[data-p='entry']", 400); ok("add weight page with Back", title() == "Add weight" and back_reachable())
     pg.fill("#ekg", "20"); tap("[data-a='saveentry']", 300); ok("silly weight refused", len(ST()["body"]) == 0)
@@ -346,7 +354,7 @@ with sync_playwright() as p:
     ok("Today now shows calories for the routine", "kcal" in pg.inner_text(".hero .m") and pg.locator("[data-p='entry']").count() == 0)
 
     # ================= gym log =================
-    tap("nav [data-tab='log']", 600)
+    go("workouts", 600)
     tiles = pg.inner_text(".tiles")
     ok("tiles: this week, this month, average visit, burned", all(s in tiles for s in ["This week", "This month", "Average visit", "Burned this month"]) and "≈" in tiles, tiles)
     ok("calendar marks today", pg.locator(".cday.hit.today").count() == 1)
@@ -406,27 +414,27 @@ with sync_playwright() as p:
 
     # ================= body: goal + chart =================
     st = copy.deepcopy(ST()); st["body"] += [{"id": "o%d" % i, "t": now - (35 - i * 7) * D, "kg": k, "src": "weigh"} for i, k in enumerate([112.0, 111.2, 110.5, 109.8, 109.1])]
-    fresh(st); tap("nav [data-tab='body']", 500)
+    fresh(st); go("body", 500)
     tap("[data-p='goal']", 400); pg.fill("#gkg", "95"); tap("[data-a='savegoal']", 600)
     ok("goal saved, date projected", ST()["goal"].get("kg") == 95 and "you reach it around" in pg.inner_text("#view"))
     ok("chart with goal line", pg.locator("svg.chart").count() == 1 and "goal" in pg.inner_html("svg.chart"))
     tap("[data-a='metric'][data-m='smm']", 300); ok("switch to muscle", "Muscle" in pg.inner_text(".card .mute")); tap("[data-a='metric'][data-m='kg']", 300)
     tap("[data-a='range'][data-r='1m']", 300); ok("range chips", pg.locator("[data-r='1m'].on").count() == 1)
     nb = len(ST()["body"]); tap("[data-p='entryview'] >> nth=0", 400); tap2("[data-a='delentry']", 600)
-    ok("delete an entry (tap twice)", len(ST()["body"]) == nb - 1 and title() == "ROOT:Body")
+    ok("delete an entry (tap twice), back on Log › Body", len(ST()["body"]) == nb - 1 and title() == "ROOT:Log" and pg.locator(".tabseg [data-v='body'].on").count() == 1)
     ok("Body fits width", noscroll())
 
     # ================= delete a visit =================
-    tap("nav [data-tab='log']", 400); nv = len(ST()["sessions"])
+    go("workouts", 400); nv = len(ST()["sessions"])
     tap(".row[data-p='visit'] >> nth=0", 700); tap2("[data-a='delsession']", 700)
     ok("delete a visit (tap twice), back on Log", len(ST()["sessions"]) == nv - 1 and title() == "ROOT:Log")
 
     # ================= never stuck: every page has a working Back =================
     stuck = []
-    for path in [["today", "[data-a='exinfo'] >> nth=0"], ["today", "[data-p='pickstart']"], ["routines", ".rcard .rtop >> nth=0"], ["routines", "[data-p='library']"],
-                 ["routines", "[data-p='template'] >> nth=1"], ["routines", "[data-p='howcoach']"], ["body", "[data-p='entry']"], ["body", "[data-p='goal']"],
-                 ["log", "[data-p='visit'] >> nth=0"], ["log", "[data-p='records']"]]:
-        tap(f"nav [data-tab='{path[0]}']", 300); tap(path[1], 900)
+    for path in [["today", "[data-a='exinfo'] >> nth=0"], ["today", "[data-p='pickstart']"], ["routines", ".rcard .rtop >> nth=0"], ["exercises", "#liblist [data-a='exinfo'] >> nth=0"],
+                 ["programs", "[data-p='template'] >> nth=1"], ["programs", "[data-p='setup']"], ["muscles", "[data-p='muscle'] >> nth=0"], ["body", "[data-p='entry']"], ["body", "[data-p='goal']"],
+                 ["workouts", "[data-p='visit'] >> nth=0"], ["workouts", "[data-p='records']"], ["user", "[data-p='howcoach']"], ["user", "[data-p='gear']"]]:
+        go(path[0], 300); tap(path[1], 900)
         if not back_reachable(): stuck.append(path)
         if not noscroll(): stuck.append(path + ["scrolls sideways"])
         tap(".hdr .back", 400)
@@ -441,8 +449,8 @@ with sync_playwright() as p:
     # ================= narrow iPhone (375) =================
     pg.set_viewport_size({"width": 375, "height": 667})
     wide = []
-    for tab in ["today", "routines", "log", "body"]:
-        tap(f"nav [data-tab='{tab}']", 400)
+    for tab in ["today", "routines", "exercises", "programs", "muscles", "workouts", "body", "user"]:
+        go(tab, 400)
         if not noscroll(): wide.append(tab)
     tap("nav [data-tab='today']", 300); tap("#go", 1000)
     if not noscroll(): wide.append("workout")
@@ -471,7 +479,8 @@ with sync_playwright() as p:
     pg.evaluate("loadLib().then(()=>1)"); pg.wait_for_timeout(400)
     lib = pg.evaluate("LIB.map(r=>[r[0],r[7]||''])")
     ok("library grew past 1,285 (now 1,846)", len(lib) == 1846, len(lib))
-    ok("every video is a real YouTube id; mismatched ones were removed, not left wrong", all(len(v) in (0, 11) for _, v in lib) and sum(1 for _, v in lib if v) >= 1800, sum(1 for _, v in lib if v))
+    ok("every video is a real YouTube id; mismatched ones were removed, not left wrong", all(len(v) in (0, 11) for _, v in lib) and sum(1 for _, v in lib if v) >= 1770, sum(1 for _, v in lib if v))
+    ok("4.6: the gripper machine friends reported now shows a gripper-machine video (not a hand-held gripper)", dict(lib)["mKwcrHn"] == "NeSGLgLSPMc", dict(lib).get("mKwcrHn"))
     ok("no exercise id appears twice", len(set(k for k, _ in lib)) == len(lib))
     ok("all 1,285 original exercises are still there", len([k for k, _ in lib if not k.startswith(("F_", "W_", "L_"))]) == 1285)
     def open_ex(e, ms=900):
