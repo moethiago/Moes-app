@@ -1392,14 +1392,14 @@ async function liftHandler(req, res) {
       if (!admin) return res.status(403).json({ error: "admin" });
       const reg = await liftUsers();
       const accts = [{ aid: "admin", name: "Moaath", key: LIFT_KEY, you: true }, ...reg.users.map((u) => ({ aid: u.id, name: u.name, key: "lift-u-" + u.id + ":state", created: u.created })), { aid: "f", name: "Lift2 friend", key: LIFT_INSTANCES.f.key }];
-      const trimSets = (ss) => (Array.isArray(ss) ? ss : []).map((x) => ({ e: x.e, k: x.k, r: x.r, t: x.t, ...(x.wu ? { wu: 1 } : {}) }));
+      const trimSets = (ss) => (Array.isArray(ss) ? ss : []).map((x) => ({ e: x.e, k: x.k, r: x.r, t: x.t, ...(x.f ? { f: x.f } : {}), ...(x.wu ? { wu: 1 } : {}) }));
       const out = await Promise.all(accts.map(async (a) => {
         const [doc, act] = await Promise.all([liftRead(a.key), liftActRead(a.aid)]);
         const st = doc.state || null;
         return { aid: a.aid, name: a.name, you: !!a.you, created: a.created || null, v: doc.v || 0, ts: doc.ts || null, act: act || null,
           st: st ? { days: st.days || [], custom: st.custom || {}, body: (st.body || []).length,
-            program: (st.program || []).map((w) => ({ n: w.n, x: (w.x || []).map((i) => i.e) })),
-            sessions: (st.sessions || []).map((x) => ({ wn: x.wn, start: x.start, end: x.end, sets: trimSets(x.sets) })),
+            program: (st.program || []).map((w) => ({ n: w.n, x: (w.x || []).map((i) => i.e), t: (w.x || []).map((i) => [i.s, i.lo, i.hi, i.kind]) })),
+            sessions: (st.sessions || []).map((x) => ({ wn: x.wn, c: x.c, start: x.start, end: x.end, sets: trimSets(x.sets) })),
             active: st.active ? { wn: st.active.wn, start: st.active.start, sets: trimSets(st.active.sets) } : null } : null };
       }));
       return res.status(200).json({ accounts: out, now: Date.now() });
