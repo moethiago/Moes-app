@@ -142,7 +142,7 @@ with sync_playwright() as p:
     go("user")
     txt = pg.inner_text("#view")
     ok("You: Appearance · Reminders · Training · Help · Admin · About, log out kept", all(h in txt.upper() for h in ("APPEARANCE", "REMINDERS", "TRAINING", "HELP", "ADMIN", "ABOUT")) and pg.locator("[data-a='logout']").count() == 1)
-    ok("You › About: Lift build 4.13", "Lift build 4.13" in txt)
+    ok("You › About: Lift build 4.14", "Lift build 4.14" in txt)
 
     # ================= Train: routine colours + templates =================
     go("programs", "routines")
