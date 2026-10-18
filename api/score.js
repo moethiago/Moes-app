@@ -358,6 +358,8 @@ function isObviousJunk(title) {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   const started = Date.now();
+  // Lift reminders ride on this scheduled call (cron-job.org). Capped at 8 s and never able to break the news job.
+  try { await Promise.race([fetch('https://moes-app-two.vercel.app/api/health-check?app=lift', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"action":"remind"}' }).catch(() => {}), new Promise((r) => setTimeout(r, 8000))]); } catch (e) {}
 
   if (!kvReady()) return res.status(500).json({ error: 'KV not configured' });
   const apiKey = process.env.ANTHROPIC_API_KEY;
