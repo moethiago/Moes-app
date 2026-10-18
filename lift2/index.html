@@ -881,15 +881,16 @@ function buildPlan(st,ans,pool){ /* pool: exercise ids best-first, used to swap 
   return {program:prog,days:(SETUP_DAYS[days]||SETUP_DAYS[4]).slice(),strict:days>=4,level:ans.exp==="exp"?"exp":ans.exp==="some"?"some":"new",goal:ans.goal||"muscle",gear:gear?gear.slice():null,tpl:t.id};
 }
 
-/* iPhone home-screen apps: some iOS 26 builds hand the page a viewport that stops ~60pt above the screen bottom while the
-   page still draws under the status bar. Then the tab bar either reaches into that strip (when the large viewport covers it)
-   or at least doesn't add the home-indicator inset a second time. Nothing changes on a normal phone. */
-function navLayout(standalone,top,inset,lost,lv){
-  if(!standalone||top<=0||lost<20)return {sb:inset,shift:0};
-  if(lv>=20)return {sb:inset,shift:Math.min(lv,lost)};
-  return {sb:0,shift:0};
+/* iPhone home-screen apps: some iOS 26 builds stop the page's viewport ~60pt above the screen bottom while the page still
+   draws under the status bar. The bar is moved down by the gap actually measured (never more than 64pt, so it can't slide
+   off the screen); if that can't be measured it at least stops adding the home-indicator space twice. Normal phones: unchanged. */
+function navLayout(standalone,top,inset,gap,lost){
+  if(!standalone||top<=0)return {sb:inset,shift:0};
+  if(gap>=20)return {sb:inset,shift:Math.min(gap,64)};
+  if(lost>=inset&&inset>0)return {sb:0,shift:0};
+  return {sb:inset,shift:0};
 }
-function sbPad(inset,standalone,lost){return navLayout(standalone,1,inset,lost,0).sb;}
+function sbPad(inset,standalone,lost){return navLayout(standalone,1,inset,0,lost).sb;}
 /*LOGIC-END*/
 /* icons: lucide (ISC) */
 var ICONS={"users":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <path d=\"M16 3.13a4 4 0 0 1 0 7.75\" />","user-plus":"<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" /> <line x1=\"19\" x2=\"19\" y1=\"8\" y2=\"14\" /> <line x1=\"22\" x2=\"16\" y1=\"11\" y2=\"11\" />","share-2":"<circle cx=\"18\" cy=\"5\" r=\"3\" /> <circle cx=\"6\" cy=\"12\" r=\"3\" /> <circle cx=\"18\" cy=\"19\" r=\"3\" /> <line x1=\"8.59\" x2=\"15.42\" y1=\"13.51\" y2=\"17.49\" /> <line x1=\"15.41\" x2=\"8.59\" y1=\"6.51\" y2=\"10.49\" />","languages":"<path d=\"m5 8 6 6\" /> <path d=\"m4 14 6-6 2-3\" /> <path d=\"M2 5h12\" /> <path d=\"M7 2h1\" /> <path d=\"m22 22-5-10-5 10\" /> <path d=\"M14 18h6\" />","house":"<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />","history":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" /> <path d=\"M12 7v5l4 2\" />","scale":"<path d=\"M12 3v18\" /> <path d=\"m19 8 3 8a5 5 0 0 1-6 0zV7\" /> <path d=\"M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1\" /> <path d=\"m5 8 3 8a5 5 0 0 1-6 0zV7\" /> <path d=\"M7 21h10\" />","book-open":"<path d=\"M12 5v16\" /> <path d=\"M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z\" />","calendar-days":"<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />","play":"<path d=\"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z\" />","check":"<path d=\"M20 6 9 17l-5-5\" />","x":"<path d=\"M18 6 6 18\" /> <path d=\"m6 6 12 12\" />","plus":"<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />","minus":"<path d=\"M5 12h14\" />","repeat-2":"<path d=\"m2 9 3-3 3 3\" /> <path d=\"M13 18H7a2 2 0 0 1-2-2V6\" /> <path d=\"m22 15-3 3-3-3\" /> <path d=\"M11 6h6a2 2 0 0 1 2 2v10\" />","notebook-pen":"<path d=\"M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4\" /> <path d=\"M2 6h4\" /> <path d=\"M2 10h4\" /> <path d=\"M2 14h4\" /> <path d=\"M2 18h4\" /> <path d=\"M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z\" />","timer":"<line x1=\"10\" x2=\"14\" y1=\"2\" y2=\"2\" /> <line x1=\"12\" x2=\"15\" y1=\"14\" y2=\"11\" /> <circle cx=\"12\" cy=\"14\" r=\"8\" />","chevron-left":"<path d=\"m15 18-6-6 6-6\" />","chevron-right":"<path d=\"m9 18 6-6-6-6\" />","chevron-down":"<path d=\"m6 9 6 6 6-6\" />","chevron-up":"<path d=\"m18 15-6-6-6 6\" />","search":"<path d=\"m21 21-4.34-4.34\" /> <circle cx=\"11\" cy=\"11\" r=\"8\" />","trophy":"<path d=\"M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2\" /> <path d=\"M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2\" /> <path d=\"M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3\" /> <path d=\"M4 22h16\" /> <path d=\"M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z\" /> <path d=\"M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3\" />","flame":"<path d=\"M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4\" />","dumbbell":"<path d=\"M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z\" /> <path d=\"m2.5 21.5 1.4-1.4\" /> <path d=\"m20.1 3.9 1.4-1.4\" /> <path d=\"M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z\" /> <path d=\"m9.6 14.4 4.8-4.8\" />","list":"<path d=\"M3 5h.01\" /> <path d=\"M3 12h.01\" /> <path d=\"M3 19h.01\" /> <path d=\"M8 5h13\" /> <path d=\"M8 12h13\" /> <path d=\"M8 19h13\" />","grip-vertical":"<circle cx=\"9\" cy=\"12\" r=\"1\" /> <circle cx=\"9\" cy=\"5\" r=\"1\" /> <circle cx=\"9\" cy=\"19\" r=\"1\" /> <circle cx=\"15\" cy=\"12\" r=\"1\" /> <circle cx=\"15\" cy=\"5\" r=\"1\" /> <circle cx=\"15\" cy=\"19\" r=\"1\" />","trash-2":"<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />","pencil":"<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />","arrow-up":"<path d=\"m5 12 7-7 7 7\" /> <path d=\"M12 19V5\" />","arrow-down":"<path d=\"M12 5v14\" /> <path d=\"m19 12-7 7-7-7\" />","target":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <circle cx=\"12\" cy=\"12\" r=\"6\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" />","trending-down":"<path d=\"M16 17h6v-6\" /> <path d=\"m22 17-8.5-8.5-5 5L2 7\" />","trending-up":"<path d=\"M16 7h6v6\" /> <path d=\"m22 7-8.5 8.5-5-5L2 17\" />","activity":"<path d=\"M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2\" />","info":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />","pause":"<rect x=\"14\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\" /> <rect x=\"5\" y=\"3\" width=\"5\" height=\"18\" rx=\"1\" />","skip-forward":"<path d=\"M21 4v16\" /> <path d=\"M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z\" />","rotate-ccw":"<path d=\"M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8\" /> <path d=\"M3 3v5h5\" />","settings":"<path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />","log-out":"<path d=\"m16 17 5-5-5-5\" /> <path d=\"M21 12H9\" /> <path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\" />","minimize-2":"<path d=\"m14 10 7-7\" /> <path d=\"M20 10h-6V4\" /> <path d=\"m3 21 7-7\" /> <path d=\"M4 14h6v6\" />","maximize-2":"<path d=\"M15 3h6v6\" /> <path d=\"m21 3-7 7\" /> <path d=\"m3 21 7-7\" /> <path d=\"M9 21H3v-6\" />","sparkles":"<path d=\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\" /> <path d=\"M20 2v4\" /> <path d=\"M22 4h-4\" /> <circle cx=\"4\" cy=\"20\" r=\"2\" />","circle-check":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />","clock":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />","eye":"<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />","circle-alert":"<circle cx=\"12\" cy=\"12\" r=\"10\" /> <line x1=\"12\" x2=\"12\" y1=\"8\" y2=\"12\" /> <line x1=\"12\" x2=\"12.01\" y1=\"16\" y2=\"16\" />","calendar-check":"<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"m9 15 2 2 4-4\" />","flag":"<path d=\"M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528\" />"};
@@ -900,7 +901,7 @@ var BODY={"front":[["chest",["M272.91 422.84c-18.95-17.19-22-57-12.64-78.79 5.57
 
 /* ===== sync: {v,state} with version-checked saves; 409 = re-apply pending ops and retry ===== */
 /* one source for every Lift: lift/ is Moaath's, lift2/ is his friend's (own data + code); the folder decides */
-var LIFT_U=/\/lift2\//.test(location.pathname)?"f":"",BUILD_ID="4.5.2",API="https://moes-app-two.vercel.app/api/health-check?app=lift"+(LIFT_U?"&u="+LIFT_U:""),LS=LIFT_U?"liftf_":"lift_";
+var LIFT_U=/\/lift2\//.test(location.pathname)?"f":"",BUILD_ID="4.5.3",API="https://moes-app-two.vercel.app/api/health-check?app=lift"+(LIFT_U?"&u="+LIFT_U:""),LS=LIFT_U?"liftf_":"lift_";
 var $=function(id){return document.getElementById(id);};
 var S=null,V=0,PIN="",pending=[],saving=false,online=navigator.onLine,ROLE="full";
 function uid(){return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);}
@@ -1117,9 +1118,12 @@ function weekStrip(){
     h+='<div class="wk'+(d.today?" today":"")+'"><div class="pl '+cls+'" style="--c:'+col+'">'+lab+'</div><div class="dn">'+(LANG==="ar"?DOW2:"SMTWTFS")[d.dow]+'</div></div>';});
   return h+'</div>';
 }
+var DIAG=false;
+function diagCard(){if(!DIAG)return "";var d=SBD;return '<div class="card" translate="no" dir="ltr" style="margin:12px 16px 0;font-size:13px;line-height:1.6" data-a="diag">Screen check (send me this): screen '+d.screen+' · view '+d.view+' · lvh '+d.lvh+' · top '+d.top+' · bottom '+d.bottom+' · bar end '+d.navBottom+' · gap '+d.gap+' · pad '+d.sb+' · moved '+d.shift+' · '+(d.standalone?'app':'safari')+'</div>';}
 ROOTS.today=function(){
   var now=Date.now(),P=S.program,NU=nextUp(S,now),nx=NU.w||P[0],a=S.active,rule=ruleToday(S,now),g=gymStats(S,now),stale=staleActive(S,now);
   var h=root("Lift",new Date(now).toLocaleDateString(LOC,{weekday:"long",day:"numeric",month:"long"}),'<span style="text-align:right"><span id="net" class="pill hidden"></span><button class="faint tiny" data-a="diag" style="margin-top:6px">b<span id="build">'+BUILD_ID+'</span></button></span>');
+  h+=diagCard();
   if(rule==="must"&&!a)h+='<div class="banner warn">'+ic("circle-alert")+'<div><b>Train today.</b> Yesterday was a rest day — never two in a row.</div></div>';
   else if(rule==="rest"&&!a)h+='<div class="banner">'+ic("calendar-check")+'<div><b>Rest day.</b> You trained yesterday. Back at it tomorrow.</div></div>';
   if(a&&stale){
@@ -1490,7 +1494,7 @@ var ACT={
   exinfo:function(b){show("exercise",{e:b.getAttribute("data-e")});},
   start:function(b){unlockAudio();if(!S.active){W={cur:0,how:false,note:false,edit:null,more:{},k:{},r:{}};REST=null;op("start",{id:uid(),w:b.getAttribute("data-w")},true);}STACK=[{p:"workout",a:{}}];saveUI();render();window.scrollTo(0,0);wake(true);loadLib().catch(function(){});},
   goexw:function(b){W.cur=+b.getAttribute("data-x");W.how=false;W.edit=null;STACK=[{p:"workout",a:{}}];saveUI();render();window.scrollTo(0,0);wake(true);},
-  diag:function(){fixSB();var d=SBD;toast("screen "+d.screen+" · view "+d.view+" · lvh "+d.lvh+" · top "+d.top+" · bottom "+d.bottom+" · bar +"+d.sb+" ↓"+d.shift+(d.standalone?" · app":" · safari"));},
+  diag:function(){fixSB();DIAG=!DIAG;render();},
   resume:function(){STACK=[{p:"workout",a:{}}];saveUI();render();window.scrollTo(0,0);wake(true);},
   savestale:function(){var s=staleActive(S,Date.now());if(!s||!S.active)return;var id=S.active.id,x=clone(S.active.x);op("finish",{sid:id,end:s.end},true);REST=null;STACK=[{p:"finish",a:{saved:id,x:x}}];saveUI();render();window.scrollTo(0,0);},
   how:function(){W.how=!W.how;render();},
@@ -1918,7 +1922,7 @@ function gate(err){
   $("pin").onkeydown=function(e){if(e.key==="Enter")$("pinGo").click();};
   setTimeout(function(){$("pin").focus();},80);
 }
-function start(){$("gate").classList.add("hidden");$("app").classList.remove("hidden");render();flush();if(S.active&&STACK.length)wake(true);loadLib().catch(function(){});}
+function start(){$("gate").classList.add("hidden");$("app").classList.remove("hidden");fixSB();render();flush();if(S.active&&STACK.length)wake(true);loadLib().catch(function(){});}
 async function checkUpdate(silent){
   try{var r=await fetch("version.json?t="+Date.now(),{cache:"no-store"});var j=await r.json();
     if(!j.build||j.build===BUILD_ID)return false;
@@ -1942,11 +1946,13 @@ document.addEventListener("visibilitychange",function(){
 var SBD={};
 function probeH(css){var d=document.createElement("div");d.style.cssText="position:absolute;left:0;top:0;width:1px;visibility:hidden;pointer-events:none;"+css;document.body.appendChild(d);var h=d.getBoundingClientRect().height;d.remove();return h;}
 function fixSB(){try{
+  var root=document.documentElement,nav=document.querySelector("nav.tabs");root.style.setProperty("--navshift","0px");
   var inset=probeH("height:env(safe-area-inset-bottom)"),top=probeH("height:env(safe-area-inset-top)"),lvh=probeH("height:100vh;height:100lvh");
   var standalone=!!(navigator.standalone||(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)),port=innerHeight>=innerWidth;
-  var sh=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width),lost=sh-innerHeight,lv=lvh-innerHeight,r=navLayout(standalone,top,inset,lost,lv);
-  SBD={screen:sh,view:innerHeight,lvh:Math.round(lvh),top:Math.round(top),bottom:Math.round(inset),standalone:standalone,sb:r.sb,shift:r.shift};
-  document.documentElement.style.setProperty("--sb",r.sb+"px");document.documentElement.style.setProperty("--navshift",r.shift+"px");
+  var sh=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width),lost=sh-innerHeight;
+  var nb=nav&&nav.offsetParent!==null?nav.getBoundingClientRect().bottom:innerHeight,gap=Math.round(sh-nb),r=navLayout(standalone,top,inset,gap,lost);
+  SBD={screen:sh,view:innerHeight,lvh:Math.round(lvh),top:Math.round(top),bottom:Math.round(inset),navBottom:Math.round(nb),gap:gap,standalone:standalone,sb:r.sb,shift:r.shift};
+  root.style.setProperty("--sb",r.sb+"px");root.style.setProperty("--navshift",r.shift+"px");
 }catch(e){}}
 addEventListener("resize",fixSB);addEventListener("orientationchange",function(){setTimeout(fixSB,300);});
 (async function boot(){
