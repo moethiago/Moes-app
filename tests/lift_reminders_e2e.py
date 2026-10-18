@@ -9,13 +9,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lift_46_e2e_contrast import CONTRAST_JS
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift-test")
 PORT = int(os.environ.get("PORT", "8188"))
+import tempfile
+SITE = tempfile.mkdtemp(); os.symlink(os.path.abspath(ROOT), os.path.join(SITE, "lift-test"))  # served at /lift-test/ like the real test camp
 class Q(http.server.SimpleHTTPRequestHandler):
-    def __init__(s, *a, **k): super().__init__(*a, directory=ROOT, **k)
+    def __init__(s, *a, **k): super().__init__(*a, directory=SITE, **k)
     def log_message(s, *a): pass
 socketserver.TCPServer.allow_reuse_address = True
 srv = socketserver.TCPServer(("127.0.0.1", PORT), Q); threading.Thread(target=srv.serve_forever, daemon=True).start()
 KEY = base64.urlsafe_b64encode(b"\x04" + bytes(range(64))).decode().rstrip("=")
-DB = {"v": 1, "state": None}; PUSH = {"on": 0, "phones": 0, "prefs": {"on": 1, "time": "17:00", "day": 1, "miss": 1, "week": 1, "open": 1, "lang": "en"}, "log": []}; CALLS = []
+DB = {"v": 1, "state": None}; PUSH = {"on": 0, "phones": 0, "prefs": {"on": 1, "time": "17:00", "day": 1, "miss": 1, "week": 1, "open": 1, "lang": "en"}, "log": []}; CALLS = []; HIST = []
 def api(route):
     b = json.loads(route.request.post_data or "{}"); a = b.get("action"); CALLS.append(b)
     j = lambda code, o: route.fulfill(status=code, body=json.dumps(o), content_type="application/json")
@@ -29,6 +31,11 @@ def api(route):
     sent = None
     if a in ("pushtest", "pushpreview"):
         sent = 1 if a == "pushtest" else 4; PUSH["log"].append({"t": 1792345678000, "k": "test", "s": 201})
+    if a == "pushpeople": return j(200, {"people": [{"aid": "t", "name": "You (Lift Test)", "on": PUSH["phones"] > 0, "phones": PUSH["phones"]}], "history": HIST[::-1]})
+    if a == "pushsend":
+        if not (b.get("body") or "").strip(): return j(400, {"error": "empty"})
+        HIST.append({"t": 1792345678000, "title": b.get("title") or "Lift", "body": b["body"], "to": ["You (Lift Test)"], "delivered": 1, "phones": 1})
+        return j(200, {"ok": True, "people": 1, "phones": 1, "delivered": 1, "history": HIST[::-1]})
     if a.startswith("push"): return j(200, {"ok": True, "on": bool(PUSH["on"]), "phones": PUSH["phones"], "prefs": PUSH["prefs"], "log": PUSH["log"][-10:], **({"sent": sent} if sent else {})})
     j(400, {"error": "unknown"})
 STUB = """
@@ -51,13 +58,13 @@ with sync_playwright() as p:
         if perm == "granted-on-ask": extra += "let P='default';Object.defineProperty(Notification,'permission',{get:()=>P});Notification.requestPermission=()=>{P='granted';window.__asked=(window.__asked||0)+1;return Promise.resolve('granted')};"
         if perm == "denied": extra += "Object.defineProperty(Notification,'permission',{get:()=>'denied'});"
         if perm == "refuse": extra += "let P='default';Object.defineProperty(Notification,'permission',{get:()=>P});Notification.requestPermission=()=>{P='default';return Promise.resolve('default')};"
-        init = "localStorage.setItem('lift_pin','2026');localStorage.setItem('lift_who','2026');" + ("localStorage.setItem('lift_lang','%s');" % lang if lang else "") + ("localStorage.setItem('lift_theme','%s');" % theme if theme else "")
+        init = "localStorage.setItem('liftt_pin','2026');localStorage.setItem('liftt_who','2026');" + ("localStorage.setItem('lift_lang','%s');" % lang if lang else "") + ("localStorage.setItem('lift_theme','%s');" % theme if theme else "")
         ctx.add_init_script(init + STUB % extra)
         pg = ctx.new_page(); pg.route("**/api/health-check**", api)
         for pat in ("**/static.exercisedb.dev/**", "**/i.ytimg.com/**", "**raw.githubusercontent.com/**", "**wger.de/**", "**/oss.exercisedb.dev/**"): pg.route(pat, lambda r: r.fulfill(status=404, body=b""))
         pg.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
-        pg.goto(f"http://127.0.0.1:{PORT}/index.html"); pg.wait_for_timeout(1500)
+        pg.goto(f"http://127.0.0.1:{PORT}/lift-test/index.html"); pg.wait_for_timeout(1500)
         return ctx, pg, errs, miss
     def T(pg):
         W = lambda ms=400: pg.wait_for_timeout(ms)
@@ -101,6 +108,20 @@ with sync_playwright() as p:
         ok(f"[{theme}] 'Send me a test' and 'Show me all kinds' reach the server", [c["action"] for c in CALLS[n0:]] == ["pushtest", "pushpreview"])
         ok(f"[{theme}] fits the phone, readable", pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1") and not pg.evaluate(CONTRAST_JS, 3))
         pg.screenshot(path=f"/tmp/w/rem_{theme}.png", full_page=True)
+        # write your own notification
+        tap("[data-p='pushsend']", 1200)
+        ok(f"[{theme}] 'Send a notification' page: title, message, preview, only you as recipient", pg.locator("#pmtitle").count() == 1 and pg.locator("#pmbody").count() == 1 and pg.locator(".pmprev").count() == 1 and pg.locator("[data-a='pmto']").count() == 2 and "only you" in pg.inner_text(".hdr"))
+        ok(f"[{theme}] Send is off until there's a message", pg.locator("[data-a='pmsend'][disabled]").count() == 1)
+        pg.fill("#pmtitle", "Leg day!"); pg.fill("#pmbody", "Squats at 9 — don't be late"); W(300)
+        ok(f"[{theme}] preview shows the text as you type, with a counter", pg.inner_text("#pmprevt") == "Leg day!" and "Squats at 9" in pg.inner_text("#pmprevb") and pg.inner_text("#pmcount").startswith("27/240") and pg.locator("[data-a='pmsend'][disabled]").count() == 0)
+        n0 = len(CALLS); tap("[data-a='pmsend']", 300); ok(f"[{theme}] send asks first", "Tap again" in pg.inner_text("[data-a='pmsend']") and not any(c["action"] == "pushsend" for c in CALLS[n0:]))
+        tap("[data-a='pmsend']", 1000)
+        snd = [c for c in CALLS[n0:] if c["action"] == "pushsend"]
+        ok(f"[{theme}] sent with your title, text and 'everyone'", len(snd) == 1 and snd[0]["title"] == "Leg day!" and snd[0]["body"] == "Squats at 9 — don't be late" and snd[0]["to"] == ["all"], snd)
+        ok(f"[{theme}] it appears under Sent, boxes cleared", "Squats at 9" in pg.inner_text("section:has(h2:text-is('Sent'))") and pg.input_value("#pmbody") == "")
+        ok(f"[{theme}] compose page fits, readable", pg.evaluate("document.documentElement.scrollWidth<=innerWidth+1") and not pg.evaluate(CONTRAST_JS, 3))
+        pg.screenshot(path=f"/tmp/w/pm_{theme}.png", full_page=True)
+        tap(".hdr .back", 700)
         n0 = len(CALLS); tap("[data-a='pushoff']", 300); ok(f"[{theme}] turn off asks first", "Tap again" in pg.inner_text("[data-a='pushoff']"))
         tap("[data-a='pushoff']", 900)
         ok(f"[{theme}] …then unsubscribes this phone and tells the server", pg.evaluate("window.__unsub") == 1 and any(c["action"] == "pushunsub" for c in CALLS[n0:]) and pg.locator("[data-a='pushon']").count() == 1)
@@ -112,6 +133,7 @@ with sync_playwright() as p:
     tap("nav.tabs [data-tab='user']", 1000); tap("[data-a='pushon']", 1800)
     ok("Arabic: reminders section in Arabic, language sent as ar", "التنبيهات" in pg.inner_text("#view") and any(c.get("action") == "pushsub" and c.get("lang") == "ar" for c in CALLS))
     pg.select_option("select[data-in='pushtime']", "19:00"); W(800)
+    tap("[data-p='pushsend']", 1200); pg.fill("#pmbody", "تجربة"); W(300); tap(".hdr .back", 600)
     real = sorted(k for k in MISS if not re.fullmatch(r"(Full Body .*|Upper .*|Lower .*|Workout .*)", k, re.I))
     ok("Arabic: nothing left in English", not real, real[:20])
     ok("no page errors (Arabic)", not errs, errs[:3])
