@@ -111,6 +111,10 @@ ok("reminders never touch any app's data", neighbours() === before);
   r = await call(T, { action: "pushpeople", pin: PIN }); ok("sent messages are kept as a history, newest first", r.j.history.length === 3 && r.j.history[0].body.startsWith("xxx") && r.j.history[0].delivered === 1);
   r = await call({ u: "f" }, { action: "pushsend", pin: "250958", body: "hack", to: ["all"] }); ok("Lift2 can't send messages", r.code === 403);
   r = await call({}, { action: "pushpeople", pin: PIN }); ok("real Lift (admin) lists everyone with whether reminders are on", r.code === 200 && r.j.people[0].aid === "admin" && r.j.people.some((x) => x.aid === "f"));
+  r = await call({}, { action: "userstats", pin: PIN }); ok("Users page numbers include whether each person has reminders on", r.code === 200 && r.j.accounts.every((x) => x.push && typeof x.push.on === "boolean"));
+  r = await call(T, { action: "pushget", pin: PIN }); ok("the last automatic run is visible (for checking the schedule)", r.j.sched > 0);
+  store.set("lift:remind:last", "0"); C.got = []; store.set("lift-t:state", JSON.stringify({ v: 9, state: { days: [0, 1, 2, 3, 4, 5, 6], next: 0, program: [{ n: "Upper A", x: [] }], sessions: [], active: { start: Date.now() - 9 * 3600e3, sets: [] } } }));
+  r = await call({}, { action: "remind" }); ok("the schedule never sends to the test camp (no duplicates of the real Lift's)", r.j.ok && C.got.length === 0);
   await call(T, { action: "pushunsub", pin: PIN }); }
 // ---------- the schedule itself: pure function over a grid ----------
 const src = fs.readFileSync(file, "utf8"), a = src.indexOf("// ---------- Lift reminders"), b = src.indexOf("async function liftPushDeliver");
