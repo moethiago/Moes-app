@@ -137,4 +137,14 @@ for (const days of [3, 4, 5]) for (const kit of ["full", "basic", "home"]) for (
   ok("home plan swaps machines for dumbbell/band/bodyweight moves with the same main muscle", P.program.every(w => w.x.every(i => L.gearOk({ gear: P.gear, custom: {} }, i.e))) && P.program[0].x.length >= 5, P.program[0].x.map(i => i.n)); }
 ok("3-day template exists and every exercise has facts", !!L.tplById("fb3") && L.tplById("fb3").w.every(w => w.x.every(r => L.CORE[r[0]])));
 
+// ---- bottom bar: never pad for the home indicator twice
+ok("normal iPhone home-screen app: page reaches the bottom → keep the 34pt inset", L.sbPad(34, true, 0) === 34);
+ok("page already stops above the home indicator (iOS bug) → no second inset", L.sbPad(34, true, 34) === 0 && L.sbPad(34, true, 50) === 0);
+ok("in Safari (not home screen) the inset is left alone", L.sbPad(34, false, 120) === 34);
+ok("phones without a home indicator → nothing to pad", L.sbPad(0, true, 0) === 0);
+{ const n = (...a) => JSON.stringify(L.navLayout(...a));
+  ok("Moaath's case (viewport stops 58pt early, large viewport covers it) → bar reaches the real bottom, keeps the home-indicator inset", n(true, 59, 34, 58, 58) === '{"sb":34,"shift":58}');
+  ok("viewport stops early but the strip isn't page space → just drop the doubled inset", n(true, 59, 34, 58, 0) === '{"sb":0,"shift":0}');
+  ok("the other iOS bug (system bar on top, top inset 0) → bar already at the bottom: leave it", n(true, 0, 34, 62, 62) === '{"sb":34,"shift":0}');
+  ok("normal phone → unchanged", n(true, 59, 34, 0, 0) === '{"sb":34,"shift":0}' && n(false, 59, 34, 120, 120) === '{"sb":34,"shift":0}'); }
 console.log(`\nMUSCLES lift: PASS ${pass}  FAIL ${fail}`); if (fail) process.exit(1);
