@@ -190,4 +190,25 @@ check("usage tracking never touches other apps' data", snap() === before);
   r = await call({ query: TQ, body: { action: "users", pin: FULL } }); check("no user admin from the test camp", r.code === 403);
   r = await call({ query: TQ, body: { action: "snapshot", pin: FULL, name: "t" } }); check("test camp can be snapshotted on its own", r.code === 200 && store.has("lift-t:snapshot:t"));
   check("test camp opens are counted under their own name", actOf("t") && actOf("t").opens >= 1); }
+// 4.14: announcement pop-up — only Moaath writes it; every user (friends, Lift2) reads it with state; Lift Test keeps its own
+{ const TQ = { app: "lift", u: "t" }, FQ = { app: "lift", u: "f" }, nb = snap(), realBefore = store.get(K);
+  r = await call({ body: { action: "state", pin: FULL } }); check("no announcement yet → null", r.code === 200 && r.j.announce === null);
+  r = await call({ body: { action: "announceset", pin: U2.code, body: "hi" } }); check("a friend can't publish an announcement", r.code === 403);
+  r = await call({ query: FQ, body: { action: "announceset", pin: FPIN, body: "hi" } }); check("Lift2 can't publish an announcement", r.code === 403);
+  r = await call({ body: { action: "announceclear", pin: U2.code } }); check("a friend can't take it down", r.code === 403);
+  r = await call({ body: { action: "announceset", pin: FULL, title: "x", body: "   " } }); check("empty message refused", r.code === 400);
+  r = await call({ body: { action: "announceset", pin: FULL, title: "New <b>", body: "Line one\nخط ٢ <script>" + "y".repeat(700) } });
+  const A1 = r.j.announce; check("Moaath publishes", r.code === 200 && A1 && A1.id && A1.title === "New b" && A1.body.startsWith("Line one\nخط ٢ script") && A1.body.length === 600);
+  r = await call({ body: { action: "state", pin: U2.code } }); check("a friend's state carries it", r.code === 200 && r.j.announce && r.j.announce.id === A1.id);
+  r = await call({ query: FQ, body: { action: "state", pin: FPIN } }); check("Lift2 friend's state carries it", r.code === 200 && r.j.announce && r.j.announce.id === A1.id);
+  r = await call({ query: TQ, body: { action: "state", pin: FULL } }); check("Lift Test does NOT get the real one", r.code === 200 && r.j.announce === null);
+  r = await call({ body: { action: "announceset", pin: FULL, body: "fixed typo", keep: 1 } }); check("edit keeps the same id (no re-show)", r.code === 200 && r.j.announce.id === A1.id && r.j.announce.edited && r.j.announce.body === "fixed typo");
+  await new Promise((z) => setTimeout(z, 3));
+  r = await call({ body: { action: "announceset", pin: FULL, body: "brand new" } }); check("a new one gets a new id (shows again)", r.code === 200 && r.j.announce.id !== A1.id && !r.j.announce.edited);
+  r = await call({ query: TQ, body: { action: "announceset", pin: FULL, body: "camp only" } }); check("Lift Test publishes its own", r.code === 200 && store.has("lift-t:announce"));
+  r = await call({ body: { action: "state", pin: U2.code } }); check("…and friends never see the camp one", r.j.announce.body === "brand new");
+  r = await call({ body: { action: "announceclear", pin: FULL } }); check("Moaath takes it down", r.code === 200 && !store.has("lift:announce"));
+  r = await call({ body: { action: "state", pin: U2.code } }); check("…gone for friends", r.j.announce === null);
+  r = await call({ query: TQ, body: { action: "state", pin: FULL } }); check("…camp one still there until he clears it", r.j.announce && r.j.announce.body === "camp only");
+  check("announcements never touch anyone's training data or other apps", snap() === nb && store.get(K) === realBefore); }
 console.log(`PASS ${pass}  FAIL ${fail}`); if (fail) { console.log("FAILED:\n - " + failures.join("\n - ")); process.exit(1); }
