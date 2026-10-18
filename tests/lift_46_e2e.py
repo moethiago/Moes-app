@@ -6,6 +6,7 @@ Real Chromium at iPhone size; backend mocked in-process (same contract as api/he
 Usage: python3 tests/lift_46_e2e.py [path-to-lift-folder] [screenshot-dir]"""
 import json, threading, http.server, socketserver, sys, os, re, datetime, copy
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar, is_edge
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift")
 SHOTS = sys.argv[2] if len(sys.argv) > 2 else ""
 PORT = int(os.environ.get("PORT", "8186"))
@@ -74,7 +75,7 @@ with sync_playwright() as p:
         if lang: init += "localStorage.setItem('lift_lang','%s');" % lang
         if theme: init += "localStorage.setItem('lift_theme','%s');" % theme
         ctx.add_init_script(init + "}")
-        pg = ctx.new_page(); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
+        pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.clock.set_fixed_time(FIXED / 1000); pg.route("**/api/health-check**", api)
         pg.route("**/static.exercisedb.dev/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/i.ytimg.com/**", lambda r: r.fulfill(status=200, body=GIF1, content_type="image/gif"))
         pg.route("**/oss.exercisedb.dev/**", lambda r: r.fulfill(status=200, content_type="application/json", headers={"access-control-allow-origin": "*"}, body=json.dumps({"data": {"instructions": ["Step:1 Sit down.", "Step:2 Push."]}})))
@@ -92,7 +93,7 @@ with sync_playwright() as p:
             tap(f"nav.tabs [data-tab='{tab}']", 300)
             if seg: tap(f".tabseg [data-a='seg'][data-v='{seg}']", ms)
             else: W(ms)
-        def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else ("ROOT:" + pg.inner_text(".root-top h1"))
+        def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else root_title(pg)
         def txt(sel="#view"): return pg.inner_text(sel).replace(" ", " ").replace("\xa0", " ")
         def noscroll(): return pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1")
         def bar_on_bottom(): return pg.evaluate("(()=>{const r=document.querySelector('nav.tabs').getBoundingClientRect();return Math.abs(r.bottom-innerHeight)<=1&&r.height<=70})()")
@@ -114,7 +115,7 @@ with sync_playwright() as p:
     st["body"] = [{"id": "b%d" % i, "t": FIXED - (20 - i * 7) * D, "kg": 100 - i, "src": "weigh"} for i in range(3)]
     db[ADMIN]["state"] = st; db[ADMIN]["v"] += 1; pg.evaluate("localStorage.removeItem('lift_state')"); pg.reload(); W(1800)
     tabs = [t.strip() for t in pg.locator("nav.tabs button span").all_inner_texts()]
-    ok("tab bar: Home · Programs · Log · User", tabs == ["Home", "Programs", "Log", "User"], tabs)
+    ok("tab bar: Home · Programs · Log · User", tabs == tabs_en(pg), tabs)
     ok("Home opens first", title() == "ROOT:Lift" and pg.locator("nav.tabs [data-tab='today'].on").count() == 1)
     ok("bottom bar sits on the screen bottom (Home)", bar_on_bottom(), pg.evaluate("[document.querySelector('nav.tabs').getBoundingClientRect().bottom,innerHeight]"))
     ok("no code moves the bar (no transform, no extra padding)", pg.evaluate("getComputedStyle(document.querySelector('nav.tabs')).transform") == "none")
@@ -187,9 +188,9 @@ with sync_playwright() as p:
     # ================= Light theme =================
     go("user"); tap("[data-a='theme'][data-v='light']", 2000)
     ok("Light: saved and applied after the reload", pg.evaluate("localStorage.getItem('lift_theme')") == "light" and pg.evaluate("document.documentElement.dataset.theme") == "light")
-    ok("Light: page background is light, text dark", pg.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(242, 241, 236)" and pg.evaluate("getComputedStyle(document.body).color") == "rgb(27, 29, 33)")
-    ok("Light: asks iOS for dark status-bar text", pg.get_attribute("meta[name='apple-mobile-web-app-status-bar-style']", "content") == "default" and pg.get_attribute("meta[name='theme-color']", "content") == "#F2F1EC")
-    ok("Light: dark strip behind the status bar if iOS keeps white text", pg.evaluate("getComputedStyle(document.body,'::before').backgroundColor") == "rgb(27, 29, 33)")
+    ok("Light: page background is light, text dark", pg.evaluate("getComputedStyle(document.body).backgroundColor") == ("rgb(244, 244, 241)" if is_edge(pg) else "rgb(242, 241, 236)") and pg.evaluate("getComputedStyle(document.body).color") == ("rgb(11, 17, 21)" if is_edge(pg) else "rgb(27, 29, 33)"))
+    ok("Light: asks iOS for dark status-bar text", pg.get_attribute("meta[name='apple-mobile-web-app-status-bar-style']", "content") == "default" and pg.get_attribute("meta[name='theme-color']", "content") == ("#F4F4F1" if is_edge(pg) else "#F2F1EC"))
+    ok("Light: dark strip behind the status bar if iOS keeps white text", pg.evaluate("getComputedStyle(document.body,'::before').backgroundColor") == ("rgb(11, 17, 21)" if is_edge(pg) else "rgb(27, 29, 33)"))
     go("user"); ok("Light: User shows Light selected", pg.locator("[data-a='theme'][data-v='light'].on").count() == 1)
     bad = {}
     for t_, s_ in SCREENS:
@@ -199,7 +200,7 @@ with sync_playwright() as p:
         if lc: bad[f"{t_}/{s_}"] = lc[:6]
     ok("light: every screen's text readable (contrast ≥ 3:1)", not bad, bad)
     go("log", "body")
-    ok("light: chart line drawn dark (not invisible white)", pg.evaluate("getComputedStyle(document.querySelector('svg.chart path[fill=none]')).stroke") == "rgb(27, 29, 33)")
+    ok("light: chart line drawn dark (not invisible white)", pg.evaluate("getComputedStyle(document.querySelector('svg.chart path[fill=none]')).stroke") == ("rgb(11, 17, 21)" if is_edge(pg) else "rgb(27, 29, 33)"))
     ok("light: a white routine colour turns grey so it shows", pg.evaluate("wc(PLATE.findIndex(p=>p.n==='white'))") == "#8E9298")
     # pages opened from the tabs, light
     bad = {}
@@ -249,7 +250,7 @@ with sync_playwright() as p:
         W, tap, go, title, txt, noscroll, bar_on_bottom, low_contrast, shot = H(pg)
         ok(f"Arabic ({theme}): right-to-left, theme {theme}", pg.evaluate("document.documentElement.dir") == "rtl" and pg.evaluate("document.documentElement.dataset.theme") == theme)
         tabs = [t.strip() for t in pg.locator("nav.tabs button span").all_inner_texts()]
-        ok(f"Arabic ({theme}): tab bar الرئيسية · البرامج · السجل · حسابي", tabs == ["الرئيسية", "البرامج", "السجل", "حسابي"], tabs)
+        ok(f"Arabic ({theme}): tab bar الرئيسية · البرامج · السجل · حسابي", tabs == tabs_ar(pg), tabs)
         bad = {}
         for t_, s_ in SCREENS:
             go(t_, s_, 800); shot(f"{theme}_ar_{t_}_{s_ or 'root'}")
