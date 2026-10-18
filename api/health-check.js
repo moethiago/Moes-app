@@ -1275,7 +1275,7 @@ async function liftUsers() {
   try { const j = raw ? JSON.parse(raw) : null; return j && Array.isArray(j.users) ? j : { users: [] }; } catch { return { users: [] }; }
 }
 // Friends flag a wrong video/picture or ask for a missing exercise; only Moaath reads them. "fix" = videos he hid for everyone.
-const LIFT_REPORTS_KEY = "lift:reports", LIFT_FIX_KEY = "lift:fix";
+const LIFT_REPORTS_KEY = "lift:reports", LIFT_FIX_KEY = "lift:fix", LIFT_DIAG_KEY = "lift:diag";
 async function liftReports() {
   const raw = await kv(["GET", LIFT_REPORTS_KEY]);
   try { const j = raw ? JSON.parse(raw) : null; return j && Array.isArray(j.items) ? j : { items: [] }; } catch { return { items: [] }; }
@@ -1310,7 +1310,22 @@ async function liftHandler(req, res) {
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
-    if (action === "state") { const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "state") { const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
+    if (action === "diag" || action === "diaglog") {
+      // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
+      if (!admin) return res.status(403).json({ error: "admin" });
+      const raw = await kv(["GET", LIFT_DIAG_KEY]);
+      let log = []; try { log = raw ? JSON.parse(raw) : []; if (!Array.isArray(log)) log = []; } catch { log = []; }
+      if (action === "diag") {
+        const d = body.d && typeof body.d === "object" && !Array.isArray(body.d) ? body.d : {};
+        const item = { t: Date.now() };
+        for (const [k, v] of Object.entries(d).slice(0, 30)) item[String(k).replace(/[^A-Za-z0-9_]/g, "").slice(0, 20)] = typeof v === "number" || typeof v === "boolean" ? v : String(v).replace(/[\u0000-\u001f<>]/g, "").slice(0, 80);
+        log.push(item); if (log.length > 40) log = log.slice(-40);
+        await kv(["SET", LIFT_DIAG_KEY, JSON.stringify(log)]);
+        return res.status(200).json({ ok: true });
+      }
+      return res.status(200).json({ items: log });
+    }
     if (action === "report") {
       const kind = String(body.kind || "");
       if (!["video", "picture", "muscles", "steps", "name", "other", "missing"].includes(kind)) return res.status(400).json({ error: "kind" });
