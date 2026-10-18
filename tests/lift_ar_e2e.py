@@ -55,8 +55,10 @@ with sync_playwright() as p:
     def tap(sel, ms=500): pg.click(sel); pg.wait_for_timeout(ms)
     def go(page, extra="", ms=900):
         pg.evaluate("([p,e])=>{var b=document.createElement('button');b.setAttribute('data-a','go');b.setAttribute('data-p',p);if(e)b.setAttribute('data-e',e);document.body.appendChild(b);b.click();b.remove();}", [page, extra]); pg.wait_for_timeout(ms)
-    def tab(t, ms=700):
-        pg.evaluate("t=>{STACK=[];TAB=t;render();}", t); pg.wait_for_timeout(ms)
+    TABMAP = {"today": ["today", None], "user": ["user", None], "routines": ["programs", "routines"], "exercises": ["programs", "exercises"], "programs": ["programs", "programs"],
+              "muscles": ["log", "muscles"], "log": ["log", "workouts"], "body": ["log", "body"]}
+    def tab(t, ms=700):  # 4.6: Home · Programs (Routines/Exercises/Programs) · Log (Muscles/Workouts/Body) · User
+        pg.evaluate("([t,g])=>{STACK=[];TAB=t;if(g)SEG[t]=g;render();}", TABMAP[t]); pg.wait_for_timeout(ms)
     def view(): return pg.inner_text("#view")
     def shot(n):
         if os.environ.get("SHOTS"): pg.screenshot(path=os.path.join(os.environ["SHOTS"], n + ".png"), full_page=True)
@@ -77,14 +79,17 @@ with sync_playwright() as p:
     ok("Today in Arabic", "ابدأ التمرين" in view() or "التالي" in view(), view()[:200])
     rn = pg.evaluate("S.program[0].n")
     ok("routine name stays as it is (not translated)", rn in view(), rn)
-    for t in ["routines", "log", "body", "today"]:
+    for t in ["routines", "exercises", "programs", "muscles", "log", "body", "user", "today"]:
         tab(t); shot("ar_tab_" + t); ok(f"tab '{t}': fits the phone width in Arabic", noscroll())
     tab("routines")
-    shot("ar_routines"); ok("Routines: Arabic headings", "أيام النادي" in view() and "روتيناتك" in view() and "مكتبة التمارين" in view())
-    ok("Routines: Users row for the admin", "المستخدمون" in view())
-    ok("Routines: language row shows العربية", "اللغة" in view() and "العربية" in view())
+    shot("ar_routines"); ok("Programs › Routines: Arabic headings", "أيام النادي" in view() and "روتيناتك" in view() and "البرامج" in view())
+    ok("Programs segments in Arabic", pg.locator(".tabseg button").all_inner_texts() == ["الروتينات", "التمارين", "البرامج"], pg.locator(".tabseg button").all_inner_texts())
     ok("day chips are Arabic letters", pg.locator(".days .chip").first.inner_text() == "ح")
-    go("library", ms=1200); shot("ar_library")
+    tab("user"); shot("ar_user")
+    ok("User (حسابي): Users row for the admin", "المستخدمون" in view())
+    ok("User (حسابي): language switch shows العربية selected", "اللغة" in view() and pg.locator("[data-a='setlang'][data-v='ar'].on").count() == 1)
+    ok("User (حسابي): theme choices in Arabic", all(w in view() for w in ["داكن", "فاتح", "حسب الآيفون"]), view()[:300])
+    tab("exercises", 1200); shot("ar_library")
     names = pg.evaluate("Array.from(document.querySelectorAll('#view .row .t, #view .lrow .t')).slice(0,15).map(e=>e.textContent)")
     lib = set(pg.evaluate("LIB.map(r=>r[1])"))
     ok("library: exercise names stay in English, exactly as in the library", len(names) >= 5 and all(n in lib for n in names) and not any(ARABIC.search(n) for n in names), names[:5])
@@ -105,7 +110,7 @@ with sync_playwright() as p:
     ok("no English left anywhere on these pages (except names)", not real_miss, real_miss)
 
     # ---------- Users: only for the admin ----------
-    tab("routines"); go("users", ms=1000)
+    tab("user"); go("users", ms=1000)
     ok("Users page in Arabic, empty to start", "لا يوجد أصدقاء بعد" in view())
     pg.fill("#uname", "Saad"); tap("[data-a='adduser']", 1000)
     shot("ar_users"); ok("New user → a code to send", "482910" in view() and "Saad" in view() and "المستخدم الجديد جاهز" in view())
@@ -129,14 +134,14 @@ with sync_playwright() as p:
     pg.fill("#pin", "482910"); tap("#pinGo", 1800)
     st = pg.evaluate("S")
     ok("friend sees a clean Lift (no history, no workout of Moaath's)", st and not st.get("sessions") and not st.get("active") and pg.evaluate("pending.length") == 0, st and (st.get("days"), bool(st.get("active"))))
-    ok("friend's Lift has no Users row", "المستخدمون" not in (tab("routines") or view()))
+    ok("friend's Lift has no Users row and no Admin section", "المستخدمون" not in (tab("user") or view()) and "الإدارة" not in view())
     ok("nothing of Moaath's was saved into the friend's data", all(pin == ADMIN_PIN or not (s or {}).get("active") for pin, s in saves))
     ok("Moaath's data untouched while the friend uses the phone", DB[ADMIN_PIN]["v"] == my_v and not [x for x in saves[n_saves:] if x[0] == ADMIN_PIN], [x[0] for x in saves[n_saves:]])
     ok("Arabic stays on after switching person", pg.evaluate("document.documentElement.dir") == "rtl")
 
     # ---------- language back to English ----------
-    tap("[data-a='lang']", 1500); tab("routines")
-    ok("language row switches back to English", pg.evaluate("document.documentElement.dir") != "rtl" and "Gym days" in view())
+    tab("user"); tap("[data-a='setlang'][data-v='en']", 1800); tab("routines")
+    ok("language switch (User tab) goes back to English", pg.evaluate("document.documentElement.dir") != "rtl" and "Gym days" in view())
     br.close()
 srv.shutdown()
 f = [n for n, c in res if not c]; print(f"\nE2E lift Arabic+users: PASS {len(res)-len(f)}  FAIL {len(f)}"); sys.exit(1 if f else 0)
