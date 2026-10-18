@@ -1262,7 +1262,9 @@ const LIFT_KEY = "lift:state";
 const LIFT_PINS = [process.env.LIFT_PIN || PIN_FULL].filter(Boolean);
 const LIFT_LITE_BLOCKED = ["snapshot","restore"];
 // Second, separate Lift for a friend (lift2/): own data key, own code. Moaath's Lift is untouched.
-const LIFT_INSTANCES = { f: { key: "lift-f:state", pins: [process.env.LIFT_FRIEND_PIN || "250958"] } };
+const LIFT_INSTANCES = { f: { key: "lift-f:state", pins: [process.env.LIFT_FRIEND_PIN || "250958"] },
+  // Test camp (lift-test/): Moaath tries every new feature here first, on his own copy of his data.
+  t: { key: "lift-t:state", pins: [process.env.LIFT_PIN || PIN_FULL].filter(Boolean) } };
 async function liftRead(key = LIFT_KEY) {
   const raw = await kv(["GET", key]);
   if (!raw) return { v: 0, state: null };
@@ -1328,7 +1330,7 @@ async function liftHandler(req, res) {
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
-    const aid = user ? user.id : (inst ? "f" : "admin");
+    const aid = user ? user.id : (inst ? String(req.query.u) : "admin");
     if (action === "state") { if (!body.quiet) await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
