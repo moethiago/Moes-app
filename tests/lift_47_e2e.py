@@ -21,7 +21,7 @@ ADMIN = "2026"
 db = {ADMIN: {"v": 5, "state": None}}
 def sets(pairs, t0): return [{"e": e, "k": k, "r": r, "t": t0 + i * 60000, "f": [1, 2, 3][i % 3]} for i, (e, k, r) in enumerate(pairs)]
 t1 = FIXED - 2 * D
-SAAD = {"aid": "u1", "name": "Saad", "you": False, "created": FIXED - 3 * D, "v": 36, "ts": FIXED - 3600e3,
+SAAD = {"aid": "u1", "name": "Saad", "you": False, "created": FIXED - 3 * D, "v": 36, "ts": FIXED - 3600e3, "push": {"on": True, "phones": 1},
         "act": {"opens": 14, "logins": 2, "saves": 30, "first": FIXED - 3 * D, "lastOpen": FIXED - 1800e3, "lastSave": FIXED - 3600e3,
                 "days": {rday(FIXED): {"o": 5, "s": 12}, rday(FIXED - D): {"o": 6, "s": 10}, rday(FIXED - 2 * D): {"o": 3, "s": 8}}},
         "st": {"days": [0, 2, 4], "custom": {"c_x1": {"n": "Hip thrust machine", "t": ["glutes"], "mp": ["gl"], "ms": ["hm"], "eq": ["leverage machine"], "kind": "w"}}, "body": 1,
@@ -35,7 +35,7 @@ ME = {"aid": "admin", "name": "Moaath", "you": True, "created": None, "v": 221, 
       "st": {"days": [0, 1, 3, 4, 6], "custom": {}, "body": 2, "program": [{"n": "Workout 1 · Legs + push", "x": ["10Z2DXU"]}], "sessions": [], "active": None}}
 L2 = {"aid": "f", "name": "Lift2 friend", "you": False, "created": None, "v": 89, "ts": FIXED - 5 * D, "act": None,
       "st": {"days": [0, 2], "custom": {}, "body": 0, "program": [{"n": "Full body 1", "x": ["DOoWcnA"]}], "sessions": [], "active": None}}
-ACCOUNTS = [ME, SAAD, NEWBIE, L2]; CALLS = []
+ACCOUNTS = [ME, SAAD, NEWBIE, L2]; CALLS = []; SENT = []
 def api(route):
     b = json.loads(route.request.post_data or "{}"); pin = b.get("pin"); a = b.get("action"); CALLS.append(b)
     j = lambda code, o: route.fulfill(status=code, body=json.dumps(o), content_type="application/json")
@@ -46,6 +46,9 @@ def api(route):
     if a == "users": return j(200, {"users": [{"id": "u1", "name": "Saad", "code": "482910", "created": SAAD["created"]}, {"id": "u2", "name": "Abdulaziz", "code": "482911", "created": NEWBIE["created"]}]})
     if a == "userstats": return j(200, {"accounts": ACCOUNTS, "now": FIXED})
     if a in ("diag", "reports"): return j(200, {"ok": True, "items": []})
+    if a == "pushget": return j(200, {"ok": True, "on": False, "phones": 0, "prefs": {"on": 1, "time": "17:00", "day": 1, "miss": 1, "week": 1, "open": 1}, "log": [], "sched": FIXED - 600e3})
+    if a == "pushpeople": return j(200, {"people": [{"aid": "admin", "name": "Moaath", "on": False, "phones": 0}, {"aid": "u1", "name": "Saad", "on": True, "phones": 1}, {"aid": "u2", "name": "Abdulaziz", "on": False, "phones": 0}], "history": []})
+    if a == "pushsend": SENT.append(b); return j(200, {"ok": True, "people": 1, "phones": 1, "delivered": 1, "history": [{"t": FIXED, "title": b.get("title") or "Lift", "body": b["body"], "to": ["Saad"], "delivered": 1, "phones": 1}]})
     j(400, {"error": "unknown"})
 GIF1 = b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
 res = []
@@ -94,6 +97,13 @@ with sync_playwright() as p:
         W, tap, txt, noscroll = tools(pg)
         tap("nav.tabs [data-tab='user']", 500)
         ok(f"[{theme}] User › Users row says it shows usage", "how often" in txt("[data-p='users']"))
+        ok(f"[{theme}] Admin: 'Send a notification' row", pg.locator("section:has(h2:text-is('Admin')) [data-p='pushsend']").count() == 1)
+        tap("section:has(h2:text-is('Admin')) [data-p='pushsend']", 1200)
+        rows_ = pg.locator("[data-a='pmto']").all_inner_texts()
+        ok(f"[{theme}] admin picks from everyone; only people with reminders on can be picked", len(rows_) == 4 and pg.locator("[data-a='pmto'][disabled]").count() == 2 and "Reminders on" in rows_[2], rows_)
+        pg.fill("#pmbody", "Leg day tomorrow"); tap("[data-a='pmsend']", 300); tap("[data-a='pmsend']", 900)
+        ok(f"[{theme}] admin message sent to everyone with reminders on", SENT and SENT[-1]["body"] == "Leg day tomorrow" and SENT[-1]["to"] == ["all"], SENT[-1:])
+        tap(".hdr .back", 600)
         tap("[data-p='users']", 1500)
         t = txt()
         ok(f"[{theme}] Users page opens with 'How people use Lift' on top", t.index("How people use Lift") < t.index("Add a friend"), t[:200])
@@ -102,7 +112,7 @@ with sync_playwright() as p:
         rows = pg.locator("[data-p='ustat'] .t").all_inner_texts()
         ok(f"[{theme}] everyone listed, most recently seen first", rows == ["You (Moaath)", "Saad", "Lift2 friend", "Abdulaziz"], rows)
         r0 = txt("[data-p='ustat'][data-id='u1']")
-        ok(f"[{theme}] row: opens, workouts, in progress, last seen", "Opened 14 times" in r0 and "2 workouts" in r0 and "workout in progress" in r0 and "Today" in r0, r0)
+        ok(f"[{theme}] row: opens, workouts, in progress, reminders, last seen", "Opened 14 times" in r0 and "2 workouts" in r0 and "workout in progress" in r0 and "reminders on" in r0 and "Today" in r0, r0)
         ok(f"[{theme}] someone who never opened it says so", "Not opened yet" in txt("[data-p='ustat'][data-id='u2']"))
         ok(f"[{theme}] used before counting began → shows its saved changes, not 'not opened'", "89 changes saved" in txt("[data-p='ustat'][data-id='f']"))
         ok(f"[{theme}] codes aren't in the usage list", "482910" not in txt(".list >> nth=0"))
@@ -111,7 +121,7 @@ with sync_playwright() as p:
         t = txt()
         tv = pg.locator(".tile .v").all_inner_texts()
         ok(f"[{theme}] Saad: opened 14, logged in 2, changes saved 36, workouts 2", tv[:4] == ["14", "2", "36", "2"], tv)
-        ok(f"[{theme}] last opened / last change / active days 3 of 7", "Last opened" in t and "Last change" in t and "3 of last 7" in t, t[:400])
+        ok(f"[{theme}] last opened / last change / reminders / active days 3 of 7", "Last opened" in t and "Last change" in t and "3 of last 7" in t and re.search(r"Reminders\s+On", t), t[:400])
         bars = pg.evaluate("[...document.querySelectorAll('.ub i')].map(i=>parseFloat(i.style.height))")
         ok(f"[{theme}] 14 daily bars, today the tallest, older days empty", len(bars) == 14 and bars[-1] == 100 and bars[0] == 0 and bars[-2] > 0, bars)
         ok(f"[{theme}] workout in progress: Push, 1 set", "Workout in progress" in t and "1 set logged" in t)
