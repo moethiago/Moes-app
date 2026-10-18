@@ -143,8 +143,9 @@ ok("page already stops above the home indicator (iOS bug) → no second inset", 
 ok("in Safari (not home screen) the inset is left alone", L.sbPad(34, false, 120) === 34);
 ok("phones without a home indicator → nothing to pad", L.sbPad(0, true, 0) === 0);
 { const n = (...a) => JSON.stringify(L.navLayout(...a));
-  ok("Moaath's case (viewport stops 58pt early, large viewport covers it) → bar reaches the real bottom, keeps the home-indicator inset", n(true, 59, 34, 58, 58) === '{"sb":34,"shift":58}');
-  ok("viewport stops early but the strip isn't page space → just drop the doubled inset", n(true, 59, 34, 58, 0) === '{"sb":0,"shift":0}');
-  ok("the other iOS bug (system bar on top, top inset 0) → bar already at the bottom: leave it", n(true, 0, 34, 62, 62) === '{"sb":34,"shift":0}');
+  ok("Moaath's case: bar ends 58pt above the screen bottom → move it down 58, keep the home-indicator space", n(true, 59, 34, 58, 58) === '{"sb":34,"shift":58}');
+  ok("never moved more than 64pt (can't slide off the screen again)", n(true, 59, 34, 122, 122) === '{"sb":34,"shift":64}');
+  ok("gap can't be measured but viewport is short → just drop the doubled space", n(true, 59, 34, 0, 58) === '{"sb":0,"shift":0}');
+  ok("the other iOS bug (system bar on top, top inset 0) → leave the bar alone", n(true, 0, 34, 62, 62) === '{"sb":34,"shift":0}');
   ok("normal phone → unchanged", n(true, 59, 34, 0, 0) === '{"sb":34,"shift":0}' && n(false, 59, 34, 120, 120) === '{"sb":34,"shift":0}'); }
 console.log(`\nMUSCLES lift: PASS ${pass}  FAIL ${fail}`); if (fail) process.exit(1);
