@@ -1284,6 +1284,24 @@ async function liftFix() {
   const raw = await kv(["GET", LIFT_FIX_KEY]);
   try { const j = raw ? JSON.parse(raw) : null; return j && j.hv && typeof j.hv === "object" ? j : { hv: {} }; } catch { return { hv: {} }; }
 }
+// Usage per account (opens, logins, saves, active days) for Moaath's Users page. Never blocks the app if it fails.
+const liftActKey = (aid) => "lift:act:" + aid;
+async function liftActRead(aid) {
+  const raw = await kv(["GET", liftActKey(aid)]);
+  try { const j = raw ? JSON.parse(raw) : null; return j && typeof j === "object" ? j : null; } catch { return null; }
+}
+async function liftTrack(aid, kind) {
+  try {
+    const now = Date.now(), day = new Date(now + 3 * 3600e3).toISOString().slice(0, 10); // Riyadh day
+    const a = (await liftActRead(aid)) || { opens: 0, logins: 0, saves: 0, first: now, days: {} };
+    if (kind === "save") { a.saves = (a.saves || 0) + 1; a.lastSave = now; }
+    else { a.opens = (a.opens || 0) + 1; a.lastOpen = now; if (kind === "login") { a.logins = (a.logins || 0) + 1; a.lastLogin = now; } }
+    a.days = a.days || {}; const d = a.days[day] || (a.days[day] = { o: 0, s: 0 });
+    if (kind === "save") d.s++; else d.o++;
+    const keep = Object.keys(a.days).sort().slice(-60); a.days = Object.fromEntries(keep.map((k) => [k, a.days[k]]));
+    await kv(["SET", liftActKey(aid), JSON.stringify(a)]);
+  } catch {}
+}
 function liftNewCode(taken) {
   for (let i = 0; i < 200; i++) { const c = String(100000 + Math.floor(Math.random() * 900000)); if (!taken.has(c)) return c; }
   throw new Error("no free code");
@@ -1310,7 +1328,8 @@ async function liftHandler(req, res) {
     if (role === "lite" && LIFT_LITE_BLOCKED.includes(action)) return res.status(403).json({ error: "role" });
     if (!KV_URL || !KV_TOKEN) return res.status(500).json({ error: "kv env missing" });
     const admin = !inst && !user && role === "full";
-    if (action === "state") { const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
+    const aid = user ? user.id : (inst ? "f" : "admin");
+    if (action === "state") { await liftTrack(aid, body.login ? "login" : "open"); const s = await liftRead(KEY); const fix = await liftFix(); return res.status(200).json({ ...s, role, admin, fix, ...(admin ? { reports: (await liftReports()).items.length } : {}), ...(user ? { user: { name: user.name } } : {}) }); }
     if (action === "diag" || action === "diaglog") {
       // Screen measurements sent by Moaath's own phone (admin only), so layout fixes can be checked on his real iPhone.
       if (!admin) return res.status(403).json({ error: "admin" });
@@ -1368,6 +1387,23 @@ async function liftHandler(req, res) {
       }
       return res.status(200).json({ users: reg.users });
     }
+    if (action === "userstats") {
+      // Moaath only: how each account uses Lift and what they trained (read-only).
+      if (!admin) return res.status(403).json({ error: "admin" });
+      const reg = await liftUsers();
+      const accts = [{ aid: "admin", name: "Moaath", key: LIFT_KEY, you: true }, ...reg.users.map((u) => ({ aid: u.id, name: u.name, key: "lift-u-" + u.id + ":state", created: u.created })), { aid: "f", name: "Lift2 friend", key: LIFT_INSTANCES.f.key }];
+      const trimSets = (ss) => (Array.isArray(ss) ? ss : []).map((x) => ({ e: x.e, k: x.k, r: x.r, t: x.t, ...(x.wu ? { wu: 1 } : {}) }));
+      const out = await Promise.all(accts.map(async (a) => {
+        const [doc, act] = await Promise.all([liftRead(a.key), liftActRead(a.aid)]);
+        const st = doc.state || null;
+        return { aid: a.aid, name: a.name, you: !!a.you, created: a.created || null, v: doc.v || 0, ts: doc.ts || null, act: act || null,
+          st: st ? { days: st.days || [], custom: st.custom || {}, body: (st.body || []).length,
+            program: (st.program || []).map((w) => ({ n: w.n, x: (w.x || []).map((i) => i.e) })),
+            sessions: (st.sessions || []).map((x) => ({ wn: x.wn, start: x.start, end: x.end, sets: trimSets(x.sets) })),
+            active: st.active ? { wn: st.active.wn, start: st.active.start, sets: trimSets(st.active.sets) } : null } : null };
+      }));
+      return res.status(200).json({ accounts: out, now: Date.now() });
+    }
     if (action === "save") {
       const cur = await liftRead(KEY);
       if (Number(body.v) !== Number(cur.v)) return res.status(409).json({ conflict: true, ...cur });
@@ -1375,6 +1411,7 @@ async function liftHandler(req, res) {
       if (JSON.stringify(st).length > 900000) return res.status(413).json({ error: "too big" });
       const nv = cur.v + 1;
       await kv(["SET", KEY, JSON.stringify({ v: nv, state: st, ts: Date.now() })]);
+      await liftTrack(aid, "save");
       return res.status(200).json({ v: nv });
     }
     if (action === "snapshot" && role === "full") {
