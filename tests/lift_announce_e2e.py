@@ -24,7 +24,7 @@ def api(route):
     if a == "announceclear":
         B["ann"] = None; return route.fulfill(status=200, body='{"ok":true,"announce":null}', content_type="application/json")
     if a == "state":
-        return route.fulfill(status=200, body=json.dumps({"v": 0, "state": None, "role": "full", "admin": False, "announce": B["ann"]}), content_type="application/json")
+        return route.fulfill(status=200, body=json.dumps({"v": 0, "state": None, "role": "full", "admin": FOLDER == "lift", "announce": B["ann"]}), content_type="application/json")
     return route.fulfill(status=200, body='{"ok":true,"v":1}', content_type="application/json")
 URL = f"http://127.0.0.1:{PORT}/{FOLDER}/index.html"
 MSG = "Leg day is back.\nNew exercises are in the library — check them out!"
