@@ -4,6 +4,7 @@
 Usage: python3 tests/lift_e2e.py [path-to-lift-folder]   (needs: python3 -m playwright install chromium)"""
 import json, threading, http.server, socketserver, sys, os, time, copy, datetime
 from playwright.sync_api import sync_playwright
+from lift_edge_compat import NO_CAPS, root_title, tabs_en, tabs_ar
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "lift")
 PORT = int(os.environ.get("PORT", "8144"))
 class Q(http.server.SimpleHTTPRequestHandler):
@@ -62,7 +63,7 @@ with sync_playwright() as p:
     br = p.chromium.launch()
     # service worker off here so every request hits the mocks (the offline worker is tested on its own at the end)
     ctx = br.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True, locale="en-GB", service_workers="block")
-    pg = ctx.new_page(); pg.route("**/api/health-check**", api)
+    pg = ctx.new_page(); pg.add_init_script(NO_CAPS); pg.route("**/api/health-check**", api)
     pg.route("**/static.exercisedb.dev/**", gif)
     pg.route("**/oss.exercisedb.dev/**", steps)
     pg.route("**cdn.jsdelivr.net/**", old); pg.route("**raw.githubusercontent.com/**", old)
@@ -75,7 +76,7 @@ with sync_playwright() as p:
     def tap2(sel, ms=500):  # armed buttons: first tap asks, second tap does it
         tap(sel, 150); tap(sel, ms)
     def txt(sel): return pg.inner_text(sel).replace("\u202f", " ").replace("\xa0", " ")
-    def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else ("ROOT:" + pg.inner_text(".root-top h1"))
+    def title(): return pg.inner_text(".hdr .ttl").split("\n")[0] if pg.locator(".hdr").count() else root_title(pg)
     def noscroll(): return pg.evaluate("document.documentElement.scrollWidth<=window.innerWidth+1")
     def back_reachable():
         pg.evaluate("window.scrollTo(0,99999)"); W(100)
@@ -114,7 +115,7 @@ with sync_playwright() as p:
     ok("machine notes carried to the new ids", st["notes"].get("10Z2DXU") == "Seat 5", st["notes"])
 
     # ================= Today =================
-    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == ["Home", "Programs", "Log", "User"], pg.locator("nav.tabs button").all_inner_texts())
+    ok("4 tabs: Home, Programs, Log, User", [t.strip() for t in pg.locator("nav.tabs button").all_inner_texts()] == tabs_en(pg), pg.locator("nav.tabs button").all_inner_texts())
     ok("hero shows his routine + one Start button", "Arms & Shoulders" in pg.inner_text(".hero .w") and pg.locator("#go").count() == 1)
     ok("long routine name gets the smaller size", pg.locator(".hero .w.xs").count() == 1)
     ok("hero body figure lights the muscles", pg.locator(".hero svg.bmap use[fill='#E2453C']").count() >= 5)
@@ -504,7 +505,7 @@ with sync_playwright() as p:
     ok("library page count says 1,846", "1,846" in pg.evaluate("(LIB?LIB.length:0).toLocaleString('en-US')"))
     # ================= works at the gym without signal (service worker) =================
     c2 = br.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True, locale="en-GB")
-    p2 = c2.new_page(); p2.route("**/api/health-check**", api); p2.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
+    p2 = c2.new_page(); p2.add_init_script(NO_CAPS); p2.route("**/api/health-check**", api); p2.route("**fonts.g*/**", lambda r: r.fulfill(status=200, body=b"", content_type="text/css"))
     p2.goto(f"http://127.0.0.1:{PORT}/index.html"); p2.wait_for_timeout(800); p2.fill("#pin", "2026"); p2.click("#pinGo"); p2.wait_for_timeout(1500)
     ready = p2.evaluate("navigator.serviceWorker.ready.then(r=>!!r.active)"); p2.wait_for_timeout(1500)
     cached = p2.evaluate("caches.keys().then(n=>caches.open(n.find(x=>x.startsWith('lift-v')))).then(c=>c.keys()).then(k=>k.map(r=>new URL(r.url).pathname.split('/').pop()))")
