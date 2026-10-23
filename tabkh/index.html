@@ -137,6 +137,16 @@ h3{font-size:20px;margin:24px 0 4px}
 .chip.st.out{background:#fff;border:1.5px dashed var(--red);color:var(--red)}
 .chip.st.out::after{content:"· خلص";font-size:13px;font-weight:700}
 .stx{color:var(--mute);font-size:14px;margin:4px 0 10px}
+.exb{margin:10px 16px 0;width:calc(100% - 32px);display:flex;align-items:center;gap:12px;background:var(--soft);border-radius:18px;padding:12px 16px;text-align:start}
+.exb .ic{flex:none;font-size:22px}
+.exb .tx{flex:1;min-width:0}
+.exb b{display:block;font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exb small{display:block;color:var(--mute);font-size:13px}
+.exb .go{flex:none;color:var(--acc);font-weight:700;font-size:15px}
+.exb.on{background:#FDECEC}
+.exb.on b{color:var(--red)}
+.chip.no{background:#FDECEC;border-color:var(--red);color:var(--red);font-weight:600}
+.chip.no::after{content:"✕";font-weight:700}
 .toast{position:fixed;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:50;background:#141414;color:#fff;border-radius:16px;padding:13px 16px;font-size:15px;font-weight:500;text-align:center;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:none}
 @media (min-width:700px){.grid{grid-template-columns:1fr 1fr 1fr}.hero{aspect-ratio:16/9}}
@@ -153,6 +163,7 @@ h3{font-size:20px;margin:24px 0 4px}
   </label>
 </header>
 <button class="fridge" id="fridge" type="button"></button>
+<button class="exb" id="exb" type="button"></button>
 <div class="bar">
   <nav class="tabs" id="tabs"></nav>
   <div class="fit" id="fit" hidden></div>
@@ -179,12 +190,25 @@ h3{font-size:20px;margin:24px 0 4px}
   <div class="dock"><button class="big dark" id="pdone" type="button" data-back></button></div>
 </section>
 
+<section class="sheet" id="exsheet" aria-hidden="true">
+  <button class="close" data-back type="button" aria-label="رجوع">✕</button>
+  <div class="ph2">
+    <div class="row"><h2>وش ما تبين بالوصفة؟</h2><button class="clr" id="exclr" type="button">مسح الكل</button></div>
+    <label class="search" for="xq">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="xq" type="search" placeholder="دوّري مكوّن" autocomplete="off">
+    </label>
+  </div>
+  <div class="pb"><p class="stx" style="margin-top:6px">اختاري المكوّنات اللي ما تبينها، ونخفي أي وصفة فيها واحد منها. لو ما تبين شي بكل أنواعه دوّري عليه واختاري كل اللي يطلع (مثلاً: طماطم، معجون طماطم، طماطم معلبة)</p><div id="xbody"></div></div>
+  <div class="dock"><button class="big dark" id="xdone" type="button" data-back></button></div>
+</section>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="recipes.js"></script>
 <script>
 "use strict";
-var BUILD="2.0", API="https://moes-app-two.vercel.app/api/health-check", PIN="1234";
+var BUILD="2.1", API="https://moes-app-two.vercel.app/api/health-check", PIN="1234";
 var D=window.TABKH, ING=D.ing, R=D.r, BY={};
 R.forEach(function(r){BY[r.id]=r;});
 function $(i){return document.getElementById(i);}
@@ -255,15 +279,20 @@ function matchesQ(r,q){
   var hay=r._h||(r._h=normAr(r.n+" "+r.an+" "+r.a+" "+r.i.map(function(x){var I=ING[x[0]];return x[0]+" "+((I&&I.g)||"");}).join(" ")));
   return q.split(" ").every(function(w){return hay.indexOf(w)>=0;});
 }
-function baseList(){var q=normAr(state.q);return R.filter(function(r){return (state.tab==="all"||r.m.indexOf(state.tab)>=0)&&matchesQ(r,q);});}
+/* ---------- exclusions: hide any recipe that has one of these ingredients ---------- */
+var ex=new Set(load("tabkh_ex",[]).filter(function(c){return allChips()[c];}));
+function saveEx(){save("tabkh_ex",Array.from(ex));}
+function allowed(r){if(!ex.size)return true;for(var i=0;i<r.i.length;i++){var I=ING[r.i[i][0]];if(I&&!I.x&&ex.has(chip(r.i[i][0])))return false;}return true;}
+function VIS(){return ex.size?R.filter(allowed):R;}
+function baseList(){var q=normAr(state.q);return R.filter(function(r){return (state.tab==="all"||r.m.indexOf(state.tab)>=0)&&matchesQ(r,q)&&allowed(r);});}
 function counts(list){var c={now:0,near:0};list.forEach(function(r){var f=fitOf(r);if(f==="now")c.now++;else if(f==="near")c.near++;});return c;}
 function drawFridge(){
   var b=$("fridge"),n=have.size,h;
   if(!n){h='<span class="ic">🧺</span><span class="tx"><b>وش عندك بالثلاجة؟</b><small>اختاري اللي عندك ونطلع لك وش تقدرين تسوين</small></span><span class="go">اختاري</span>';}
-  else{var c=counts(R);
+  else{var c=counts(VIS());
     var sub=c.now?"تقدرين تسوين "+nRec(c.now)+" الحين"+(c.near?" · و"+nRec(c.near)+" ناقصها شي بسيط":""):(c.near?nRec(c.near)+" ناقصها شي بسيط":"ضيفي مكوّنات أكثر عشان تطلع لك وصفات");
     h='<span class="ic">🧺</span><span class="tx"><b>عندك '+nIng(n)+' بالثلاجة</b><small>'+sub+'</small></span><span class="go">عدّلي</span>';}
-  b.innerHTML=h;
+  b.innerHTML=h;drawExBtn();
 }
 function drawFit(list){
   var f=$("fit");if(!have.size){f.hidden=true;f.innerHTML="";return;}
@@ -295,7 +324,8 @@ function render(){
   if(!list.length){
     if(have.size&&state.fit==="now")h='<div class="empty"><b>ما فيه وصفة كاملة بالمكوّنات اللي اخترتيها</b>ضيفي مكوّنات أكثر من الثلاجة والمطبخ</div>';
     else if(have.size&&state.fit==="near")h='<div class="empty"><b>ما فيه وصفة ناقصها شي بسيط</b>ضيفي مكوّنات أكثر من الثلاجة</div>';
-    else h='<div class="empty"><b>ما لقينا شي</b>جربي كلمة ثانية</div>';
+    else if(ex.size&&!state.q)h='<div class="empty"><b>كل الوصفات هنا فيها مكوّن من اللي ما تبينه</b>عدّلي قائمة "بدون" أو اختاري قسم ثاني</div>';
+    else h='<div class="empty"><b>ما لقينا شي</b>'+(ex.size?"جربي كلمة ثانية، أو خففي قائمة \"بدون\"":"جربي كلمة ثانية")+'</div>';
   }else{
     var heroOn=!state.q&&!have.size&&list.length>4, hero=null, rest=list;
     if(heroOn){var day=Math.floor(Date.now()/864e5),top=list.slice(0,Math.min(12,list.length));hero=top[day%top.length];rest=list.filter(function(r){return r!==hero;});h+=card(hero,true);}
@@ -309,7 +339,7 @@ function render(){
 /* ---------- recipe sheet ---------- */
 var cur=null, onList={}, lastPull=0, busy=false;
 function openSheet(id){var s=$(id);s.classList.add("open");s.setAttribute("aria-hidden","false");s.scrollTop=0;document.body.classList.add("lock");history.pushState({sheet:id},"");}
-function closeSheets(){["recipe","picker"].forEach(function(i){var s=$(i);if(s.classList.contains("open")){s.classList.remove("open");s.setAttribute("aria-hidden","true");}});document.body.classList.remove("lock");}
+function closeSheets(){["recipe","picker","exsheet"].forEach(function(i){var s=$(i);if(s.classList.contains("open")){s.classList.remove("open");s.setAttribute("aria-hidden","true");}});document.body.classList.remove("lock");}
 function toAdd(r){
   var seen={};
   return missing(r).filter(function(x){var I=ING[x[0]];if(!I||I.x||onList[x[0]])return false;var m=normAr(I.m);if(seen[m])return false;seen[m]=1;return true;}).map(function(x){return x[0];});
@@ -420,9 +450,28 @@ function drawPicker(){
   if(!h)h='<div class="empty">ما فيه مكوّن بهالاسم</div>';
   $("pbody").innerHTML=h;drawPickDock();
 }
-function drawPickDock(){var c=counts(R),b=$("pdone");
+function drawPickDock(){var c=counts(VIS()),b=$("pdone");
   b.textContent=!have.size?"رجوع للوصفات":(c.now?"وريني الوصفات · "+nRec(c.now)+" تقدرين تسوينها":(c.near?"وريني الوصفات · "+nRec(c.near)+" ناقصها شي بسيط":"وريني الوصفات"));
   $("clr").style.visibility=have.size?"visible":"hidden";}
+var exQ="";
+function drawExBtn(){
+  var b=$("exb"),a=Array.from(ex),hid=R.length-VIS().length;
+  b.classList.toggle("on",a.length>0);
+  b.innerHTML=a.length?'<span class="ic">🚫</span><span class="tx"><b>بدون: '+esc(a.join("، "))+'</b><small>'+(hid?"خفّينا "+nRec(hid)+" فيها هالمكوّنات":"ما فيه وصفة فيها هالمكوّنات")+'</small></span><span class="go">عدّلي</span>'
+    :'<span class="ic">🚫</span><span class="tx"><b>فيه شي ما تبينه؟</b><small>اختاري مكوّنات ونخفي الوصفات اللي فيها</small></span><span class="go">اختاري</span>';
+}
+function drawEx(){
+  var C=allChips(),q=normAr(exQ),ids=Object.keys(C).filter(function(id){return !q||chipHay(C[id]).indexOf(q)>=0;});
+  ids.sort(function(a,b){return C[b].n-C[a].n||a.localeCompare(b,"ar");});
+  var by={};ids.forEach(function(id){var c=C[id],s=secOf(c);(by[s]=by[s]||[]).push(c);});
+  var h="";
+  SECS.forEach(function(s){var a=by[s[0]];if(!a||!a.length)return;
+    h+='<div class="grp"><h4>'+(s[0]==="بهارات خاصة"?"بهارات":s[0])+'</h4><div class="chips">'+a.map(function(c){return '<button class="chip'+(ex.has(c.id)?" no":"")+'" data-ex="'+esc(c.id)+'" type="button">'+chipLabel(c)+'</button>';}).join("")+'</div></div>';});
+  if(!h)h='<div class="empty">ما فيه مكوّن بهالاسم</div>';
+  $("xbody").innerHTML=h;drawExDock();
+}
+function drawExDock(){var n=VIS().length;$("xdone").textContent=ex.size?"وريني الوصفات · "+nRec(n):"رجوع للوصفات";$("exclr").style.visibility=ex.size?"visible":"hidden";}
+function openEx(){exQ="";$("xq").value="";drawEx();openSheet("exsheet");}
 var pickerOpenedWith="";
 function openPicker(){pickQ="";$("pq").value="";pickerOpenedWith=JSON.stringify(Array.from(have).sort())+JSON.stringify(Array.from(out).sort());drawPicker();openSheet("picker");}
 function afterPicker(){
@@ -435,9 +484,9 @@ function afterPicker(){
 }
 
 /* ---------- events ---------- */
-window.addEventListener("popstate",function(){var wasPicker=$("picker").classList.contains("open"),wasRecipe=$("recipe").classList.contains("open");closeSheets();if(wasPicker)afterPicker();else if(wasRecipe)render();});
+window.addEventListener("popstate",function(){var wasPicker=$("picker").classList.contains("open"),wasRecipe=$("recipe").classList.contains("open"),wasEx=$("exsheet").classList.contains("open");closeSheets();if(wasPicker)afterPicker();else if(wasRecipe||wasEx)render();});
 document.addEventListener("click",function(e){
-  var t=e.target.closest("[data-back],[data-tab],[data-fit],[data-id],[data-tog],[data-pick],[data-out],#fridge,#addMiss,#clr,#qx");if(!t)return;
+  var t=e.target.closest("[data-back],[data-tab],[data-fit],[data-id],[data-tog],[data-pick],[data-out],[data-ex],#fridge,#exb,#exclr,#addMiss,#clr,#qx");if(!t)return;
   if(t.hasAttribute("data-back")){history.back();return;}
   if(t.dataset.tab){state.tab=t.dataset.tab;drawTabs();render();window.scrollTo({top:Math.min(window.scrollY,$("fridge").offsetTop)});return;}
   if(t.dataset.fit){state.fit=t.dataset.fit;render();return;}
@@ -445,7 +494,10 @@ document.addEventListener("click",function(e){
   if(t.dataset.tog){toggleIng(t.dataset.tog);return;}
   if(t.dataset.pick){var c=t.dataset.pick;if(have.has(c))have.delete(c);else have.add(c);saveFridge();t.classList.toggle("on",have.has(c));drawPickDock();return;}
   if(t.dataset.out){var o=t.dataset.out;if(out.has(o))out.delete(o);else out.add(o);saveFridge();t.classList.toggle("out",out.has(o));return;}
+  if(t.dataset.ex){var x=t.dataset.ex;if(ex.has(x))ex.delete(x);else ex.add(x);saveEx();t.classList.toggle("no",ex.has(x));drawExDock();return;}
   if(t.id==="fridge"){openPicker();return;}
+  if(t.id==="exb"){openEx();return;}
+  if(t.id==="exclr"){ex.clear();saveEx();drawEx();return;}
   if(t.id==="addMiss"){addToMaqadi();return;}
   if(t.id==="clr"){have.clear();saveFridge();drawPicker();return;}
   if(t.id==="qx"){$("q").value="";state.q="";t.style.display="none";render();return;}
@@ -453,6 +505,7 @@ document.addEventListener("click",function(e){
 $("q").addEventListener("input",function(){var v=this.value;$("qx").style.display=v?"block":"none";clearTimeout(this._t);this._t=setTimeout(function(){state.q=v;render();},160);});
 $("q").addEventListener("keydown",function(e){if(e.key==="Enter")this.blur();});
 $("pq").addEventListener("input",function(){pickQ=this.value;drawPicker();});
+$("xq").addEventListener("input",function(){exQ=this.value;drawEx();});
 
 /* ---------- boot + self-update ---------- */
 (function(){var h=new Date().getHours();$("greet").textContent=(h>=4&&h<12?"صباح الخير":"مساء الخير")+" 👋";})();
