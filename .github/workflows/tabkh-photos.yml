@@ -1,13 +1,10 @@
 name: tabkh photos
 # Picks a real Wikimedia Commons photo for every recipe in وش نطبخ؟ (Wikimedia blocks cloud sandboxes, so this runs here).
-# Free: no keys, no accounts. Runs when recipes or photo overrides change, or by hand.
+# Free: no keys, no accounts. Manual only (superseded by dish pools in tabkh-pool.yml).
 on:
   workflow_dispatch:
     inputs:
       only_new: { description: "1 = keep existing picks, only fill new/overridden recipes", required: false, default: "1" }
-  push:
-    branches: [main]
-    paths: ["tabkh/recipes.js", "tabkh/photo-overrides.json", "tabkh/tools/photos.mjs"]
 permissions:
   contents: write
 concurrency: { group: tabkh-photos, cancel-in-progress: false }
