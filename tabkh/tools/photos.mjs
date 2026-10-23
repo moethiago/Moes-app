@@ -80,7 +80,13 @@ for (const r of D.r) {
   if (!pick) {
     const q = o.q || r.w;
     list = (await search(q)).filter((x) => !REJ.has(x.t));
-    if (list.length < 3) list = list.concat((await search(q.split(" ").slice(0, 2).join(" ") + " dish")).filter((x) => !REJ.has(x.t) && !list.some((y) => y.u === x.u)));
+    // too-specific phrases find nothing: widen step by step until something real comes back
+    const ws = q.split(" ").filter(Boolean);
+    const wider = [ws.slice(-2).join(" "), ws.slice(0, 2).join(" "), ws.slice(-1)[0] + " food", ws[0] + " dish"];
+    for (const w of wider) {
+      if (list.length >= 3) break;
+      list = list.concat((await search(w)).filter((x) => !REJ.has(x.t) && !list.some((y) => y.u === x.u)));
+    }
     list = list.slice().sort((a, b) => score(b, q) - score(a, q));
     const free = list.filter((x) => !used.has(x.u));
     pick = o.pick != null ? list[o.pick] : (free[0] || list[0]);
