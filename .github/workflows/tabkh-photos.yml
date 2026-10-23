@@ -1,0 +1,30 @@
+name: tabkh photos
+# Picks a real Wikimedia Commons photo for every recipe in وش نطبخ؟ (Wikimedia blocks cloud sandboxes, so this runs here).
+# Free: no keys, no accounts. Runs when recipes or photo overrides change, or by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      only_new: { description: "1 = keep existing picks, only fill new/overridden recipes", required: false, default: "1" }
+  push:
+    branches: [main]
+    paths: ["tabkh/recipes.js", "tabkh/photo-overrides.json", "tabkh/tools/photos.mjs"]
+permissions:
+  contents: write
+concurrency: { group: tabkh-photos, cancel-in-progress: false }
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: pick photos
+        env: { ONLY_NEW: "${{ github.event.inputs.only_new || '1' }}" }
+        run: node tabkh/tools/photos.mjs tabkh
+      - name: commit
+        run: |
+          git config user.name "tabkh-photos"; git config user.email "actions@users.noreply.github.com"
+          git add tabkh/photos.js tabkh/photo-candidates.json
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "tabkh: photos for recipes"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done; exit 1
