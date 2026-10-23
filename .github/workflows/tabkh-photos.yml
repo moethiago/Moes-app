@@ -14,17 +14,25 @@ concurrency: { group: tabkh-photos, cancel-in-progress: false }
 jobs:
   pick:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main }
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
       - name: pick photos
         env: { ONLY_NEW: "${{ github.event.inputs.only_new || '1' }}" }
         run: node tabkh/tools/photos.mjs tabkh
-      - name: commit
+      - name: commit (always, so partial work is kept)
+        if: always()
         run: |
+          cp tabkh/photos.js /tmp/photos.js; cp tabkh/photo-candidates.json /tmp/cands.json 2>/dev/null || true
           git config user.name "tabkh-photos"; git config user.email "actions@users.noreply.github.com"
-          git add tabkh/photos.js tabkh/photo-candidates.json
-          git diff --cached --quiet && { echo "no change"; exit 0; }
-          git commit -m "tabkh: photos for recipes"
-          for i in 1 2 3; do git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0; sleep 5; done; exit 1
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            cp /tmp/photos.js tabkh/photos.js; [ -f /tmp/cands.json ] && cp /tmp/cands.json tabkh/photo-candidates.json
+            git add tabkh/photos.js tabkh/photo-candidates.json
+            git diff --cached --quiet && { echo "no change"; exit 0; }
+            git commit -q -m "tabkh: photos for recipes" && git push -q origin HEAD:main && exit 0
+            sleep 7
+          done; exit 1
