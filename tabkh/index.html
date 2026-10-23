@@ -132,10 +132,10 @@ ol.steps li::before{content:counter(s,arabic-indic);flex:none;width:30px;height:
 </div></div>
 <div class="toast" id="toast"></div>
 
-<script src="recipes.js?v=1.0"></script>
-<script src="photos.js?v=1.0" onerror="window.TABKH_PHOTOS={}"></script>
+<script src="recipes.js?v=1.1"></script>
+<script src="photos.js?v=1.1" onerror="window.TABKH_PHOTOS={}"></script>
 <script>
-var BUILD="1.0", API="https://moes-app-two.vercel.app/api/health-check";
+var BUILD="1.1", API="https://moes-app-two.vercel.app/api/health-check";
 var D=window.TABKH||{ing:{},r:[]}, PH=window.TABKH_PHOTOS||{};
 var CATS=[["all","الكل"],["b","فطور"],["l","غداء"],["d","عشاء"],["s","سناك وحلا"]];
 var GROUPS=[["meat","لحوم ودجاج وبيض"],["fish","أسماك"],["veg","خضار"],["fruit","فواكه"],["dairy","ألبان وأجبان"],["bread","خبز"],["dry","رز وحبوب ومعكرونة"],["can","معلبات"],["frozen","مجمدات"],["sauce","زيوت وصوصات"],["spice","بهارات"],["oat","مكسرات وبذور وشوفان"],["snack","سناكات"],["coffee","قهوة وشاي"],["drink","مشروبات"],["other","ثاني"]];
@@ -153,7 +153,8 @@ function haveSet(){var s={};have.forEach(function(k){s[k]=1;});return s;}
 function missing(r,hs){var m=[];r.i.forEach(function(x){if(!isBasic(x[0])&&!hs[x[0]]&&m.indexOf(x[0])<0)m.push(x[0]);});return m;}
 function photo(r){return PH[r.n]||null;}
 function emoji(r){var f=r.i.find(function(x){return !isBasic(x[0]);});return f&&D.ing[f[0]]?D.ing[f[0]].e:"🍽️";}
-function imgTag(r,big){var p=photo(r);if(!p)return '<div class="ph">'+emoji(r)+'</div>';return '<img loading="'+(big?"eager":"lazy")+'" decoding="async" alt="" src="'+esc(p[0])+'" onerror="this.outerHTML=\'<div class=ph>'+emoji(r)+'</div>\'">';}
+function sized(u,w){return String(u).replace(/\/\d+px-/,"/"+w+"px-");}
+function imgTag(r,big){var p=photo(r);if(!p)return '<div class="ph">'+emoji(r)+'</div>';return '<img loading="'+(big?"eager":"lazy")+'" decoding="async" alt="" src="'+esc(sized(p[0],big?960:500))+'" onerror="this.outerHTML=\'<div class=ph>'+emoji(r)+'</div>\'">';}
 
 /* ---------- list ---------- */
 function compute(){
