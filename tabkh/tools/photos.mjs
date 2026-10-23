@@ -21,11 +21,11 @@ async function search(q) {
   const u = "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=20" +
     "&prop=imageinfo&iiprop=url|size|mime|extmetadata&iiextmetadatafilter=Artist|LicenseShortName&iiurlwidth=640&gsrsearch=" +
     encodeURIComponent(q + " filetype:bitmap");
-  for (let a = 0; a < 4; a++) {
-    const r = await fetch(u, { headers: { "User-Agent": UA } });
+  for (let a = 0; a < 5; a++) {
+    let r; try { r = await fetch(u, { headers: { "User-Agent": UA } }); } catch (e) { await sleep(3000 * (a + 1)); continue; }
     if (r.status === 429) { await sleep(5000 * (a + 1)); continue; }
     if (!r.ok) { await sleep(1000); continue; }
-    const j = await r.json(); await sleep(250);
+    let j; try { j = await r.json(); } catch (e) { await sleep(1000); continue; } await sleep(250);
     const pages = Object.values((j.query && j.query.pages) || {}).sort((x, y) => (x.index || 0) - (y.index || 0));
     const out = [];
     for (const p of pages) {
@@ -43,13 +43,20 @@ async function search(q) {
 }
 async function byFile(title) {
   const u = "https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseShortName&iiurlwidth=640&titles=" + encodeURIComponent(title);
-  const r = await fetch(u, { headers: { "User-Agent": UA } }); const j = await r.json(); await sleep(250);
-  const p = Object.values(j.query.pages)[0]; const ii = p && p.imageinfo && p.imageinfo[0]; if (!ii) return null;
+  let j; try { const r = await fetch(u, { headers: { "User-Agent": UA } }); j = await r.json(); } catch (e) { return null; } await sleep(250);
+  const p = Object.values((j.query && j.query.pages) || {})[0]; const ii = p && p.imageinfo && p.imageinfo[0]; if (!ii) return null;
   const m = ii.extmetadata || {};
   return { t: p.title, u: ii.thumburl || ii.url, c: [strip(m.Artist && m.Artist.value), m.LicenseShortName && m.LicenseShortName.value].filter(Boolean).join(" · "), s: ii.descriptionurl };
 }
 
 const photos = {}, cands = {}, used = new Set();
+function save() {
+  // keep picks from the previous file for recipes not reached yet, so a crash never loses work
+  const out = Object.assign({}, OLD, photos);
+  for (const k of Object.keys(out)) if (!D.r.some((r) => r.n === k)) delete out[k];
+  fs.writeFileSync(`${DIR}/photos.js`, "window.TABKH_PHOTOS=" + JSON.stringify(out) + ";\n");
+  fs.writeFileSync(`${DIR}/photo-candidates.json`, JSON.stringify(cands));
+}
 const REJ = new Set(OV._reject || []);
 const DISH = /plate|dish|bowl|served|serving|homemade|home.made|breakfast|lunch|dinner|meal|salad|soup|stew|sandwich|wrap|toast|cooked|recipe|platter|skillet|tray|cup|glass/i;
 const RAW = /\braw\b|field|plant|tree|flower|seed|market|stall|harvest|garden|leaf|leaves|bush|growing|farm|shop|store|supermarket|vendor|factory|label|bottle|jar|package|tin\b|can\b|carton|botan|cultivar|crop/i;
@@ -80,9 +87,8 @@ for (const r of D.r) {
   }
   cands[r.n] = list.slice(0, 8).map((x) => [x.u, x.t]);
   if (pick) { photos[r.n] = [pick.u, pick.c, pick.s, pick.t]; used.add(pick.u); }
-  if (++n % 50 === 0) console.log(n, "recipes done");
+  if (++n % 50 === 0) { console.log(n, "recipes done"); save(); }
 }
-fs.writeFileSync(`${DIR}/photos.js`, "window.TABKH_PHOTOS=" + JSON.stringify(photos) + ";\n");
-fs.writeFileSync(`${DIR}/photo-candidates.json`, JSON.stringify(cands));
+save();
 const miss = D.r.filter((r) => !photos[r.n]).map((r) => r.n);
 console.log(`photos: ${Object.keys(photos).length}/${D.r.length} · missing: ${miss.length}`, miss.slice(0, 30).join(" | "));
