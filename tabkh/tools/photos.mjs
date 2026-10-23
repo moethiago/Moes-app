@@ -35,7 +35,7 @@ async function search(q) {
       const ratio = ii.width / ii.height; if (ratio < 0.55 || ratio > 2.2) continue;
       if (BAD.test(p.title)) continue;
       const m = ii.extmetadata || {};
-      out.push({ t: p.title, u: ii.thumburl || ii.url, c: [strip(m.Artist && m.Artist.value), m.LicenseShortName && m.LicenseShortName.value].filter(Boolean).join(" · "), s: ii.descriptionurl });
+      out.push({ i: out.length, t: p.title, u: ii.thumburl || ii.url, c: [strip(m.Artist && m.Artist.value), m.LicenseShortName && m.LicenseShortName.value].filter(Boolean).join(" · "), s: ii.descriptionurl });
     }
     return (cache[q] = out);
   }
@@ -50,23 +50,36 @@ async function byFile(title) {
 }
 
 const photos = {}, cands = {}, used = new Set();
+const REJ = new Set(OV._reject || []);
+const DISH = /plate|dish|bowl|served|serving|homemade|home.made|breakfast|lunch|dinner|meal|salad|soup|stew|sandwich|wrap|toast|cooked|recipe|platter|skillet|tray|cup|glass/i;
+const RAW = /\braw\b|field|plant|tree|flower|seed|market|stall|harvest|garden|leaf|leaves|bush|growing|farm|shop|store|supermarket|vendor|factory|label|bottle|jar|package|tin\b|can\b|carton|botan|cultivar|crop/i;
+const words = (q) => q.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !["with","and","the","food"].includes(w));
+function score(x, q) {
+  const t = x.t.toLowerCase(), ws = words(q);
+  let s = 0; ws.forEach((w) => { if (t.includes(w)) s += 3; });
+  if (DISH.test(t)) s += 2;
+  if (RAW.test(t) && !RAW.test(q)) s -= 4;
+  return s - x.i * 0.15; // search rank still matters a little
+}
 // keep reviewed picks stable: a recipe whose query/override did not change keeps its photo
 const ONLY = process.env.ONLY_NEW === "1";
 let n = 0;
 for (const r of D.r) {
-  const o = OV[r.n] || {};
+  const o = (r.n[0] !== "_" && OV[r.n]) || {};
   if (o.none) continue;
-  if (ONLY && OLD[r.n] && !o.q && !o.file && o.pick == null) { photos[r.n] = OLD[r.n]; used.add(OLD[r.n][0]); continue; }
+  if (ONLY && OLD[r.n] && !o.q && !o.file && o.pick == null && !REJ.has(OLD[r.n][3])) { photos[r.n] = OLD[r.n]; used.add(OLD[r.n][0]); continue; }
   let pick = null, list = [];
   if (o.file) pick = await byFile(o.file);
   if (!pick) {
-    list = await search(o.q || r.w);
-    if (list.length < 3 && !o.q) list = list.concat(await search(r.w.split(/[ (]/)[0] + " food"));
+    const q = o.q || r.w;
+    list = (await search(q)).filter((x) => !REJ.has(x.t));
+    if (list.length < 3) list = list.concat((await search(q.split(" ").slice(0, 2).join(" ") + " dish")).filter((x) => !REJ.has(x.t) && !list.some((y) => y.u === x.u)));
+    list = list.slice().sort((a, b) => score(b, q) - score(a, q));
     const free = list.filter((x) => !used.has(x.u));
     pick = o.pick != null ? list[o.pick] : (free[0] || list[0]);
   }
   cands[r.n] = list.slice(0, 8).map((x) => [x.u, x.t]);
-  if (pick) { photos[r.n] = [pick.u, pick.c, pick.s]; used.add(pick.u); }
+  if (pick) { photos[r.n] = [pick.u, pick.c, pick.s, pick.t]; used.add(pick.u); }
   if (++n % 50 === 0) console.log(n, "recipes done");
 }
 fs.writeFileSync(`${DIR}/photos.js`, "window.TABKH_PHOTOS=" + JSON.stringify(photos) + ";\n");
